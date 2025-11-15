@@ -30,7 +30,8 @@ viddef_t	vid;				// global video state
 #define	BASEHEIGHT	240
 
 byte	vid_buffer[BASEWIDTH*BASEHEIGHT];
-short	zbuffer[BASEWIDTH*BASEHEIGHT] __psram("vid_buffer");
+short*	zbuffer = (short*)(__PSRAM_BASE + 110400);
+/// short zbuffer[BASEWIDTH*BASEHEIGHT]; // 153600
 byte	*surfcache;
 size_t	surfcache_size;
 

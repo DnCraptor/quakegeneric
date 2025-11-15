@@ -25,14 +25,12 @@ void QG_Tick(double duration)
 	Host_Frame(duration);
 }
 
-static char __PSRAM[8*1024*1024 - 264000] __psram("PSRAM");
-
 void QG_Create(int argc, char *argv[])
 {
 	static quakeparms_t    parms;
 
-	parms.memsize = sizeof(__PSRAM);
-	parms.membase = __PSRAM;
+	parms.memsize = 8*1024*1024 - 264000;
+	parms.membase = __PSRAM_BASE + 264000;
 	parms.basedir = ".";
 
 	COM_InitArgv (argc, argv);

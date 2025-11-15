@@ -678,6 +678,8 @@ void Host_Frame (float time)
 	static int		timecount;
 	int		i, c, m;
 
+	if (time == 0) time = 0.1; // W/A
+
 	if (!serverprofile.value)
 	{
 		_Host_Frame (time);

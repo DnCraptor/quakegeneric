@@ -13,6 +13,7 @@
 #include <hardware/sync.h>
 #include <hardware/flash.h>
 #include <hardware/clocks.h>
+#include <hardware/structs/systick.h>
 
 #ifdef PICO_RP2350
 #include <hardware/regs/qmi.h>
@@ -664,6 +665,7 @@ int main() {
         sleep_ms(100);
 
         if (!set_sys_clock_khz(CPU_MHZ * KHZ, 0)) {
+            #undef CPU_MHZ
             #define CPU_MHZ 252
             set_sys_clock_khz(CPU_MHZ * KHZ, 1); // fallback to failsafe clocks
         }
@@ -733,13 +735,20 @@ int main() {
     multicore_launch_core1(render_core);
     sem_release(&vga_start_semaphore);
 
-	double oldtime, newtime;
-
-	oldtime = (((double)clock()) / CLOCKS_PER_SEC) - 0.1;
+    const double ticks_per_second = clock_get_hz(clk_sys);
+    // Настраиваем SysTick: тактирование от системной частоты
+    // и максимальное значение 24-битного счётчика
+    systick_hw->rvr = 0xFFFFFF;  // reload value (24 бита макс)
+    systick_hw->cvr = 0;         // current value
+    systick_hw->csr = (1 << 0) | (1 << 2);  // ENABLE = бит 0, CLKSOURCE = бит 2
+    uint32_t start = systick_hw->cvr;
 	while (1) {
-		newtime = ((double)clock()) / CLOCKS_PER_SEC;
-		QG_Tick(newtime - oldtime);
-		oldtime = newtime;
+        // Считаем прошедшие такты ARM
+        uint32_t now = systick_hw->cvr;
+        // SysTick counts down, 24-bit wrap
+        uint32_t elapsed_ticks = (start - now) & 0xFFFFFF;
+		QG_Tick(elapsed_ticks / ticks_per_second);
+        start = now;
 	}
 
     __unreachable();

@@ -27,7 +27,6 @@ MEMORY
     FLASH(rx) : ORIGIN = 0x10000000, LENGTH = 4096k
     */
     FLASH(rx) : ORIGIN = 0x10010000, LENGTH = (4096k-256k)
-    PSRAM(rwx) : ORIGIN = 0x11000000, LENGTH = 8M
     RAM(rwx) : ORIGIN =  0x20000000, LENGTH = 512k
     SCRATCH_X(rwx) : ORIGIN = 0x20080000, LENGTH = 4k
     SCRATCH_Y(rwx) : ORIGIN = 0x20081000, LENGTH = 4k
@@ -37,12 +36,6 @@ ENTRY(_entry_point)
 
 SECTIONS
 {
-    .psram : {
-        __psram_start__ = .;
-        *(.psram*)
-        __psram_end__ = .;
-    } > PSRAM
-
     .flash_begin : {
         __flash_binary_start = .;
     } > FLASH
