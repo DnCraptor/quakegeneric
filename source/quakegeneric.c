@@ -29,8 +29,8 @@ void QG_Create(int argc, char *argv[])
 {
 	static quakeparms_t    parms;
 
-	parms.memsize = 8*1024*1024 - 264000;
-	parms.membase = __PSRAM_BASE + 264000;
+	parms.memsize = 7*1024*1024;
+	parms.membase = __PSRAM_BASE;
 	/// TODO:
 	parms.basedir = "/QUAKE";
 
@@ -41,4 +41,5 @@ void QG_Create(int argc, char *argv[])
 
 	Sys_Printf ("Host_Init\n");
 	Host_Init (&parms);
+	Sys_Printf ("Host_Init done\n");
 }

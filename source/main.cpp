@@ -398,7 +398,6 @@ void __scratch_x("render") render_core() {
     graphics_init();
     graphics_set_buffer(FRAME_BUF, QUAKEGENERIC_RES_X, QUAKEGENERIC_RES_Y);
     graphics_set_bgcolor(0x000000);
-    graphics_set_flashmode(false, false);
     sem_acquire_blocking(&vga_start_semaphore);
     while (true) {
         tight_loop_contents();
@@ -720,7 +719,7 @@ int main() {
     Sys_Printf(" Chip model     : RP2350%c %d MHz\n", (rp2350a ? 'A' : 'B'), cpu_hz / 1000000);
     Sys_Printf(" Flash size     : %d MB\n", (1 << rx[3]) >> 20);
     Sys_Printf(" Flash JEDEC ID : %02X-%02X-%02X-%02X\n", rx[0], rx[1], rx[2], rx[3]);
-    Sys_Printf(" PSRAM on GP%02d: %d MB QSPI\n", psram_pin, butter_psram_size() >> 20);
+    Sys_Printf(" PSRAM on GP%02d  : %d MB QSPI\n", psram_pin, butter_psram_size() >> 20);
     Sys_Printf(" --------------------------------------\n");
 
 #if USE_NESPAD
@@ -745,11 +744,15 @@ int main() {
         HOME_DIR,
         0
     };
+	Sys_Printf ("QG_Create\n");
 	QG_Create(argc, argv);
+	Sys_Printf ("QG_Create done\n");
 
     sem_init(&vga_start_semaphore, 0, 1);
     multicore_launch_core1(render_core);
     sem_release(&vga_start_semaphore);
+
+	Sys_Printf ("core#1 started for video output\n");
 
     const double ticks_per_second = cpu_hz;
     // Настраиваем SysTick: тактирование от системной частоты

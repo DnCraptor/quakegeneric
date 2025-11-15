@@ -45,9 +45,10 @@ client_static_t	cls;
 client_state_t	cl;
 // FIXME: put these on hunk?
 efrag_t			cl_efrags[MAX_EFRAGS];
-entity_t*		cl_entities = (entity_t*)__PSRAM_BASE;
+entity_t*		cl_entities = (entity_t*)__PSRAM_CL_ENT;
 ///entity_t		cl_entities[MAX_EDICTS];
-entity_t		cl_static_entities[MAX_STATIC_ENTITIES];
+//entity_t		cl_static_entities[MAX_STATIC_ENTITIES]; // 23552
+entity_t* cl_static_entities = (entity_t*)__PSRAM_STAT_CL_ENT;
 lightstyle_t	cl_lightstyle[MAX_LIGHTSTYLES];
 dlight_t		cl_dlights[MAX_DLIGHTS];
 
