@@ -36,3 +36,4 @@ cmake-build*
 
 # meson
 meson-build*
+build/
