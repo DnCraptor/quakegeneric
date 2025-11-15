@@ -352,7 +352,7 @@ void Con_DebugLog(char *file, char *fmt, ...)
     vsprintf(data, fmt, argptr);
     va_end(argptr);
 	FIL log_file;
-	f_open(&log_file, file, FA_WRITE | FA_CREATE_ALWAYS | FA_OPEN_APPEND);
+	f_open(&log_file, file, FA_WRITE | FA_OPEN_ALWAYS | FA_OPEN_APPEND);
 	UINT bw;
     f_write(&log_file, data, strlen(data), &bw);
     f_close(&log_file);

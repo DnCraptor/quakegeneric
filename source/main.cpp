@@ -701,7 +701,8 @@ int main() {
 #endif
 
     uint32_t cpu_hz = clock_get_hz(clk_sys);
-    f_mount(&fs, "SD", 1);
+    f_mount(&fs, "", 1);
+    f_unlink("quake.log");
     Sys_Printf(" Hardware info\n");
     Sys_Printf(" --------------------------------------\n");
     Sys_Printf(" Chip model     : RP2350%c %d MHz\n", (rp2350a ? 'A' : 'B'), cpu_hz / 1000000);

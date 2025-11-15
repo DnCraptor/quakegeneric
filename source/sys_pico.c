@@ -146,7 +146,7 @@ static FIL log_file;
 static char buf[256];
 
 void Sys_Error (char *error, ...) {
-	if (FR_OK != f_open(&log_file, "quake.log", FA_WRITE | FA_CREATE_ALWAYS | FA_OPEN_APPEND)) return;
+	if (FR_OK != f_open(&log_file, "quake.log", FA_WRITE | FA_OPEN_ALWAYS | FA_OPEN_APPEND)) return;
 	UINT wb;
 	va_list         argptr;
 	f_write(&log_file, "Sys_Error: ", 11, &wb);  
@@ -195,7 +195,7 @@ void Sys_Fprintf (FIL* f, char *fmt, ...) {
 
 void Sys_Printf (char *fmt, ...)
 {
-	if (FR_OK != f_open(&log_file, "quake.log", FA_WRITE | FA_CREATE_ALWAYS)) return;
+	if (FR_OK != f_open(&log_file, "quake.log", FA_WRITE | FA_OPEN_ALWAYS | FA_OPEN_APPEND)) return;
 	UINT wb;
 	va_list         argptr;
 	va_start (argptr,fmt);
