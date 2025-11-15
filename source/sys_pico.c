@@ -19,8 +19,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 // sys_null.h -- null system driver to aid porting efforts
 
+#include <pico/stdlib.h>
 #include "quakedef.h"
-#include "errno.h"
 #include "ff.h"
 
 qboolean isDedicated;
@@ -137,31 +137,43 @@ void Sys_MakeCodeWriteable (unsigned long startaddr, unsigned long length)
 {
 }
 
-void Sys_Error (char *error, ...)
-{
+static FIL log_file;
+static char buf[256];
+
+void Sys_Error (char *error, ...) {
+	if (FR_OK != f_open(&log_file, "quake.log", FA_WRITE | FA_CREATE_ALWAYS)) return;
+	UINT wb;
 	va_list         argptr;
-
-	printf ("Sys_Error: ");   
+	f_write(&log_file, "Sys_Error: ", 11, &wb);  
 	va_start (argptr,error);
-	vprintf (error,argptr);
+    vsnprintf(buf, 256, error, argptr);
 	va_end (argptr);
-	printf ("\n");
-
-	exit (1);
+	f_write(&log_file, buf, strlen(buf), &wb);
+	f_write(&log_file, "\n", 1, &wb);
+	f_close(&log_file);
+	Sys_Quit();
 }
 
 void Sys_Printf (char *fmt, ...)
 {
+	if (FR_OK != f_open(&log_file, "quake.log", FA_WRITE | FA_CREATE_ALWAYS)) return;
+	UINT wb;
 	va_list         argptr;
-	
 	va_start (argptr,fmt);
-	vprintf (fmt,argptr);
+    vsnprintf(buf, 256, fmt, argptr);
 	va_end (argptr);
+	f_write(&log_file, buf, strlen(buf), &wb);
+	f_close(&log_file);
 }
 
 void Sys_Quit (void)
 {
-	exit (0);
+	while(1) {
+        sleep_ms(33);
+        gpio_put(PICO_DEFAULT_LED_PIN, true);
+        sleep_ms(33);
+        gpio_put(PICO_DEFAULT_LED_PIN, false);
+	}
 }
 
 double Sys_FloatTime (void)

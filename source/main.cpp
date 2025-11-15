@@ -36,6 +36,7 @@
 #endif
 
 #include "quakegeneric.h"
+#include "sys.h"
 
 #define HOME_DIR (char*)"\\QUAKE"
 
@@ -550,13 +551,13 @@ uint32_t __not_in_flash_func(butter_psram_size)() { return 0; }
 #endif
 
 void sigbus(void) {
-    printf("SIGBUS exception caught...\n");
+    Sys_Printf("SIGBUS exception caught...\n");
     // reset_usb_boot(0, 0);
 }
 void __attribute__((naked, noreturn)) __printflike(1, 0) dummy_panic(__unused const char *fmt, ...) {
-    printf("*** PANIC ***\n");
+    Sys_Printf("*** PANIC ***\n");
     if (fmt)
-        printf(fmt);
+        Sys_Printf((char*)fmt);
 }
 
 #ifndef PICO_RP2040

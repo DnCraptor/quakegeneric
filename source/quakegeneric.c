@@ -38,6 +38,6 @@ void QG_Create(int argc, char *argv[])
 	parms.argc = com_argc;
 	parms.argv = com_argv;
 
-	printf ("Host_Init\n");
+	Sys_Printf ("Host_Init\n");
 	Host_Init (&parms);
 }

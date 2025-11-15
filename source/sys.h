@@ -19,6 +19,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 // sys.h -- non-portable functions
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //
 // file IO
 //
@@ -69,3 +73,6 @@ void Sys_LowFPPrecision (void);
 void Sys_HighFPPrecision (void);
 void Sys_SetFPCW (void);
 
+#ifdef __cplusplus
+}
+#endif
