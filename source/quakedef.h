@@ -46,8 +46,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define UNUSED(x)	(x = x)	// for pesky compiler / lint warnings
 
-#define	MINIMUM_MEMORY			0x550000
-#define	MINIMUM_MEMORY_LEVELPAK	(MINIMUM_MEMORY + 0x100000)
+#ifndef __psram
+#define __psram(group) __attribute__((section(".psram." group)))
+#endif
+
+#define	MINIMUM_MEMORY			0x550000 // 5 MB
+#define	MINIMUM_MEMORY_LEVELPAK	(MINIMUM_MEMORY + 0x100000) // 6 MB
 
 #define MAX_NUM_ARGVS	50
 

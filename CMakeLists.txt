@@ -250,6 +250,8 @@ pico_add_extra_outputs(${PROJECT_NAME})
 # add url via pico_set_program_url
 
 if (m1p2launcher)
+    pico_set_linker_script(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/memmap.mos2.ld")
+else ()
     pico_set_linker_script(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/memmap.ld")
 endif ()
 
