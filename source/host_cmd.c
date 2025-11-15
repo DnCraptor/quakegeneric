@@ -424,7 +424,7 @@ Host_Savegame_f
 void Host_Savegame_f (void)
 {
 	char	name[256];
-	FILE	*f;
+	FIL		*f;
 	int		i;
 	char	comment[SAVEGAME_COMMENT_LENGTH+1];
 
@@ -474,30 +474,31 @@ void Host_Savegame_f (void)
 	COM_DefaultExtension (name, ".sav");
 	
 	Con_Printf ("Saving game to %s...\n", name);
-	f = fopen (name, "w");
+	int h = Sys_FileOpenWrite(name);
+	f = Sys_File(h);
 	if (!f)
 	{
 		Con_Printf ("ERROR: couldn't open.\n");
 		return;
 	}
 	
-	fprintf (f, "%i\n", SAVEGAME_VERSION);
+	Sys_Fprintf (f, "%i\n", SAVEGAME_VERSION);
 	Host_SavegameComment (comment);
-	fprintf (f, "%s\n", comment);
+	Sys_Fprintf (f, "%s\n", comment);
 	for (i=0 ; i<NUM_SPAWN_PARMS ; i++)
-		fprintf (f, "%f\n", svs.clients->spawn_parms[i]);
-	fprintf (f, "%d\n", current_skill);
-	fprintf (f, "%s\n", sv.name);
-	fprintf (f, "%f\n",sv.time);
+		Sys_Fprintf (f, "%f\n", svs.clients->spawn_parms[i]);
+	Sys_Fprintf (f, "%d\n", current_skill);
+	Sys_Fprintf (f, "%s\n", sv.name);
+	Sys_Fprintf (f, "%f\n",sv.time);
 
 // write the light styles
 
 	for (i=0 ; i<MAX_LIGHTSTYLES ; i++)
 	{
 		if (sv.lightstyles[i])
-			fprintf (f, "%s\n", sv.lightstyles[i]);
+			Sys_Fprintf (f, "%s\n", sv.lightstyles[i]);
 		else
-			fprintf (f,"m\n");
+			Sys_Fprintf (f,"m\n");
 	}
 
 
@@ -505,9 +506,9 @@ void Host_Savegame_f (void)
 	for (i=0 ; i<sv.num_edicts ; i++)
 	{
 		ED_Write (f, EDICT_NUM(i));
-		fflush (f);
+		f_sync (f);
 	}
-	fclose (f);
+	Sys_FileClose(h);
 	Con_Printf ("done.\n");
 }
 
@@ -520,7 +521,7 @@ Host_Loadgame_f
 void Host_Loadgame_f (void)
 {
 	char	name[MAX_OSPATH];
-	FILE	*f;
+	FIL		*f;
 	char	mapname[MAX_QPATH];
 	float	time, tfloat;
 	char	str[32768], *start;
@@ -549,30 +550,33 @@ void Host_Loadgame_f (void)
 //	SCR_BeginLoadingPlaque ();
 
 	Con_Printf ("Loading game from %s...\n", name);
-	f = fopen (name, "r");
+	int h;
+	Sys_FileOpenRead(name, &h);
+	f = Sys_File(h);
 	if (!f)
 	{
 		Con_Printf ("ERROR: couldn't open.\n");
 		return;
 	}
 
-	fscanf (f, "%i\n", &version);
+	Sys_Fscanf (f, "%i\n", &version);
 	if (version != SAVEGAME_VERSION)
 	{
-		fclose (f);
+		f_close (f);
+		free(f);
 		Con_Printf ("Savegame is version %i, not %i\n", version, SAVEGAME_VERSION);
 		return;
 	}
-	fscanf (f, "%s\n", str);
+	Sys_Fscanf (f, "%s\n", str);
 	for (i=0 ; i<NUM_SPAWN_PARMS ; i++)
-		fscanf (f, "%f\n", &spawn_parms[i]);
+		Sys_Fscanf (f, "%f\n", &spawn_parms[i]);
 // this silliness is so we can load 1.06 save files, which have float skill values
-	fscanf (f, "%f\n", &tfloat);
+	Sys_Fscanf (f, "%f\n", &tfloat);
 	current_skill = (int)(tfloat + 0.1);
 	Cvar_SetValue ("skill", (float)current_skill);
 
-	fscanf (f, "%s\n",mapname);
-	fscanf (f, "%f\n",&time);
+	Sys_Fscanf (f, "%s\n",mapname);
+	Sys_Fscanf (f, "%f\n",&time);
 
 	CL_Disconnect_f ();
 	
@@ -590,18 +594,18 @@ void Host_Loadgame_f (void)
 
 	for (i=0 ; i<MAX_LIGHTSTYLES ; i++)
 	{
-		fscanf (f, "%s\n", str);
+		Sys_Fscanf (f, "%s\n", str);
 		sv.lightstyles[i] = Hunk_Alloc (strlen(str)+1);
 		strcpy (sv.lightstyles[i], str);
 	}
 
 // load the edicts out of the savegame file
 	entnum = -1;		// -1 is the globals
-	while (!feof(f))
+	while (!f_eof(f))
 	{
 		for (i=0 ; i<sizeof(str)-1 ; i++)
 		{
-			r = fgetc (f);
+			r = f_getc (f);
 			if (r == EOF || !r)
 				break;
 			str[i] = r;
@@ -644,7 +648,7 @@ void Host_Loadgame_f (void)
 	sv.num_edicts = entnum;
 	sv.time = time;
 
-	fclose (f);
+	Sys_FileClose (h);
 
 	for (i=0 ; i<NUM_SPAWN_PARMS ; i++)
 		svs.clients->spawn_parms[i] = spawn_parms[i];

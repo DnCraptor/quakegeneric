@@ -348,14 +348,14 @@ void Con_DebugLog(char *file, char *fmt, ...)
 {
     va_list argptr; 
     static char data[1024];
-    FILE *fd;
-    
     va_start(argptr, fmt);
     vsprintf(data, fmt, argptr);
     va_end(argptr);
-    fd = fopen(file, "wa");
-    fwrite(data, strlen(data), 1, fd);
-    fclose(fd);
+	FIL log_file;
+	f_open(&log_file, file, FA_WRITE | FA_CREATE_ALWAYS | FA_OPEN_APPEND);
+	UINT bw;
+    f_write(&log_file, data, strlen(data), &bw);
+    f_close(&log_file);
 }
 
 

@@ -241,13 +241,14 @@ Writes key bindings and archived cvars to config.cfg
 */
 void Host_WriteConfiguration (void)
 {
-	FILE	*f;
+	FIL	*f;
 
 // dedicated servers initialize the host but don't parse and set the
 // config.cfg cvars
 	if (host_initialized & !isDedicated)
 	{
-		f = fopen (va("%s/config.cfg",com_gamedir), "w");
+		int h = Sys_FileOpenWrite(va("%s/config.cfg",com_gamedir));
+		f = Sys_File(h);
 		if (!f)
 		{
 			Con_Printf ("Couldn't write config.cfg.\n");
@@ -257,7 +258,7 @@ void Host_WriteConfiguration (void)
 		Key_WriteBindings (f);
 		Cvar_WriteVariables (f);
 
-		fclose (f);
+		Sys_FileClose (h);
 	}
 }
 

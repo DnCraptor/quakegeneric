@@ -56,6 +56,10 @@ void Sys_Error (char *error, ...);
 void Sys_Printf (char *fmt, ...);
 // send text to the console
 
+void Sys_Fprintf (FIL* f, char *fmt, ...);
+FIL* Sys_File(int hndl);
+int Sys_Fscanf(FIL* f, char *fmt, ...);
+
 void Sys_Quit (void);
 
 double Sys_FloatTime (void);

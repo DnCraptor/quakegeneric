@@ -47,7 +47,7 @@ void CL_StopPlayback (void)
 	if (!cls.demoplayback)
 		return;
 
-	fclose (cls.demofile);
+	f_close (cls.demofile);
 	cls.demoplayback = false;
 	cls.demofile = NULL;
 	cls.state = ca_disconnected;
@@ -70,14 +70,15 @@ void CL_WriteDemoMessage (void)
 	float	f;
 
 	len = LittleLong (net_message.cursize);
-	fwrite (&len, 4, 1, cls.demofile);
+	UINT bw;
+	f_write (cls.demofile, &len, 4, &bw);
 	for (i=0 ; i<3 ; i++)
 	{
 		f = LittleFloat (cl.viewangles[i]);
-		fwrite (&f, 4, 1, cls.demofile);
+		f_write (cls.demofile, &f, 4, &bw);
 	}
-	fwrite (net_message.data, net_message.cursize, 1, cls.demofile);
-	fflush (cls.demofile);
+	f_write (cls.demofile, net_message.data, net_message.cursize, &bw);
+	f_sync (cls.demofile);
 }
 
 /*
@@ -114,18 +115,21 @@ int CL_GetMessage (void)
 		}
 		
 	// get the next message
-		fread (&net_message.cursize, 4, 1, cls.demofile);
+		UINT rb;
+		f_read (cls.demofile, &net_message.cursize, 4, &rb);
 		VectorCopy (cl.mviewangles[0], cl.mviewangles[1]);
 		for (i=0 ; i<3 ; i++)
 		{
-			r = fread (&f, 4, 1, cls.demofile);
+			f_read (cls.demofile, &f, 4, &rb);
+			r = rb;
 			cl.mviewangles[0][i] = LittleFloat (f);
 		}
 		
 		net_message.cursize = LittleLong (net_message.cursize);
 		if (net_message.cursize > MAX_MSGLEN)
 			Sys_Error ("Demo message > MAX_MSGLEN");
-		r = fread (net_message.data, net_message.cursize, 1, cls.demofile);
+		f_read (cls.demofile, net_message.data, net_message.cursize, &rb);
+		r = rb;
 		if (r != 1)
 		{
 			CL_StopPlayback ();
@@ -180,7 +184,7 @@ void CL_Stop_f (void)
 	CL_WriteDemoMessage ();
 
 // finish up
-	fclose (cls.demofile);
+	free(cls.demofile);
 	cls.demofile = NULL;
 	cls.demorecording = false;
 	Con_Printf ("Completed demo\n");
@@ -244,15 +248,21 @@ void CL_Record_f (void)
 	COM_DefaultExtension (name, ".dem");
 
 	Con_Printf ("recording to %s.\n", name);
-	cls.demofile = fopen (name, "wb");
+	cls.demofile = (FIL*)malloc(sizeof(FIL));
 	if (!cls.demofile)
 	{
 		Con_Printf ("ERROR: couldn't open.\n");
 		return;
 	}
+	if (f_open(cls.demofile, name, FA_WRITE | FA_CREATE_ALWAYS) != FR_OK) {
+		free(cls.demofile);
+		cls.demofile = NULL;
+		Con_Printf ("ERROR: couldn't open.\n");
+		return;
+	}
 
 	cls.forcetrack = track;
-	fprintf (cls.demofile, "%i\n", cls.forcetrack);
+	Sys_Fprintf (cls.demofile, "%i\n", cls.forcetrack);
 	
 	cls.demorecording = true;
 }
@@ -304,7 +314,7 @@ void CL_PlayDemo_f (void)
 	cls.state = ca_connected;
 	cls.forcetrack = 0;
 
-	while ((c = getc(cls.demofile)) != '\n')
+	while ((c = f_getc(cls.demofile)) != '\n')
 		if (c == '-')
 			neg = true;
 		else
@@ -312,8 +322,8 @@ void CL_PlayDemo_f (void)
 
 	if (neg)
 		cls.forcetrack = -cls.forcetrack;
-// ZOID, fscanf is evil
-//	fscanf (cls.demofile, "%i\n", &cls.forcetrack);
+// ZOID, Sys_Fscanf is evil
+//	Sys_Fscanf (cls.demofile, "%i\n", &cls.forcetrack);
 }
 
 /*

@@ -443,7 +443,7 @@ void M_ScanSaves (void)
 {
 	int		i, j;
 	char	name[MAX_OSPATH];
-	FILE	*f;
+	FIL		*f;
 	int		version;
 
 	for (i=0 ; i<MAX_SAVEGAMES ; i++)
@@ -451,11 +451,13 @@ void M_ScanSaves (void)
 		strcpy (m_filenames[i], "--- UNUSED SLOT ---");
 		loadable[i] = false;
 		sprintf (name, "%s/s%i.sav", com_gamedir, i);
-		f = fopen (name, "r");
+		int h;
+		Sys_FileOpenRead(name, &h);
+		f = Sys_File(h);
 		if (!f)
 			continue;
-		fscanf (f, "%i\n", &version);
-		fscanf (f, "%79s\n", name);
+		Sys_Fscanf (f, "%i\n", &version);
+		Sys_Fscanf (f, "%79s\n", name);
 		strncpy (m_filenames[i], name, sizeof(m_filenames[i])-1);
 
 	// change _ back to space
@@ -463,7 +465,7 @@ void M_ScanSaves (void)
 			if (m_filenames[i][j] == '_')
 				m_filenames[i][j] = ' ';
 		loadable[i] = true;
-		fclose (f);
+		Sys_FileClose (h);
 	}
 }
 

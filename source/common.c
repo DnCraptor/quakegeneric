@@ -1367,7 +1367,7 @@ Finds the file in the search path.
 Sets com_filesize and one of handle or file
 ===========
 */
-int COM_FindFile (char *filename, int *handle, FILE **file)
+int COM_FindFile (char *filename, int *handle, FIL **file)
 {
 	searchpath_t    *search;
 	char            netpath[MAX_OSPATH];
@@ -1409,9 +1409,13 @@ int COM_FindFile (char *filename, int *handle, FILE **file)
 					}
 					else
 					{       // open a new file on the pakfile
-						*file = fopen (pak->filename, "rb");
-						if (*file)
-							fseek (*file, pak->files[i].filepos, SEEK_SET);
+						*file = (FIL*)malloc(sizeof(FIL));
+						if (f_open(*file, pak->filename, FA_READ) == FR_OK)
+							f_lseek (*file, pak->files[i].filepos);
+						else {
+							free(*file);
+							*file = NULL;
+						}
 					}
 					com_filesize = pak->files[i].filelen;
 					return com_filesize;
@@ -1453,7 +1457,11 @@ int COM_FindFile (char *filename, int *handle, FILE **file)
 			else
 			{
 				Sys_FileClose (i);
-				*file = fopen (netpath, "rb");
+				*file = (FIL*)malloc(sizeof(FIL));
+				if (FR_OK != f_open (*file, netpath, FA_READ)) {
+					free(*file);
+					*file = NULL;
+				}
 			}
 			return com_filesize;
 		}
@@ -1493,7 +1501,7 @@ If the requested file is inside a packfile, a new FILE * will be opened
 into the file.
 ===========
 */
-int COM_FOpenFile (char *filename, FILE **file)
+int COM_FOpenFile (char *filename, FIL **file)
 {
 	return COM_FindFile (filename, NULL, file);
 }

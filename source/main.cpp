@@ -626,7 +626,6 @@ extern "C" void QG_GetJoyAxes(float *axes)
     *axes = 0;
 }
 
-
 int main() {
     flash_info();
 #ifdef PICO_RP2040
@@ -701,6 +700,14 @@ int main() {
     exception_set_exclusive_handler(HARDFAULT_EXCEPTION, sigbus);
 #endif
 
+    uint32_t cpu_hz = clock_get_hz(clk_sys);
+    f_mount(&fs, "SD", 1);
+    Sys_Printf(" Hardware info\n");
+    Sys_Printf(" --------------------------------------\n");
+    Sys_Printf(" Chip model     : RP2350%c %d MHz\n", (rp2350a ? 'A' : 'B'), cpu_hz / 1000000);
+    Sys_Printf(" Flash size     : %d MB\n", (1 << rx[3]) >> 20);
+    Sys_Printf(" Flash JEDEC ID : %02X-%02X-%02X-%02X\n", rx[0], rx[1], rx[2], rx[3]);
+
 
 #if USE_NESPAD
     nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
@@ -736,7 +743,7 @@ int main() {
     multicore_launch_core1(render_core);
     sem_release(&vga_start_semaphore);
 
-    const double ticks_per_second = clock_get_hz(clk_sys);
+    const double ticks_per_second = cpu_hz;
     // Настраиваем SysTick: тактирование от системной частоты
     // и максимальное значение 24-битного счётчика
     systick_hw->rvr = 0xFFFFFF;  // reload value (24 бита макс)

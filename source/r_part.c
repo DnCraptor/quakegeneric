@@ -152,7 +152,7 @@ void R_ClearParticles (void)
 
 void R_ReadPointFile_f (void)
 {
-	FILE	*f;
+	FIL		*f;
 	vec3_t	org;
 	int		r;
 	int		c;
@@ -172,7 +172,7 @@ void R_ReadPointFile_f (void)
 	c = 0;
 	for ( ;; )
 	{
-		r = fscanf (f,"%f %f %f\n", &org[0], &org[1], &org[2]);
+		r = Sys_Fscanf (f,"%f %f %f\n", &org[0], &org[1], &org[2]);
 		if (r != 3)
 			break;
 		c++;
@@ -194,7 +194,8 @@ void R_ReadPointFile_f (void)
 		VectorCopy (org, p->org);
 	}
 
-	fclose (f);
+	f_close (f);
+	free(f);
 	Con_Printf ("%i points read\n", c);
 }
 

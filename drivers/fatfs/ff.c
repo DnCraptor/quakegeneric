@@ -6574,7 +6574,13 @@ FRESULT f_fdisk (
 #endif /* FF_MULTI_PARTITION */
 #endif /* !FF_FS_READONLY && FF_USE_MKFS */
 
-
+int f_getc (FIL* fp) {
+	if (!fp || f_eof(fp)) return -1;
+	UINT br;
+	char b[1];
+	if (FR_OK != f_read(fp, b, 1, &br)) return -1;
+	return b[0];
+}
 
 
 #if FF_USE_STRFUNC

@@ -21,7 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <pico/stdlib.h>
 #include "quakedef.h"
-#include "ff.h"
+#include "sys.h"
 
 qboolean isDedicated;
 
@@ -45,6 +45,11 @@ int findhandle (void)
 			return i;
 	Sys_Error ("out of handles");
 	return -1;
+}
+
+FIL* Sys_File(int hndl) {
+	if (hndl < 0) return NULL;
+	return sys_handles[hndl];
 }
 
 int Sys_FileOpenRead (char *path, int *hndl)
@@ -110,7 +115,7 @@ int Sys_FileWrite (int handle, void *data, int count)
 	return wb;
 }
 
-int     Sys_FileTime (char *path)
+int Sys_FileTime (char *path)
 {
     FILINFO fno;
     if (FR_OK != f_stat(path, &fno)) {
@@ -141,7 +146,7 @@ static FIL log_file;
 static char buf[256];
 
 void Sys_Error (char *error, ...) {
-	if (FR_OK != f_open(&log_file, "quake.log", FA_WRITE | FA_CREATE_ALWAYS)) return;
+	if (FR_OK != f_open(&log_file, "quake.log", FA_WRITE | FA_CREATE_ALWAYS | FA_OPEN_APPEND)) return;
 	UINT wb;
 	va_list         argptr;
 	f_write(&log_file, "Sys_Error: ", 11, &wb);  
@@ -152,6 +157,40 @@ void Sys_Error (char *error, ...) {
 	f_write(&log_file, "\n", 1, &wb);
 	f_close(&log_file);
 	Sys_Quit();
+}
+
+int Sys_Fscanf(FIL* f, char *fmt, ...)
+{
+    UINT rb;
+    FRESULT fr;
+    int scanned = 0;
+
+    DWORD start_pos = f_tell(f); // текущее положение файла
+
+    va_list argptr;
+    va_start(argptr, fmt);
+
+    fr = f_read(f, buf, sizeof(buf) - 1, &rb);
+    if (fr != FR_OK || rb == 0) {
+        va_end(argptr);
+        return EOF;  // как стандартный fscanf
+    }
+
+    buf[rb] = '\0';  // нуль-терминатор для sscanf
+
+    scanned = vsscanf(buf, fmt, argptr);  // распарсить значения
+/// TODO: reimplemet it
+    va_end(argptr);
+    return scanned;
+}
+
+void Sys_Fprintf (FIL* f, char *fmt, ...) {
+	UINT wb;
+	va_list argptr;
+	va_start (argptr, fmt);
+    vsnprintf(buf, 256, fmt, argptr);
+	va_end (argptr);
+	f_write(f, buf, strlen(buf), &wb);
 }
 
 void Sys_Printf (char *fmt, ...)
