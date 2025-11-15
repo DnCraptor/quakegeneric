@@ -60,7 +60,7 @@ void	VID_Init (unsigned char *palette)
 	
 	d_pzbuffer = zbuffer;
 
-	surfcache_size = D_SurfaceCacheForRes(BASEWIDTH, BASEHEIGHT);
+	surfcache_size = 1024; /// TODO: D_SurfaceCacheForRes(BASEWIDTH, BASEHEIGHT);
 	surfcache = malloc(surfcache_size);
 	D_InitCaches (surfcache, surfcache_size);
 

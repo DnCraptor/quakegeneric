@@ -104,14 +104,14 @@ void Sys_FileSeek (int handle, int position)
 int Sys_FileRead (int handle, void *dest, int count)
 {
 	UINT rb = 0;
-	f_read (dest, sys_handles[handle], count, &rb);
+	f_read (sys_handles[handle], dest, count, &rb);
 	return rb;
 }
 
 int Sys_FileWrite (int handle, void *data, int count)
 {
 	UINT wb = 0;
-	f_write (data, sys_handles[handle], count, &wb);
+	f_write (sys_handles[handle], data, count, &wb);
 	return wb;
 }
 
@@ -244,33 +244,6 @@ void Sys_HighFPPrecision (void)
 void Sys_LowFPPrecision (void)
 {
 }
-
-//=============================================================================
-
-/*
-
-void main (int argc, char **argv)
-{
-	static quakeparms_t    parms;
-
-	parms.memsize = 8*1024*1024;
-	parms.membase = malloc (parms.memsize);
-	parms.basedir = ".";
-
-	COM_InitArgv (argc, argv);
-
-	parms.argc = com_argc;
-	parms.argv = com_argv;
-
-	printf ("Host_Init\n");
-	Host_Init (&parms);
-	while (1)
-	{
-		Host_Frame (0.1);
-	}
-}
-
-*/
 
 void _unlink(const char* path) {
 	f_unlink(path);

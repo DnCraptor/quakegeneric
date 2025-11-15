@@ -681,6 +681,8 @@ void Host_Frame (float time)
 
 	if (time == 0) time = 0.1; // W/A
 
+	Sys_Printf("Host_Frame(%f)\n", time);
+
 	if (!serverprofile.value)
 	{
 		_Host_Frame (time);
@@ -816,10 +818,12 @@ void Host_Init (quakeparms_t *parms)
 	NET_Init ();
 	SV_Init ();
 
-	Con_Printf ("Exe: "__TIME__" "__DATE__"\n");
-	Con_Printf ("%4.1f megabyte heap\n",parms->memsize/ (1024*1024.0));
+	Con_Printf ("Build: " __DATE__ " " __TIME__ "\n");
+	Con_Printf ("%4.1f megabyte[s] heap free\n", parms->memsize / (1024*1024.0));
 	
+	Con_Printf("R_InitTextures ");
 	R_InitTextures ();		// needed even for dedicated servers
+	Con_Printf("done\n");
  
 	if (cls.state != ca_dedicated)
 	{
@@ -830,21 +834,53 @@ void Host_Init (quakeparms_t *parms)
 		if (!host_colormap)
 			Sys_Error ("Couldn't load gfx/colormap.lmp");
 
+		Con_Printf("IN_Init ");
 		IN_Init ();
+		Con_Printf("done\n");
+
+		Con_Printf("VID_Init: ");
 		VID_Init (host_basepal);
+
+		Con_Printf("Draw_Init ");
 		Draw_Init ();
+		Con_Printf("done\n");
+
+		Con_Printf("SCR_Init ");
 		SCR_Init ();
+		Con_Printf("done\n");
+
+		Con_Printf("R_Init ");
 		R_Init ();
+		Con_Printf("done\n");
+	
+		Con_Printf("S_Init ");
 		S_Init ();
+		Con_Printf("done\n");
+		
+		Con_Printf("CDAudio_Init ");
 		CDAudio_Init ();
+		Con_Printf("done\n");
+
+		Con_Printf("Sbar_Init ");
 		Sbar_Init ();
+		Con_Printf("done\n");
+
+		Con_Printf("CL_Init ");
 		CL_Init ();
+		Con_Printf("done\n");
 	}
 
+	Con_Printf("Cbuf_InsertText ");
 	Cbuf_InsertText ("exec quake.rc\n");
+	Con_Printf("done\n");
 
+	Con_Printf("Hunk_AllocName ");
 	Hunk_AllocName (0, "-HOST_HUNKLEVEL-");
+	Con_Printf("done\n");
+
+	Con_Printf("Hunk_LowMark ");
 	host_hunklevel = Hunk_LowMark ();
+	Con_Printf("done: %d\n", host_hunklevel);
 
 	host_initialized = true;
 	

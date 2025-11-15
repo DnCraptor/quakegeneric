@@ -552,12 +552,24 @@ uint32_t __not_in_flash_func(butter_psram_size)() { return 0; }
 
 void sigbus(void) {
     Sys_Printf("SIGBUS exception caught...\n");
-    // reset_usb_boot(0, 0);
+    while(1) {
+        sleep_ms(33);
+        gpio_put(PICO_DEFAULT_LED_PIN, true);
+        sleep_ms(33);
+        gpio_put(PICO_DEFAULT_LED_PIN, false);
+    }
+    /// TODO: reset_usb_boot(0, 0);
 }
 void __attribute__((naked, noreturn)) __printflike(1, 0) dummy_panic(__unused const char *fmt, ...) {
     Sys_Printf("*** PANIC ***\n");
     if (fmt)
         Sys_Printf((char*)fmt);
+    while(1) {
+        sleep_ms(33);
+        gpio_put(PICO_DEFAULT_LED_PIN, true);
+        sleep_ms(33);
+        gpio_put(PICO_DEFAULT_LED_PIN, false);
+    }
 }
 
 #ifndef PICO_RP2040
@@ -708,7 +720,8 @@ int main() {
     Sys_Printf(" Chip model     : RP2350%c %d MHz\n", (rp2350a ? 'A' : 'B'), cpu_hz / 1000000);
     Sys_Printf(" Flash size     : %d MB\n", (1 << rx[3]) >> 20);
     Sys_Printf(" Flash JEDEC ID : %02X-%02X-%02X-%02X\n", rx[0], rx[1], rx[2], rx[3]);
-
+    Sys_Printf(" PSRAM on GP%02d: %d MB QSPI\n", psram_pin, butter_psram_size() >> 20);
+    Sys_Printf(" --------------------------------------\n");
 
 #if USE_NESPAD
     nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
@@ -734,14 +747,6 @@ int main() {
     };
 	QG_Create(argc, argv);
 
-    #ifdef PICO_DEFAULT_LED_PIN
-    for (int i = 0; i < 6; i++) {
-        sleep_ms(33);
-        gpio_put(PICO_DEFAULT_LED_PIN, true);
-        sleep_ms(33);
-        gpio_put(PICO_DEFAULT_LED_PIN, false);
-    }
-    #endif
     sem_init(&vga_start_semaphore, 0, 1);
     multicore_launch_core1(render_core);
     sem_release(&vga_start_semaphore);
