@@ -3790,7 +3790,7 @@ FRESULT f_mount (
 }
 
 
-
+void Sys_Printf (char *fmt, ...);
 
 /*-----------------------------------------------------------------------*/
 /* API: Open or Create a File                                            */
@@ -3807,6 +3807,11 @@ FRESULT f_open (
 	FATFS *fs;
 	DEF_NAMEBUFF
 
+	if ( strcmp("quake.log", path) != 0 ) {
+		Sys_Printf("f_open: ");
+		Sys_Printf(path);
+		Sys_Printf("\n");
+	}
 
 	if (!fp) return FR_INVALID_OBJECT;	/* Reject null pointer */
 

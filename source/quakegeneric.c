@@ -31,7 +31,8 @@ void QG_Create(int argc, char *argv[])
 
 	parms.memsize = 8*1024*1024 - 264000;
 	parms.membase = __PSRAM_BASE + 264000;
-	parms.basedir = ".";
+	/// TODO:
+	parms.basedir = "/QUAKE";
 
 	COM_InitArgv (argc, argv);
 

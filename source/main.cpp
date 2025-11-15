@@ -38,7 +38,7 @@
 #include "quakegeneric.h"
 #include "sys.h"
 
-#define HOME_DIR (char*)"\\QUAKE"
+#define HOME_DIR (char*)"/QUAKE"
 
 bool rp2350a = true;
 uint8_t rx[4] = { 0 };
@@ -725,9 +725,11 @@ int main() {
     keyboard_send(0xFF);
 #endif
 
-    int argc = 1;
+    int argc = 2;
     char* argv[] = {
         "quake",
+        "-basedir",
+        HOME_DIR,
         0
     };
 	QG_Create(argc, argv);
