@@ -42,14 +42,13 @@ int     D_SurfaceCacheForRes (int width, int height)
 		return size;
 	}
 	
-	size = SURFCACHE_SIZE_AT_320X200;
+	size = SURFCACHE_SIZE_AT_320X200; // 600 KB
 
-	pix = width*height;
+	pix = width * height; // 320*240 = 76800 B
 	if (pix > 64000)
-		size += (pix-64000)*3;
+		size += (pix-64000)*3; // + 38400 B
 		
-
-	return size;
+	return size; // 652800 B
 }
 
 void D_CheckCacheGuard (void)
