@@ -756,7 +756,7 @@ int main() {
 
 	Sys_Printf ("core#1 started for video output\n");
 */
-    const double ticks_per_second = cpu_hz;
+    const float ticks_per_second = cpu_hz;
     // Настраиваем SysTick: тактирование от системной частоты
     // и максимальное значение 24-битного счётчика
     systick_hw->rvr = 0xFFFFFF;  // reload value (24 бита макс)
@@ -767,8 +767,10 @@ int main() {
         // Считаем прошедшие такты ARM
         uint32_t now = systick_hw->cvr;
         // SysTick counts down, 24-bit wrap
-        uint32_t elapsed_ticks = (start - now) & 0xFFFFFF;
-		QG_Tick(elapsed_ticks / ticks_per_second);
+        float elapsed_ticks = 0.0 + ((start - now) & 0xFFFFFF);
+        float dT = elapsed_ticks / ticks_per_second;
+        if (dT < 0.01) continue;
+		QG_Tick(dT);
         start = now;
 	}
 

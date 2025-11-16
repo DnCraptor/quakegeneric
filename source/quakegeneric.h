@@ -40,7 +40,7 @@ extern "C" {
 #endif
 
 // provided functions
-void QG_Tick(double duration);
+void QG_Tick(float duration);
 void QG_Create(int argc, char *argv[]);
 
 // user must implement these
