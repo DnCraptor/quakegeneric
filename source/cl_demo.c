@@ -200,7 +200,6 @@ record <demoname> <map> [cd track]
 void CL_Record_f (void)
 {
 	int		c;
-	char	name[MAX_OSPATH];
 	int		track;
 
 	if (cmd_source != src_command)
@@ -234,32 +233,39 @@ void CL_Record_f (void)
 	else
 		track = -1;	
 
-	sprintf (name, "%s/%s", com_gamedir, Cmd_Argv(1));
+	char* buf = (char*)malloc(MAX_OSPATH);
+	sprintf (buf, "%s/%s", com_gamedir, Cmd_Argv(1));
 	
 //
 // start the map up
 //
-	if (c > 2)
-		Cmd_ExecuteString ( va("map %s", Cmd_Argv(2)), src_command);
+	if (c > 2) {
+		char* buf2 = (char*)malloc(MAX_OSPATH);
+		Cmd_ExecuteString ( va2(buf2, MAX_OSPATH, "map %s", Cmd_Argv(2)), src_command);
+		free (buf2);
+	}
 	
 //
 // open the demo file
 //
-	COM_DefaultExtension (name, ".dem");
+	COM_DefaultExtension (buf, ".dem");
 
-	Con_Printf ("recording to %s.\n", name);
+	Con_Printf ("recording to %s.\n", buf);
 	cls.demofile = (FIL*)malloc(sizeof(FIL));
 	if (!cls.demofile)
 	{
+		free(buf);
 		Con_Printf ("ERROR: couldn't open.\n");
 		return;
 	}
-	if (f_open(cls.demofile, name, FA_WRITE | FA_CREATE_ALWAYS) != FR_OK) {
+	if (f_open(cls.demofile, buf, FA_WRITE | FA_CREATE_ALWAYS) != FR_OK) {
+		free(buf);
 		free(cls.demofile);
 		cls.demofile = NULL;
 		Con_Printf ("ERROR: couldn't open.\n");
 		return;
 	}
+	free(buf);
 
 	cls.forcetrack = track;
 	Sys_Fprintf (cls.demofile, "%i\n", cls.forcetrack);

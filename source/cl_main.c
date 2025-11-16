@@ -176,9 +176,7 @@ An svc_signonnum has been received, perform a client side setup
 */
 void CL_SignonReply (void)
 {
-	char 	str[8192];
-
-Con_DPrintf ("CL_SignonReply: %i\n", cls.signon);
+	Con_DPrintf ("CL_SignonReply: %i\n", cls.signon);
 
 	switch (cls.signon)
 	{
@@ -187,18 +185,20 @@ Con_DPrintf ("CL_SignonReply: %i\n", cls.signon);
 		MSG_WriteString (&cls.message, "prespawn");
 		break;
 		
-	case 2:		
+	case 2: {
+		char* buf = (char*)malloc(8192);
 		MSG_WriteByte (&cls.message, clc_stringcmd);
-		MSG_WriteString (&cls.message, va("name \"%s\"\n", cl_name.string));
+		MSG_WriteString (&cls.message, va2(buf, 8192, "name \"%s\"\n", cl_name.string));
 	
 		MSG_WriteByte (&cls.message, clc_stringcmd);
-		MSG_WriteString (&cls.message, va("color %i %i\n", ((int)cl_color.value)>>4, ((int)cl_color.value)&15));
+		MSG_WriteString (&cls.message, va2(buf, 8192, "color %i %i\n", ((int)cl_color.value)>>4, ((int)cl_color.value)&15));
 	
 		MSG_WriteByte (&cls.message, clc_stringcmd);
-		sprintf (str, "spawn %s", cls.spawnparms);
-		MSG_WriteString (&cls.message, str);
+		snprintf (buf, 8192, "spawn %s", cls.spawnparms);
+		MSG_WriteString (&cls.message, buf);
+		free(buf);
 		break;
-		
+	}
 	case 3:	
 		MSG_WriteByte (&cls.message, clc_stringcmd);
 		MSG_WriteString (&cls.message, "begin");

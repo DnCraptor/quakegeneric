@@ -366,30 +366,36 @@ Con_Printf
 Handles cursor positioning, line wrapping, etc
 ================
 */
-#define	MAXPRINTMSG	4096
-// FIXME: make a buffer size safe vsprintf?
+#define	MAXPRINTMSG	256
 void Con_Printf (char *fmt, ...)
 {
 	va_list		argptr;
-	char		msg[MAXPRINTMSG];
+	char* msg = (char*)malloc(MAXPRINTMSG);
 	static qboolean	inupdate;
 	
-	va_start (argptr,fmt);
-	vsprintf (msg,fmt,argptr);
+	va_start (argptr, fmt);
+	vsnprintf (msg, MAXPRINTMSG, fmt, argptr);
 	va_end (argptr);
 	
 // also echo to debugging console
 	Sys_Printf ("%s", msg);	// also echo to debugging console
 
 // log all messages to file
-	if (con_debuglog)
-		Con_DebugLog(va("%s/qconsole.log",com_gamedir), "%s", msg);
+	if (con_debuglog) {
+		char* dbg = (char*)malloc(MAX_OSPATH);
+		Con_DebugLog(va2(dbg, MAX_OSPATH, "%s/qconsole.log", com_gamedir), "%s", msg);
+		free (dbg);
+	}
 
-	if (!con_initialized)
+	if (!con_initialized) {
+		free(msg);
 		return;
+	}
 		
-	if (cls.state == ca_dedicated)
+	if (cls.state == ca_dedicated) {
+		free(msg);
 		return;		// no graphics mode
+	}
 
 // write it to the scrollable buffer
 	Con_Print (msg);
@@ -406,6 +412,7 @@ void Con_Printf (char *fmt, ...)
 			inupdate = false;
 		}
 	}
+	free(msg);
 }
 
 /*

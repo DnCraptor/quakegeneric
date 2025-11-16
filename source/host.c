@@ -247,7 +247,9 @@ void Host_WriteConfiguration (void)
 // config.cfg cvars
 	if (host_initialized & !isDedicated)
 	{
-		int h = Sys_FileOpenWrite(va("%s/config.cfg",com_gamedir));
+		char* dbg = (char*)malloc(MAX_OSPATH);
+		int h = Sys_FileOpenWrite(va2(dbg, MAX_OSPATH, "%s/config.cfg",com_gamedir));
+		free (dbg);
 		f = Sys_File(h);
 		if (!f)
 		{
@@ -274,14 +276,15 @@ FIXME: make this just a stuffed echo?
 void SV_ClientPrintf (char *fmt, ...)
 {
 	va_list		argptr;
-	char		string[1024];
+	char* string = (char*)malloc(1024);
 	
 	va_start (argptr,fmt);
-	vsprintf (string, fmt,argptr);
+	vsnprintf (string, 1024, fmt, argptr);
 	va_end (argptr);
 	
 	MSG_WriteByte (&host_client->message, svc_print);
 	MSG_WriteString (&host_client->message, string);
+	free (string);
 }
 
 /*
@@ -294,11 +297,11 @@ Sends text to all active clients
 void SV_BroadcastPrintf (char *fmt, ...)
 {
 	va_list		argptr;
-	char		string[1024];
 	int			i;
+	char* string = (char*)malloc(1024);
 	
-	va_start (argptr,fmt);
-	vsprintf (string, fmt,argptr);
+	va_start (argptr, fmt);
+	vsnprintf (string, 1024, fmt, argptr);
 	va_end (argptr);
 	
 	for (i=0 ; i<svs.maxclients ; i++)
@@ -307,6 +310,7 @@ void SV_BroadcastPrintf (char *fmt, ...)
 			MSG_WriteByte (&svs.clients[i].message, svc_print);
 			MSG_WriteString (&svs.clients[i].message, string);
 		}
+	free (string);
 }
 
 /*
@@ -319,7 +323,7 @@ Send text over to the client to be executed
 void Host_ClientCommands (char *fmt, ...)
 {
 	va_list		argptr;
-	char		string[1024];
+	char* string = (char*)malloc(1024);
 	
 	va_start (argptr,fmt);
 	vsprintf (string, fmt,argptr);
@@ -327,6 +331,7 @@ void Host_ClientCommands (char *fmt, ...)
 	
 	MSG_WriteByte (&host_client->message, svc_stufftext);
 	MSG_WriteString (&host_client->message, string);
+	free (string);
 }
 
 /*
