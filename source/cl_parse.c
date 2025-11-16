@@ -149,7 +149,6 @@ void CL_KeepaliveMessage (void)
 	static float lastmsg;
 	int		ret;
 	sizebuf_t	old;
-	byte		olddata[8192];
 	
 	if (sv.active)
 		return;		// no need if server is local
@@ -158,6 +157,7 @@ void CL_KeepaliveMessage (void)
 
 // read messages from server, should just be nops
 	old = net_message;
+	byte* olddata = (byte*)malloc(8192);
 	memcpy (olddata, net_message.data, net_message.cursize);
 	
 	do
@@ -181,6 +181,7 @@ void CL_KeepaliveMessage (void)
 
 	net_message = old;
 	memcpy (net_message.data, olddata, net_message.cursize);
+	free (olddata);
 
 // check time
 	time = Sys_FloatTime ();

@@ -189,11 +189,11 @@ This will be sent on the initial connection and upon each server load.
 void SV_SendServerinfo (client_t *client)
 {
 	char			**s;
-	char			message[2048];
+	char* message = (char*)malloc(2048);
 
 	MSG_WriteByte (&client->message, svc_print);
-	sprintf (message, "%c\nVERSION %4.2f SERVER (%i CRC)", 2, VERSION, pr_crc);
-	MSG_WriteString (&client->message,message);
+	snprintf (message, 2048, "%c\nVERSION %4.2f SERVER (%i CRC)", 2, VERSION, pr_crc);
+	MSG_WriteString (&client->message, message);
 
 	MSG_WriteByte (&client->message, svc_serverinfo);
 	MSG_WriteLong (&client->message, PROTOCOL_VERSION);
@@ -204,9 +204,9 @@ void SV_SendServerinfo (client_t *client)
 	else
 		MSG_WriteByte (&client->message, GAME_COOP);
 
-	sprintf (message, pr_strings+sv.edicts->v.message);
+	snprintf (message, 2048, pr_strings+sv.edicts->v.message);
 
-	MSG_WriteString (&client->message,message);
+	MSG_WriteString (&client->message, message);
 
 	for (s = sv.model_precache+1 ; *s ; s++)
 		MSG_WriteString (&client->message, *s);
@@ -230,6 +230,7 @@ void SV_SendServerinfo (client_t *client)
 
 	client->sendsignon = true;
 	client->spawned = false;		// need prespawn, spawn, etc
+	free (message);
 }
 
 /*

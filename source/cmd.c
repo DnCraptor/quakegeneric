@@ -144,9 +144,9 @@ void Cbuf_Execute (void)
 {
 	int		i;
 	char	*text;
-	char	line[1024];
 	int		quotes;
 	
+	char* line = (char*)malloc(1024);
 	while (cmd_text.cursize)
 	{
 // find a \n or ; line break
@@ -190,6 +190,7 @@ void Cbuf_Execute (void)
 			break;
 		}
 	}
+	free (line);
 }
 
 /*
