@@ -342,7 +342,6 @@ char *CopyString (char *in)
 void Cmd_Alias_f (void)
 {
 	cmdalias_t	*a;
-	char		cmd[1024];
 	int			i, c;
 	char		*s;
 
@@ -380,6 +379,7 @@ void Cmd_Alias_f (void)
 	strcpy (a->name, s);	
 
 // copy the rest of the command line
+	char* cmd = (char*)malloc(1024);
 	cmd[0] = 0;		// start out with a null string
 	c = Cmd_Argc();
 	for (i=2 ; i< c ; i++)
@@ -391,6 +391,7 @@ void Cmd_Alias_f (void)
 	strcat (cmd, "\n");
 	
 	a->value = CopyString (cmd);
+	free(cmd);
 }
 
 /*

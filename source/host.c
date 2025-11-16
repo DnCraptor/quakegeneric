@@ -86,7 +86,7 @@ Host_EndGame
 void Host_EndGame (char *message, ...)
 {
 	va_list		argptr;
-	char		string[1024];
+	char* string = (char*)malloc(1024);
 	
 	va_start (argptr,message);
 	vsprintf (string,message,argptr);
@@ -98,7 +98,8 @@ void Host_EndGame (char *message, ...)
 
 	if (cls.state == ca_dedicated)
 		Sys_Error ("Host_EndGame: %s\n",string);	// dedicated servers exit
-	
+	free(string);
+
 	if (cls.demonum != -1)
 		CL_NextDemo ();
 	else
@@ -117,7 +118,6 @@ This shuts down both the client and server
 void Host_Error (char *error, ...)
 {
 	va_list		argptr;
-	char		string[1024];
 	static	qboolean inerror = false;
 	
 	if (inerror)
@@ -127,6 +127,7 @@ void Host_Error (char *error, ...)
 	SCR_EndLoadingPlaque ();		// reenable screen updates
 
 	va_start (argptr,error);
+	char* string = (char*)malloc(1024);
 	vsprintf (string,error,argptr);
 	va_end (argptr);
 	Con_Printf ("Host_Error: %s\n",string);
@@ -136,7 +137,8 @@ void Host_Error (char *error, ...)
 
 	if (cls.state == ca_dedicated)
 		Sys_Error ("Host_Error: %s\n",string);	// dedicated servers exit
-
+	free(string);
+	
 	CL_Disconnect ();
 	cls.demonum = -1;
 
@@ -504,7 +506,7 @@ qboolean Host_FilterTime (float time)
 {
 	realtime += time;
 
-	if (!cls.timedemo && realtime - oldrealtime < 1.0/72.0)
+	if (!cls.timedemo && realtime - oldrealtime < (1.0 / 72.0))
 		return false;		// framerate is too high
 
 	host_frametime = realtime - oldrealtime;
@@ -588,8 +590,9 @@ void _Host_Frame (float time)
 	static double		time3 = 0;
 	int			pass1, pass2, pass3;
 
-	if (setjmp (host_abortserver) )
+	if (setjmp (host_abortserver) ) {
 		return;			// something bad happened, or the server disconnected
+	}
 
 // keep the random time dependent
 	rand ();
@@ -610,8 +613,9 @@ void _Host_Frame (float time)
 	NET_Poll();
 
 // if running the server locally, make intentions now
-	if (sv.active)
+	if (sv.active) {
 		CL_SendCmd ();
+	}
 	
 //-------------------
 //
@@ -622,8 +626,9 @@ void _Host_Frame (float time)
 // check for commands typed to the host
 	Host_GetConsoleCommands ();
 	
-	if (sv.active)
+	if (sv.active) {
 		Host_ServerFrame ();
+	}
 
 //-------------------
 //
@@ -633,8 +638,10 @@ void _Host_Frame (float time)
 
 // if running the server remotely, send intentions now after
 // the incoming messages have been read
-	if (!sv.active)
+	if (!sv.active) {
 		CL_SendCmd ();
+	}
+
 
 	host_time += host_frametime;
 
@@ -659,8 +666,9 @@ void _Host_Frame (float time)
 		S_Update (r_origin, vpn, vright, vup);
 		CL_DecayLights ();
 	}
-	else
+	else {
 		S_Update (vec3_origin, vec3_origin, vec3_origin, vec3_origin);
+	}
 	
 	CDAudio_Update();
 
@@ -675,6 +683,7 @@ void _Host_Frame (float time)
 	}
 	
 	host_framecount++;
+	Sys_Printf("host_framecount: %d (%f s)\n", host_framecount, time);
 }
 
 void Host_Frame (float time)
@@ -683,10 +692,6 @@ void Host_Frame (float time)
 	static double	timetotal;
 	static int		timecount;
 	int		i, c, m;
-
-	if (time == 0) time = 0.1; // W/A
-
-	Sys_Printf("Host_Frame(%f)\n", time);
 
 	if (!serverprofile.value)
 	{
@@ -704,11 +709,11 @@ void Host_Frame (float time)
 	if (timecount < 1000)
 		return;
 
-	m = timetotal*1000/timecount;
+	m = timetotal * 1000 / timecount;
 	timecount = 0;
 	timetotal = 0;
 	c = 0;
-	for (i=0 ; i<svs.maxclients ; i++)
+	for (i=0 ; i < svs.maxclients; i++)
 	{
 		if (svs.clients[i].active)
 			c++;

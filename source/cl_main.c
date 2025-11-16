@@ -218,7 +218,6 @@ CL_NextDemo
 Called to play the next demo in the demo loop
 =====================
 */
-extern char string[1024];
 void CL_NextDemo (void)
 {
 	if (cls.demonum == -1)
@@ -237,8 +236,10 @@ void CL_NextDemo (void)
 		}
 	}
 
+	char* string = (char*)malloc(1024);
 	sprintf (string, "playdemo %s\n", cls.demos[cls.demonum]);
 	Cbuf_InsertText (string);
+	free(string);
 	cls.demonum++;
 }
 

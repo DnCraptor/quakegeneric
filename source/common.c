@@ -1171,10 +1171,10 @@ varargs versions of all text functions.
 FIXME: make this buffer size safe someday
 ============
 */
-char string[1024];
 char    *va(char *format, ...)
 {
 	va_list         argptr;
+	static char string[1024];
 	
 	va_start (argptr, format);
 	vsnprintf (string, 1024, format, argptr);

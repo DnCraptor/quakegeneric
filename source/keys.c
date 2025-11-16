@@ -457,7 +457,6 @@ Key_Bind_f
 void Key_Bind_f (void)
 {
 	int			i, c, b;
-	char		cmd[1024];
 	
 	c = Cmd_Argc();
 
@@ -483,6 +482,7 @@ void Key_Bind_f (void)
 	}
 	
 // copy the rest of the command line
+	char* cmd = (char*)malloc(1024);
 	cmd[0] = 0;		// start out with a null string
 	for (i=2 ; i< c ; i++)
 	{
@@ -492,6 +492,7 @@ void Key_Bind_f (void)
 	}
 
 	Key_SetBinding (b, cmd);
+	free(cmd);
 }
 
 /*
@@ -599,7 +600,6 @@ Should NOT be called during an interrupt!
 void Key_Event (int key, qboolean down)
 {
 	char	*kb;
-	char	cmd[1024];
 
 	keydown[key] = down;
 
@@ -661,6 +661,7 @@ void Key_Event (int key, qboolean down)
 // switch.  Button commands include the kenum as a parameter, so multiple
 // downs can be matched with ups
 //
+	char* cmd = (char*)malloc(1024);
 	if (!down)
 	{
 		kb = keybindings[key];
@@ -678,6 +679,7 @@ void Key_Event (int key, qboolean down)
 				Cbuf_AddText (cmd);
 			}
 		}
+		free(cmd);
 		return;
 	}
 
@@ -687,6 +689,7 @@ void Key_Event (int key, qboolean down)
 	if (cls.demoplayback && down && consolekeys[key] && key_dest == key_game)
 	{
 		M_ToggleMenu_f ();
+		free(cmd);
 		return;
 	}
 
@@ -711,11 +714,14 @@ void Key_Event (int key, qboolean down)
 				Cbuf_AddText ("\n");
 			}
 		}
+		free(cmd);
 		return;
 	}
+	free(cmd);
 
-	if (!down)
+	if (!down) {
 		return;		// other systems only care about key down events
+	}
 
 	if (shift_down)
 	{

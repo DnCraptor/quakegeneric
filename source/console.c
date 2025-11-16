@@ -347,15 +347,16 @@ Con_DebugLog
 void Con_DebugLog(char *file, char *fmt, ...)
 {
     va_list argptr; 
-    static char data[1024];
     va_start(argptr, fmt);
-    vsprintf(data, fmt, argptr);
+    char* data = (char*)malloc(1024);
+    vsnprintf(data, 1024, fmt, argptr);
     va_end(argptr);
 	FIL log_file;
 	f_open(&log_file, file, FA_WRITE | FA_OPEN_ALWAYS | FA_OPEN_APPEND);
 	UINT bw;
     f_write(&log_file, data, strlen(data), &bw);
     f_close(&log_file);
+	free(data);
 }
 
 
@@ -448,10 +449,10 @@ Okay to call even when the screen can't be updated
 void Con_SafePrintf (char *fmt, ...)
 {
 	va_list		argptr;
-	char		msg[1024];
 	int			temp;
 		
 	va_start (argptr,fmt);
+	char* msg = (char*)malloc(1024);
 	vsprintf (msg,fmt,argptr);
 	va_end (argptr);
 
@@ -459,6 +460,7 @@ void Con_SafePrintf (char *fmt, ...)
 	scr_disabled_for_loading = true;
 	Con_Printf ("%s", msg);
 	scr_disabled_for_loading = temp;
+	free(msg);
 }
 
 
