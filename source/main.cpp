@@ -749,13 +749,13 @@ int main() {
 	Sys_Printf ("QG_Create\n");
 	QG_Create(argc, argv);
 	Sys_Printf ("QG_Create done\n");
-/*
+
     sem_init(&vga_start_semaphore, 0, 1);
     multicore_launch_core1(render_core);
     sem_release(&vga_start_semaphore);
 
 	Sys_Printf ("core#1 started for video output\n");
-*/
+
     const float ticks_per_second = cpu_hz;
     // Настраиваем SysTick: тактирование от системной частоты
     // и максимальное значение 24-битного счётчика
