@@ -115,13 +115,20 @@ int Sys_FileWrite (int handle, void *data, int count)
 	return wb;
 }
 
+typedef union {
+	FIL f;
+	FILINFO fi;
+} FIL_FILINFO;
+
+static FIL_FILINFO tmp_f_struct;
+static char buf[256];
+
 int Sys_FileTime (char *path)
 {
-    FILINFO fno;
-    if (FR_OK != f_stat(path, &fno)) {
+    if (FR_OK != f_stat(path, &tmp_f_struct.fi)) {
 		return -1;
 	}
-	return ((int)fno.fdate << 16) | fno.ftime;
+	return ((int)tmp_f_struct.fi.fdate << 16) | tmp_f_struct.fi.ftime;
 }
 
 void Sys_mkdir (char *path)
@@ -142,20 +149,17 @@ void Sys_MakeCodeWriteable (unsigned long startaddr, unsigned long length)
 {
 }
 
-static FIL log_file;
-static char buf[256];
-
 void Sys_Error (char *error, ...) {
-	if (FR_OK != f_open(&log_file, "quake.log", FA_WRITE | FA_OPEN_ALWAYS | FA_OPEN_APPEND)) return;
+	if (FR_OK != f_open(&tmp_f_struct.f, "quake.log", FA_WRITE | FA_OPEN_ALWAYS | FA_OPEN_APPEND)) return;
 	UINT wb;
 	va_list         argptr;
-	f_write(&log_file, "Sys_Error: ", 11, &wb);  
+	f_write(&tmp_f_struct.f, "Sys_Error: ", 11, &wb);  
 	va_start (argptr,error);
     vsnprintf(buf, 256, error, argptr);
 	va_end (argptr);
-	f_write(&log_file, buf, strlen(buf), &wb);
-	f_write(&log_file, "\n", 1, &wb);
-	f_close(&log_file);
+	f_write(&tmp_f_struct.f, buf, strlen(buf), &wb);
+	f_write(&tmp_f_struct.f, "\n", 1, &wb);
+	f_close(&tmp_f_struct.f);
 	Sys_Quit();
 }
 
@@ -195,14 +199,14 @@ void Sys_Fprintf (FIL* f, char *fmt, ...) {
 
 void Sys_Printf (char *fmt, ...)
 {
-	if (FR_OK != f_open(&log_file, "quake.log", FA_WRITE | FA_OPEN_ALWAYS | FA_OPEN_APPEND)) return;
+	if (FR_OK != f_open(&tmp_f_struct.f, "quake.log", FA_WRITE | FA_OPEN_ALWAYS | FA_OPEN_APPEND)) return;
 	UINT wb;
 	va_list         argptr;
 	va_start (argptr,fmt);
     vsnprintf(buf, 256, fmt, argptr);
 	va_end (argptr);
-	f_write(&log_file, buf, strlen(buf), &wb);
-	f_close(&log_file);
+	f_write(&tmp_f_struct.f, buf, strlen(buf), &wb);
+	f_close(&tmp_f_struct.f);
 }
 
 void Sys_Quit (void)

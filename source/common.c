@@ -1405,10 +1405,10 @@ int COM_FindFile (char *filename, int *handle, FIL **file)
 		{
 		// look through all the pak file elements
 			pak = search->pack;
-			for (i=0 ; i<pak->numfiles ; i++)
+			for (i=0 ; i< pak->numfiles ; i++)
 				if (!strcmp (pak->files[i].name, filename))
 				{       // found it!
-					Sys_Printf ("PackFile: %s : %s\n",pak->filename, filename);
+					Sys_Printf ("PackFile: %s : %s (using %s)\n", pak->filename, filename, handle ? "handle" : "file");
 					if (handle)
 					{
 						*handle = pak->handle;
