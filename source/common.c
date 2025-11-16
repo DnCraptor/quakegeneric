@@ -1183,6 +1183,13 @@ char    *va(char *format, ...)
 	return string;  
 }
 
+char* va2(char* buf, size_t sz, const char* format, ...) {
+	va_list         argptr;
+	va_start (argptr, format);
+	vsnprintf (buf, sz, format, argptr);
+	va_end (argptr);
+	return buf;
+}
 
 /// just for debugging
 int     memsearch (byte *start, int count, int search)
@@ -1697,7 +1704,7 @@ void COM_AddGameDirectory (char *dir)
 	int                             i;
 	searchpath_t    *search;
 	pack_t                  *pak;
-	char                    pakfile[MAX_OSPATH];
+	char* pakfile = (char*)malloc(MAX_OSPATH);
 
 	strcpy (com_gamedir, dir);
 
@@ -1715,6 +1722,7 @@ void COM_AddGameDirectory (char *dir)
 	for (i=0 ; ; i++)
 	{
 		sprintf (pakfile, "%s/pak%i.pak", dir, i);
+        Con_Printf ("COM_AddGameDirectory try to load: %s\n", pakfile);
 		pak = COM_LoadPackFile (pakfile);
 		if (!pak)
 			break;
@@ -1728,6 +1736,7 @@ void COM_AddGameDirectory (char *dir)
 // add the contents of the parms.txt file to the end of the command line
 //
 
+	free (pakfile);
 }
 
 /*
@@ -1780,12 +1789,13 @@ void COM_InitFilesystem (void)
 //
 // start up with GAMENAME by default (id1)
 //
-	COM_AddGameDirectory (va("%s/"GAMENAME, basedir) );
+	char* buf = (char*)malloc(MAX_OSPATH);
+	COM_AddGameDirectory (va2(buf, MAX_OSPATH, "%s/"GAMENAME, basedir) );
 
 	if (COM_CheckParm ("-rogue"))
-		COM_AddGameDirectory (va("%s/rogue", basedir) );
+		COM_AddGameDirectory (va2(buf, MAX_OSPATH, "%s/rogue", basedir) );
 	if (COM_CheckParm ("-hipnotic"))
-		COM_AddGameDirectory (va("%s/hipnotic", basedir) );
+		COM_AddGameDirectory (va2(buf, MAX_OSPATH, "%s/hipnotic", basedir) );
 
 //
 // -game <gamedir>
@@ -1795,9 +1805,9 @@ void COM_InitFilesystem (void)
 	if (i && i < com_argc-1)
 	{
 		com_modified = true;
-		COM_AddGameDirectory (va("%s/%s", basedir, com_argv[i+1]));
+		COM_AddGameDirectory (va2(buf, MAX_OSPATH, "%s/%s", basedir, com_argv[i+1]));
 	}
-
+	free (buf);
 //
 // -path <dir or packfile> [<dir or packfile>] ...
 // Fully specifies the exact serach path, overriding the generated one
@@ -1815,6 +1825,7 @@ void COM_InitFilesystem (void)
 			search = Hunk_Alloc (sizeof(searchpath_t));
 			if ( !strcmp(COM_FileExtension(com_argv[i]), "pak") )
 			{
+		        Con_Printf ("COM_InitFilesystem try to load: %s\n", com_argv[i]);
 				search->pack = COM_LoadPackFile (com_argv[i]);
 				if (!search->pack)
 					Sys_Error ("Couldn't load packfile: %s", com_argv[i]);

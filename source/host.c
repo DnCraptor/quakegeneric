@@ -819,7 +819,7 @@ void Host_Init (quakeparms_t *parms)
 	SV_Init ();
 
 	Con_Printf ("Build: " __DATE__ " " __TIME__ "\n");
-	Con_Printf ("%4.1f megabyte[s] heap free\n", parms->memsize / (1024*1024.0));
+	Con_Printf ("Heap: %4.1f MB (%d B)\n", parms->memsize / (1024*1024.0), parms->memsize);
 	
 	Con_Printf("R_InitTextures ");
 	R_InitTextures ();		// needed even for dedicated servers

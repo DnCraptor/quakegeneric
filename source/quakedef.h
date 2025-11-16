@@ -185,6 +185,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // Use for multiplayer testing only - VERY dangerous!!!
 // #define IDGODS
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "common.h"
 #include "bspfile.h"
 #include "vid.h"
@@ -301,3 +305,7 @@ extern	cvar_t	chase_active;
 void Chase_Init (void);
 void Chase_Reset (void);
 void Chase_Update (void);
+
+#ifdef __cplusplus
+}
+#endif

@@ -706,7 +706,9 @@ int main() {
     #ifdef BUTTER_PSRAM_GPIO
         psram_pin = rp2350a ? BUTTER_PSRAM_GPIO : 47;
         psram_init(psram_pin);
-        butter_psram_size();
+        if(butter_psram_size()) {
+            memset(PSRAM_DATA, butter_psram_size(), 0);
+        }
     #endif
     exception_set_exclusive_handler(HARDFAULT_EXCEPTION, sigbus);
 #endif
@@ -737,7 +739,7 @@ int main() {
     keyboard_send(0xFF);
 #endif
 
-    int argc = 2;
+    int argc = 3;
     char* argv[] = {
         "quake",
         "-basedir",
