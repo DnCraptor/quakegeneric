@@ -394,7 +394,7 @@ void repeat_me_for_input() {
 //uint8_t* FRAME_BUF = (uint8_t*)0x20000000; // temp "trash" value
 uint8_t FRAME_BUF[QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y] = { 0 };
 
-void __scratch_x("render") render_core() {
+void __scratch_y("render") render_core() {
     multicore_lockout_victim_init();
     graphics_init();
     graphics_set_buffer(FRAME_BUF, QUAKEGENERIC_RES_X, QUAKEGENERIC_RES_Y);
