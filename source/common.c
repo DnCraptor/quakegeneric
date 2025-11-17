@@ -1556,30 +1556,36 @@ byte *COM_LoadFile (char *path, int usehunk)
 
 	buf = NULL;     // quiet compiler warning
 
-	Con_Printf("COM_LoadFile(%s, %d)\n", path, usehunk);
+	//Con_Printf("COM_LoadFile(%s, %d)\n", path, usehunk);
 // look for it in the filesystem or pack files
 	len = COM_OpenFile (path, &h);
 	if (h == -1)
 		return NULL;
-	Con_Printf(" handle: %d len: %d\n", h, len);
+	//Con_Printf(" handle: %d len: %d\n", h, len);
 	
 // extract the filename base name for hunk tag
 	COM_FileBase (path, base, 32);
 	
-	if (usehunk == 1)
+	if (usehunk == 1) {
+		//Con_Printf("Hunk_AllocName\n");
 		buf = Hunk_AllocName (len+1, base);
-	else if (usehunk == 2)
+	} else if (usehunk == 2) {
+		//Con_Printf("Hunk_TempAlloc\n");
 		buf = Hunk_TempAlloc (len+1);
-	else if (usehunk == 0)
+	} else if (usehunk == 0) {
+		//Con_Printf("Z_Malloc\n");
 		buf = Z_Malloc (len+1);
-	else if (usehunk == 3)
+	} else if (usehunk == 3) {
+		//Con_Printf("Cache_Alloc\n");
 		buf = Cache_Alloc (loadcache, len+1, base);
-	else if (usehunk == 4)
-	{
-		if (len+1 > loadsize)
+	} else if (usehunk == 4) {
+		if (len+1 > loadsize) {
+			//Con_Printf("Hunk_TempAlloc: %d\n", len+1);
 			buf = Hunk_TempAlloc (len+1);
-		else
+		} else {
+			//Con_Printf("loadbuf\n");
 			buf = loadbuf;
+		}
 	}
 	else
 		Sys_Error ("COM_LoadFile: bad usehunk");

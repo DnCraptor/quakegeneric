@@ -391,6 +391,11 @@ void Hunk_Print (qboolean all)
 	
 }
 
+static inline uint32_t get_sp(void) {
+    uint32_t sp;
+    __asm volatile("mov %0, sp" : "=r"(sp));
+    return sp;
+}
 /*
 ===================
 Hunk_AllocName
@@ -410,7 +415,7 @@ void *Hunk_AllocName (int size, char* name)
 	size = sizeof(hunk_t) + ((size + 15) & ~15);
 	
 	if (hunk_size - hunk_low_used - hunk_high_used < size)
-		Sys_Error ("Hunk_Alloc: failed on %i bytes (%s)", size, name ? name : "null");
+		Sys_Error ("Hunk_Alloc: failed on %i bytes (%s) SP: %p", size, name ? name : "null", get_sp());
 	
 	h = (hunk_t *)(hunk_base + hunk_low_used);
 	hunk_low_used += size;
@@ -529,8 +534,9 @@ void *Hunk_TempAlloc (int size)
 {
 	void	*buf;
 
-	size = (size+15)&~15;
+	size = (size + 15) & ~15;
 	
+	// Con_Printf("Hunk_TempAlloc: %d\n", size);
 	if (hunk_tempactive)
 	{
 		Hunk_FreeToHighMark (hunk_tempmark);

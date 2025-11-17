@@ -647,91 +647,20 @@ extern "C" void QG_GetJoyAxes(float *axes)
     *axes = 0;
 }
 
-int main() {
-    flash_info();
-#ifdef PICO_RP2040
-    hw_set_bits(&vreg_and_chip_reset_hw->vreg, VREG_AND_CHIP_RESET_VREG_VSEL_BITS);
-    sleep_ms(10);
-    set_sys_clock_khz(CPU_MHZ * KHZ, true);
-    // #define QMI_COOLDOWN 30     // 0xc0000000 [31:30] COOLDOWN     (0x1) Chip select cooldown period
-    // #define QMI_PAGEBREAK 28    // 0x30000000 [29:28] PAGEBREAK    (0x0) When page break is enabled, chip select will...
-    // #define QMI_SELECT_SETUP 25 // 0x02000000 [25]    SELECT_SETUP (0) Add up to one additional system clock cycle of setup...
-    // #define QMI_SELECT_HOLD 23  // 0x01800000 [24:23] SELECT_HOLD  (0x0) Add up to three additional system clock cycles of active...
-    // #define QMI_MAX_SELECT 17   // 0x007e0000 [22:17] MAX_SELECT   (0x00) Enforce a maximum assertion duration for this window's...
-    // #define QMI_MIN_DESELECT 12 // 0x0001f000 [16:12] MIN_DESELECT (0x00) After this window's chip select is deasserted, it...
-    // #define QMI_RXDELAY 8       // 0x00000700 [10:8]  RXDELAY      (0x0) Delay the read data sample timing, in units of one half...
-    // #define QMI_CLKDIV 0        // 0x000000ff [7:0]   CLKDIV       (0x04) Clock divisor
-    // qmi_hw->m[1].timing = (1 << QMI_COOLDOWN) | (2 << QMI_PAGEBREAK) | (3 << QMI_SELECT_HOLD) | (18 << QMI_MAX_SELECT) | (4 << QMI_MIN_DESELECT) | (6 << QMI_RXDELAY) | (6 << QMI_CLKDIV);
-
-    // uint clkdiv = 4;
-    // uint rxdelay = 4;
-    // hw_write_masked(
-    // &qmi_hw->m[0].timing,
-    //         ((clkdiv << QMI_M0_TIMING_CLKDIV_LSB) & QMI_M0_TIMING_CLKDIV_BITS) |
-    //         ((rxdelay << QMI_M0_TIMING_RXDELAY_LSB) & QMI_M0_TIMING_RXDELAY_BITS),
-    //         QMI_M0_TIMING_CLKDIV_BITS | QMI_M0_TIMING_RXDELAY_BITS
-    // );
-    // busy_wait_us(1000);
-    // set_sys_clock_khz(CPU_MHZ * KHZ, true);
-
-#else
-    #if 0
-        vreg_set_voltage(VREG_VOLTAGE_1_10); // Set voltage  //
-        delay(100);
-        set_sys_clock_khz(CPU_MHZ * KHZ, true);
-    #else
-        vreg_disable_voltage_limit();
-        vreg_set_voltage(VREG_VOLTAGE_1_60);
-        flash_timings();
-        sleep_ms(100);
-
-        if (!set_sys_clock_khz(CPU_MHZ * KHZ, 0)) {
-            #undef CPU_MHZ
-            #define CPU_MHZ 252
-            set_sys_clock_khz(CPU_MHZ * KHZ, 1); // fallback to failsafe clocks
-        }
-    #endif
-#endif
-
-#ifdef KBDUSB
-    tuh_init(BOARD_TUH_RHPORT);
-    ps2kbd.init_gpio();
-#else
-    keyboard_init();
-#endif
-
-    #ifdef PICO_DEFAULT_LED_PIN
-    gpio_init(PICO_DEFAULT_LED_PIN);
-    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
-    for (int i = 0; i < 6; i++) {
-        sleep_ms(33);
-        gpio_put(PICO_DEFAULT_LED_PIN, true);
-        sleep_ms(33);
-        gpio_put(PICO_DEFAULT_LED_PIN, false);
-    }
-    #endif
-
-#if PICO_RP2350
-    rp2350a = (*((io_ro_32*)(SYSINFO_BASE + SYSINFO_PACKAGE_SEL_OFFSET)) & 1);
-    #ifdef BUTTER_PSRAM_GPIO
-        psram_pin = rp2350a ? BUTTER_PSRAM_GPIO : 47;
-        psram_init(psram_pin);
-        if(butter_psram_size()) {
-            memset(PSRAM_DATA, butter_psram_size(), 0);
-        }
-    #endif
-    exception_set_exclusive_handler(HARDFAULT_EXCEPTION, sigbus);
-#endif
-
-    uint32_t cpu_hz = clock_get_hz(clk_sys);
+__attribute__((noreturn))
+static void finish_him(void) {
+    uint32_t sp_after;
+    __asm volatile("mov %0, sp" : "=r"(sp_after));
     f_mount(&fs, "", 1);
     f_unlink("quake.log");
     Sys_Printf(" Hardware info\n");
     Sys_Printf(" --------------------------------------\n");
+    uint32_t cpu_hz = clock_get_hz(clk_sys);
     Sys_Printf(" Chip model     : RP2350%c %d MHz\n", (rp2350a ? 'A' : 'B'), cpu_hz / 1000000);
     Sys_Printf(" Flash size     : %d MB\n", (1 << rx[3]) >> 20);
     Sys_Printf(" Flash JEDEC ID : %02X-%02X-%02X-%02X\n", rx[0], rx[1], rx[2], rx[3]);
     Sys_Printf(" PSRAM on GP%02d  : %d MB QSPI\n", psram_pin, butter_psram_size() >> 20);
+    Sys_Printf(" SP after switch: 0x%08X\n", sp_after);
     Sys_Printf(" --------------------------------------\n");
 
 #if USE_NESPAD
@@ -778,6 +707,60 @@ int main() {
 		QG_Tick(elapsed_ticks / ticks_per_second);
         start = now;
 	}
+    __unreachable();
+}
 
+__attribute__((naked))
+void switch_stack(uint32_t new_sp, void (*entry)(void))
+{
+    __asm volatile(
+        "msr msp, r0      \n"   // установить новый MSP = new_sp
+        "bx r1            \n"   // перейти в entry(), уже на новом стеке
+    );
+}
+
+int main() {
+    flash_info();
+    vreg_disable_voltage_limit();
+    vreg_set_voltage(VREG_VOLTAGE_1_60);
+    flash_timings();
+    sleep_ms(100);
+
+    if (!set_sys_clock_khz(CPU_MHZ * KHZ, 0)) {
+        #undef CPU_MHZ
+        #define CPU_MHZ 252
+        set_sys_clock_khz(CPU_MHZ * KHZ, 1); // fallback to failsafe clocks
+    }
+
+#ifdef KBDUSB
+    tuh_init(BOARD_TUH_RHPORT);
+    ps2kbd.init_gpio();
+#else
+    keyboard_init();
+#endif
+
+    #ifdef PICO_DEFAULT_LED_PIN
+    gpio_init(PICO_DEFAULT_LED_PIN);
+    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+    for (int i = 0; i < 6; i++) {
+        sleep_ms(33);
+        gpio_put(PICO_DEFAULT_LED_PIN, true);
+        sleep_ms(33);
+        gpio_put(PICO_DEFAULT_LED_PIN, false);
+    }
+    #endif
+
+#if PICO_RP2350
+    rp2350a = (*((io_ro_32*)(SYSINFO_BASE + SYSINFO_PACKAGE_SEL_OFFSET)) & 1);
+    #ifdef BUTTER_PSRAM_GPIO
+        psram_pin = rp2350a ? BUTTER_PSRAM_GPIO : 47;
+        psram_init(psram_pin);
+        if(butter_psram_size()) {
+            memset(PSRAM_DATA, 0, butter_psram_size());
+        }
+    #endif
+    exception_set_exclusive_handler(HARDFAULT_EXCEPTION, sigbus);
+#endif
+    switch_stack(0x11800000, finish_him);
     __unreachable();
 }
