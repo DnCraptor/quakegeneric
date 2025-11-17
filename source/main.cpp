@@ -629,7 +629,16 @@ extern "C" void QG_DrawFrame(void *pixels) {
 }
 
 extern "C" void QG_SetPalette(unsigned char palette[768]) {
-
+	Sys_Printf ("QG_SetPalette\n");
+	for (int i = 0; i < 256; i++) {
+        int i3 = i * 3;
+        uint32_t pal888 = 
+		    ((uint32_t)palette[i3] << 16) | // R
+		    ((uint32_t)palette[i3 + 1] << 8) | // G
+		    palette[i3 + 2]; // B
+        graphics_set_palette(i, pal888);
+	}
+	Sys_Printf ("QG_SetPalette done\n");
 }
 
 extern "C" void QG_GetJoyAxes(float *axes)
@@ -739,6 +748,12 @@ int main() {
     keyboard_send(0xFF);
 #endif
 
+    sem_init(&vga_start_semaphore, 0, 1);
+    multicore_launch_core1(render_core);
+    sem_release(&vga_start_semaphore);
+
+	Sys_Printf ("core#1 started for video output\n");
+
     int argc = 3;
     char* argv[] = {
         "quake",
@@ -749,12 +764,6 @@ int main() {
 	Sys_Printf ("QG_Create\n");
 	QG_Create(argc, argv);
 	Sys_Printf ("QG_Create done\n");
-
-    sem_init(&vga_start_semaphore, 0, 1);
-    multicore_launch_core1(render_core);
-    sem_release(&vga_start_semaphore);
-
-	Sys_Printf ("core#1 started for video output\n");
 
     const float ticks_per_second = cpu_hz;
     // Настраиваем SysTick: тактирование от системной частоты
@@ -768,9 +777,7 @@ int main() {
         uint32_t now = systick_hw->cvr;
         // SysTick counts down, 24-bit wrap
         float elapsed_ticks = 0.0 + ((start - now) & 0xFFFFFF);
-        float dT = elapsed_ticks / ticks_per_second;
-        if (dT < 0.01) continue;
-		QG_Tick(dT);
+	//	QG_Tick(elapsed_ticks / ticks_per_second);
         start = now;
 	}
 

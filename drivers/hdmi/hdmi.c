@@ -48,7 +48,7 @@ static uint32_t* __scratch_x("hdmi_ptr_4") DMA_BUF_ADDR[2];
 
 //ДМА палитра для конвертации
 //в хвосте этой памяти выделяется dma_data
-static alignas(4096) uint32_t conv_color[1224];
+alignas(4096) uint32_t conv_color[1224];
 static uint8_t __scratch_x("hdmi_ptr_5") map64colors[64] = { 0 };
 
 //индекс, проверяющий зависание
@@ -297,6 +297,8 @@ static inline void irq_set_exclusive_handler_DMA_core1() {
     irq_set_enabled(VIDEO_DMA_IRQ, true);
 }
 
+void graphics_set_palette_hdmi(const uint8_t i, const uint32_t color888);
+
 //деинициализация - инициализация ресурсов
 static inline bool hdmi_init() {
     //выключение прерывания DMA
@@ -339,10 +341,10 @@ static inline bool hdmi_init() {
     pio_set_x(PIO_VIDEO_ADDR, SM_conv, ((uint32_t)conv_color >> 12));
 
     //заполнение палитры
-    for (int ci = 0; ci < 240; ci++) graphics_set_palette(ci, palette[ci]); //
+    for (int ci = 0; ci < 240; ci++) graphics_set_palette_hdmi(ci, palette[ci]); //
 
     //255 - цвет фона
-    graphics_set_palette(255, palette[255]);
+    graphics_set_palette_hdmi(255, palette[255]);
 
 
     //240-243 служебные данные(синхра) напрямую вносим в массив -конвертер
@@ -531,7 +533,7 @@ static inline bool hdmi_init() {
     return true;
 };
 
-void graphics_set_palette(uint8_t i, uint32_t color888) {
+void graphics_set_palette_hdmi(uint8_t i, uint32_t color888) {
     palette[i] = color888 & 0x00ffffff;
 
 
@@ -592,7 +594,7 @@ void graphics_init_hdmi() {
                 uint8_t G = pulsar_levels[g];
                 uint8_t B = pulsar_levels[b];
 
-                graphics_set_palette(palette_idx, RGB888(R, G, B));
+                graphics_set_palette_hdmi(palette_idx, RGB888(R, G, B));
             }
         }
     }
@@ -673,5 +675,5 @@ void graphics_init_hdmi() {
 
 void graphics_set_bgcolor_hdmi(uint32_t color888) //определяем зарезервированный цвет в палитре
 {
-    graphics_set_palette(255, color888);
+    graphics_set_palette_hdmi(255, color888);
 };

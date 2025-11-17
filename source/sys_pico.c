@@ -221,11 +221,7 @@ void Sys_Quit (void)
 
 double Sys_FloatTime (void)
 {
-	static double t;
-	
-	t += 0.1;
-	
-	return t;
+	return time_us_64() * 1e-6;   // seconds since the ARM-chip started
 }
 
 char *Sys_ConsoleInput (void)

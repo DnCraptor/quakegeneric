@@ -683,7 +683,7 @@ void _Host_Frame (float time)
 	}
 	
 	host_framecount++;
-	Sys_Printf("host_framecount: %d (%f s)\n", host_framecount, time);
+//	Sys_Printf("host_framecount: %d (%f s)\n", host_framecount, time);
 }
 
 void Host_Frame (float time)
@@ -806,7 +806,7 @@ void Host_Init (quakeparms_t *parms)
 	host_parms = *parms;
 
 	if (parms->memsize < minimum_memory)
-		Sys_Error ("Only %4.1f megs of memory available, can't execute game", parms->memsize / (float)0x100000);
+		Sys_Error ("Only %4.1f megs of memory available, can't execute game (%dB min)", parms->memsize / (float)0x100000, minimum_memory);
 
 	com_argc = parms->argc;
 	com_argv = parms->argv;

@@ -70,9 +70,9 @@ void QG_SetPalette(unsigned char palette[768])
 	for (i = 0; i < 256; i++)
 	{
 		outp(0x3c8, i);
-		outp(0x3c9, (palette[i * 3] * 63) / 255);
-		outp(0x3c9, (palette[(i * 3) + 1] * 63) / 255);
-		outp(0x3c9, (palette[(i * 3) + 2] * 63) / 255);
+		outp(0x3c9, (palette[i * 3] * 63) / 255); // R
+		outp(0x3c9, (palette[(i * 3) + 1] * 63) / 255); // G
+		outp(0x3c9, (palette[(i * 3) + 2] * 63) / 255); // B
 	}
 }
 

@@ -13,6 +13,7 @@
 #include "stdlib.h"
 
 /// TODO: .h
+extern uint32_t conv_color[1224];
 bool SELECT_VGA = false;
 uint8_t* get_line_buffer(int line);
 void vsync_handler();
@@ -121,59 +122,6 @@ void __time_critical_func() dma_handler_VGA() {
             if (screen_line % 2) return;
             y = screen_line / 2 - graphics_buffer_shift_y;
             break;
-/**
-        case TEXTMODE_160x100:
-        case TEXTMODE_53x30:
-        case TEXTMODE_DEFAULT: {
-            uint16_t* output_buffer_16bit = (uint16_t *)*output_buffer;
-            output_buffer_16bit += shift_picture / 2;
-            const uint font_height = 16;
-
-            // "слой" символа
-            uint32_t glyph_line = screen_line % font_height;
-if (!text_buffer) return;
-            //указатель откуда начать считывать символы
-            uint8_t* text_buffer_line = &text_buffer[screen_line / font_height * text_buffer_width * 2];
-
-            for (int x = 0; x < text_buffer_width; x++) {
-                //из таблицы символов получаем "срез" текущего символа
-                uint8_t glyph_pixels = font_8x16[*text_buffer_line++ * font_height + glyph_line];
-                //считываем из быстрой палитры начало таблицы быстрого преобразования 2-битных комбинаций цветов пикселей
-                uint16_t* color = &txt_palette_fast[*text_buffer_line++ * 4];
-#if 0
-                if (cursor_blink_state && !manager_started &&
-                    (screen_line / 16 == CURSOR_Y && x == CURSOR_X && glyph_line >= 11 && glyph_line <= 13)) {
-                    *output_buffer_16bit++ = color[3];
-                    *output_buffer_16bit++ = color[3];
-                    *output_buffer_16bit++ = color[3];
-                    *output_buffer_16bit++ = color[3];
-                    if (text_buffer_width == 40) {
-                        *output_buffer_16bit++ = color[3];
-                        *output_buffer_16bit++ = color[3];
-                        *output_buffer_16bit++ = color[3];
-                        *output_buffer_16bit++ = color[3];
-                    }
-                }
-                else
-#endif
-                {
-                    *output_buffer_16bit++ = color[glyph_pixels & 3];
-                    if (text_buffer_width == 40) *output_buffer_16bit++ = color[glyph_pixels & 3];
-                    glyph_pixels >>= 2;
-                    *output_buffer_16bit++ = color[glyph_pixels & 3];
-                    if (text_buffer_width == 40) *output_buffer_16bit++ = color[glyph_pixels & 3];
-                    glyph_pixels >>= 2;
-                    *output_buffer_16bit++ = color[glyph_pixels & 3];
-                    if (text_buffer_width == 40) *output_buffer_16bit++ = color[glyph_pixels & 3];
-                    glyph_pixels >>= 2;
-                    *output_buffer_16bit++ = color[glyph_pixels & 3];
-                    if (text_buffer_width == 40) *output_buffer_16bit++ = color[glyph_pixels & 3];
-                }
-            }
-            dma_channel_set_read_addr(dma_chan_ctrl, output_buffer, false);
-            return;
-        }
-*/
         default: {
             dma_channel_set_read_addr(dma_chan_ctrl, &lines_pattern[0], false); // TODO: ensue it is required
             return;
@@ -230,17 +178,15 @@ if (!text_buffer) return;
     int width = MIN((visible_line_size - ((graphics_buffer_shift_x > 0) ? (graphics_buffer_shift_x) : 0)), max_width);
     if (width < 0) return; // TODO: detect a case
 
-    // Индекс палитры в зависимости от настроек чередования строк и кадров
-///    uint16_t* current_palette = palette[(y & is_flash_line) + (frame_number & is_flash_frame) & 1];
+    // Индекс палитры
+    uint32_t* current_palette = &conv_color[0];
 
     uint8_t* output_buffer_8bit;
     switch (graphics_mode) {
         case GRAPHICSMODE_DEFAULT:
-            for  (int x = 0; x < width; ++x) {
-              ///  *output_buffer_16bit++ = palette[input_buffer_8bit[x ^ 2] & 0b00111111];
-                register uint8_t cx = input_buffer_8bit[x ^ 2] & 0b00111111;
-                uint16_t c = (cx >> 4) | (cx & 0b1100) | ((cx & 0b11) << 4); // swap R and B
-                *output_buffer_16bit++ = (c << 8 | c) & 0x3f3f | palette16_mask;
+            for  (register int x = 0; x < width; ++x) {
+                register uint8_t cx = input_buffer_8bit[x];
+                *output_buffer_16bit++ = current_palette[cx];
             }
             break;
         default:
@@ -398,8 +344,12 @@ void graphics_set_bgcolor(const uint32_t color888) {
                   ((c_lo << 8 | c_hi) & 0x3f3f | palette16_mask);
 }
 
+void graphics_set_palette_hdmi(const uint8_t i, const uint32_t color888);
 void graphics_set_palette(const uint8_t i, const uint32_t color888) {
-    /**
+    if (!SELECT_VGA) {
+        graphics_set_palette_hdmi(i, color888);
+        return;
+    }
     const uint8_t conv0[] = { 0b00, 0b00, 0b01, 0b10, 0b10, 0b10, 0b11, 0b11 };
     const uint8_t conv1[] = { 0b00, 0b01, 0b01, 0b01, 0b10, 0b11, 0b11, 0b11 };
 
@@ -410,10 +360,9 @@ void graphics_set_palette(const uint8_t i, const uint32_t color888) {
 
     const uint8_t c_hi = conv0[r] << 4 | conv0[g] << 2 | conv0[b];
     const uint8_t c_lo = conv1[r] << 4 | conv1[g] << 2 | conv1[b];
-
-    palette[0][i] = (c_hi << 8 | c_lo) & 0x3f3f | palette16_mask;
-    palette[1][i] = (c_lo << 8 | c_hi) & 0x3f3f | palette16_mask;
-    */
+// TODO:
+    conv_color[i] = (c_hi << 8 | c_lo) & 0x3f3f | palette16_mask;
+    conv_color[i+256] = (c_lo << 8 | c_hi) & 0x3f3f | palette16_mask;
 }
 
 extern int testPins(uint32_t pin0, uint32_t pin1);
