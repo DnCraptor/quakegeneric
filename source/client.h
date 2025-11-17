@@ -92,11 +92,11 @@ typedef struct
 #define	MAX_DEMOS		8
 #define	MAX_DEMONAME	16
 
-typedef enum {
-ca_dedicated, 		// a dedicated server with no ability to start a client
-ca_disconnected, 	// full screen console with no connection
-ca_connected		// valid netcon, talking to a server
-} cactive_t;
+typedef int cactive_t;
+
+#define ca_dedicated (0) 		// a dedicated server with no ability to start a client
+#define ca_disconnected (1) 	// full screen console with no connection
+#define ca_connected (2)		// valid netcon, talking to a server
 
 //
 // the client_static_t structure is persistant through an arbitrary number
