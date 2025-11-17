@@ -255,9 +255,6 @@ Loads a model into the cache
 */
 model_t *Mod_LoadModel (model_t *mod, qboolean crash)
 {
-	unsigned *buf;
-	byte	stackbuf[1024];		// avoid dirtying the cache heap
-
 	if (mod->type == mod_alias)
 	{
 		if (Cache_Check (&mod->cache))
@@ -279,11 +276,14 @@ model_t *Mod_LoadModel (model_t *mod, qboolean crash)
 //
 // load the file
 //
-	buf = (unsigned *)COM_LoadStackFile (mod->name, stackbuf, sizeof(stackbuf));
+	Con_Printf("Mod_LoadModel: %s\n", mod->name ? mod->name : "null");
+	byte* smallbuf = (byte*)malloc(1024);
+	unsigned* buf = (unsigned *)COM_LoadStackFile (mod->name, smallbuf, 1024);
 	if (!buf)
 	{
 		if (crash)
 			Sys_Error ("Mod_NumForName: %s not found", mod->name);
+		free (smallbuf);
 		return NULL;
 	}
 	
@@ -315,6 +315,7 @@ model_t *Mod_LoadModel (model_t *mod, qboolean crash)
 		Mod_LoadBrushModel (mod, buf);
 		break;
 	}
+	free (smallbuf);
 
 	return mod;
 }

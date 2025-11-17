@@ -1556,10 +1556,12 @@ byte *COM_LoadFile (char *path, int usehunk)
 
 	buf = NULL;     // quiet compiler warning
 
+	Con_Printf("COM_LoadFile(%s, %d)\n", path, usehunk);
 // look for it in the filesystem or pack files
 	len = COM_OpenFile (path, &h);
 	if (h == -1)
 		return NULL;
+	Con_Printf(" handle: %d len: %d\n", h, len);
 	
 // extract the filename base name for hunk tag
 	COM_FileBase (path, base, 32);

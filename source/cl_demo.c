@@ -44,7 +44,7 @@ Called when a demo file runs out, or the user starts a game
 */
 void CL_StopPlayback (void)
 {
-	Con_Printf ("CL_StopPlayback\n");
+	//Con_Printf ("CL_StopPlayback\n");
 	if (!cls.demoplayback)
 		return;
 
@@ -96,7 +96,7 @@ int CL_GetMessage (void)
 	int		r, i;
 	float	f;
 	
-	Con_Printf ("CL_GetMessage: %d\n", cls.demoplayback);
+	//Con_Printf ("CL_GetMessage: %d\n", cls.demoplayback);
 	if	(cls.demoplayback)
 	{
 	// decide if it is time to grab the next message		
@@ -336,7 +336,7 @@ void CL_PlayDemo_f (void)
 // ZOID, Sys_Fscanf is evil
 //	Sys_Fscanf (cls.demofile, "%i\n", &cls.forcetrack);
 
-	Con_Printf("CL_PlayDemo_f done\n");
+	//Con_Printf("CL_PlayDemo_f done\n");
 }
 
 /*

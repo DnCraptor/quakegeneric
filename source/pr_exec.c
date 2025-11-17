@@ -261,15 +261,15 @@ Aborts the currently executing function
 void PR_RunError (char *error, ...)
 {
 	va_list		argptr;
-	char		string[1024];
-
-	va_start (argptr,error);
-	vsprintf (string,error,argptr);
+	char* string = (char*)malloc(1024);
+	va_start (argptr, error);
+	vsprintf (string, error, argptr);
 	va_end (argptr);
 
 	PR_PrintStatement (pr_statements + pr_xstatement);
 	PR_StackTrace ();
 	Con_Printf ("%s\n", string);
+	free(string);
 	
 	pr_depth = 0;		// dump the stack so host_error can shutdown functions
 
