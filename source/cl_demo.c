@@ -44,12 +44,15 @@ Called when a demo file runs out, or the user starts a game
 */
 void CL_StopPlayback (void)
 {
+	Con_Printf ("CL_StopPlayback\n");
 	if (!cls.demoplayback)
 		return;
 
-	f_close (cls.demofile);
+	if (cls.demofile) {
+		f_close (cls.demofile);
+		cls.demofile = NULL;
+	}
 	cls.demoplayback = false;
-	cls.demofile = NULL;
 	cls.state = ca_disconnected;
 
 	if (cls.timedemo)
@@ -93,6 +96,7 @@ int CL_GetMessage (void)
 	int		r, i;
 	float	f;
 	
+	Con_Printf ("CL_GetMessage: %d\n", cls.demoplayback);
 	if	(cls.demoplayback)
 	{
 	// decide if it is time to grab the next message		
@@ -121,7 +125,7 @@ int CL_GetMessage (void)
 		for (i=0 ; i<3 ; i++)
 		{
 			f_read (cls.demofile, &f, 4, &rb);
-			r = rb;
+			r = rb >> 2;
 			cl.mviewangles[0][i] = LittleFloat (f);
 		}
 		
@@ -129,7 +133,7 @@ int CL_GetMessage (void)
 		if (net_message.cursize > MAX_MSGLEN)
 			Sys_Error ("Demo message > MAX_MSGLEN");
 		f_read (cls.demofile, net_message.data, net_message.cursize, &rb);
-		r = rb;
+		r = rb / net_message.cursize;
 		if (r != 1)
 		{
 			CL_StopPlayback ();
@@ -283,7 +287,6 @@ play [demoname]
 */
 void CL_PlayDemo_f (void)
 {
-	char	name[256];
 	int c;
 	qboolean neg = false;
 
@@ -304,11 +307,13 @@ void CL_PlayDemo_f (void)
 //
 // open the demo file
 //
-	strcpy (name, Cmd_Argv(1));
+	char* name = (char*)malloc(256);
+	strncpy (name, Cmd_Argv(1), 256);
 	COM_DefaultExtension (name, ".dem");
 
 	Con_Printf ("Playing demo from %s.\n", name);
 	COM_FOpenFile (name, &cls.demofile);
+	free (name);
 	if (!cls.demofile)
 	{
 		Con_Printf ("ERROR: couldn't open.\n");
@@ -330,6 +335,8 @@ void CL_PlayDemo_f (void)
 		cls.forcetrack = -cls.forcetrack;
 // ZOID, Sys_Fscanf is evil
 //	Sys_Fscanf (cls.demofile, "%i\n", &cls.forcetrack);
+
+	Con_Printf("CL_PlayDemo_f done\n");
 }
 
 /*
