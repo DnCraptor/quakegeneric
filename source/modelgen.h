@@ -69,8 +69,7 @@ typedef struct {
 	int			numverts;
 	int			numtris;
 	int			numframes;
-//	synctype_t	synctype;
-	int 		synctype; // should be 4 bytes
+	synctype_t	synctype;
 	int			flags;
 	float		size;
 } mdl_t;
@@ -123,13 +122,11 @@ typedef struct {
 } daliasskininterval_t;
 
 typedef struct {
-//	aliasframetype_t	type;
-	int type; // should be 4 bytes
+	aliasframetype_t	type;
 } daliasframetype_t;
 
 typedef struct {
-//	aliasskintype_t	type;
-	int type; // should be 4 bytes
+	aliasskintype_t	type;
 } daliasskintype_t;
 
 #define IDPOLYHEADER	(('O'<<24)+('P'<<16)+('D'<<8)+'I')
