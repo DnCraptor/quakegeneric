@@ -391,6 +391,7 @@ void repeat_me_for_input() {
 #endif
 }
 
+//uint8_t* FRAME_BUF = (uint8_t*)0x20000000; // temp "trash" value
 uint8_t FRAME_BUF[QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y] = { 0 };
 
 void __scratch_x("render") render_core() {
@@ -625,11 +626,11 @@ extern "C" void QG_Quit(void) {
 }
 
 extern "C" void QG_DrawFrame(void *pixels) {
-	memcpy(FRAME_BUF, pixels, QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y);
+//	FRAME_BUF = (uint8_t*)pixels;
+    memcpy(FRAME_BUF, pixels, QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y);
 }
 
 extern "C" void QG_SetPalette(unsigned char palette[768]) {
-	Sys_Printf ("QG_SetPalette\n");
 	for (int i = 0; i < 256; i++) {
         int i3 = i * 3;
         uint32_t pal888 = 
@@ -752,8 +753,6 @@ int main() {
     multicore_launch_core1(render_core);
     sem_release(&vga_start_semaphore);
 
-	Sys_Printf ("core#1 started for video output\n");
-
     int argc = 3;
     char* argv[] = {
         "quake",
@@ -761,7 +760,6 @@ int main() {
         HOME_DIR,
         0
     };
-	Sys_Printf ("QG_Create\n");
 	QG_Create(argc, argv);
 	Sys_Printf ("QG_Create done\n");
 
@@ -777,7 +775,7 @@ int main() {
         uint32_t now = systick_hw->cvr;
         // SysTick counts down, 24-bit wrap
         float elapsed_ticks = 0.0 + ((start - now) & 0xFFFFFF);
-	//	QG_Tick(elapsed_ticks / ticks_per_second);
+		QG_Tick(elapsed_ticks / ticks_per_second);
         start = now;
 	}
 

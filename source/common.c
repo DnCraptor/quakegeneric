@@ -1377,8 +1377,6 @@ Sets com_filesize and one of handle or file
 int COM_FindFile (char *filename, int *handle, FIL **file)
 {
 	searchpath_t    *search;
-	char            netpath[MAX_OSPATH];
-	char            cachepath[MAX_OSPATH];
 	pack_t          *pak;
 	int                     i;
 	int                     findtime, cachetime;
@@ -1406,7 +1404,7 @@ int COM_FindFile (char *filename, int *handle, FIL **file)
 		// look through all the pak file elements
 			pak = search->pack;
 			for (i=0 ; i< pak->numfiles ; i++)
-				if (!strcmp (pak->files[i].name, filename))
+				if (!strncmp (pak->files[i].name, filename, sizeof(pak->files[i].name)))
 				{       // found it!
 					Sys_Printf ("PackFile: %s : %s (using %s)\n", pak->filename, filename, handle ? "handle" : "file");
 					if (handle)
@@ -1437,27 +1435,31 @@ int COM_FindFile (char *filename, int *handle, FIL **file)
 					continue;
 			}
 			
-			sprintf (netpath, "%s/%s",search->filename, filename);
+			char* netpath = (char*)malloc(MAX_OSPATH);
+			snprintf (netpath, MAX_OSPATH, "%s/%s", search->filename, filename);
 			
 			findtime = Sys_FileTime (netpath);
-			if (findtime == -1)
+			if (findtime == -1) {
+				free(netpath);
 				continue;
+			}
 				
+			char* cachepath = (char*)malloc(MAX_OSPATH);
 		// see if the file needs to be updated in the cache
 			if (!com_cachedir[0])
-				strcpy (cachepath, netpath);
+				strncpy (cachepath, netpath, MAX_OSPATH);
 			else
 			{	
-				sprintf (cachepath,"%s%s", com_cachedir, netpath);
+				snprintf (cachepath, MAX_OSPATH, "%s%s", com_cachedir, netpath);
 
 				cachetime = Sys_FileTime (cachepath);
 			
 				if (cachetime < findtime)
 					COM_CopyFile (netpath, cachepath);
-				strcpy (netpath, cachepath);
+				strncpy (netpath, cachepath, MAX_OSPATH);
 			}	
 
-			Sys_Printf ("FindFile: %s\n",netpath);
+			Sys_Printf ("FindFile: %s\n", netpath);
 			com_filesize = Sys_FileOpenRead (netpath, &i);
 			if (handle)
 				*handle = i;
@@ -1470,6 +1472,8 @@ int COM_FindFile (char *filename, int *handle, FIL **file)
 					*file = NULL;
 				}
 			}
+			free(cachepath);
+			free(netpath);
 			return com_filesize;
 		}
 		
@@ -1637,7 +1641,6 @@ pack_t *COM_LoadPackFile (char *packfile)
 	int                             numpackfiles;
 	pack_t                  *pack;
 	int                             packhandle;
-	dpackfile_t             info[MAX_FILES_IN_PACK];
 	unsigned short          crc;
 
 	if (Sys_FileOpenRead (packfile, &packhandle) == -1)
@@ -1663,6 +1666,7 @@ pack_t *COM_LoadPackFile (char *packfile)
 	newfiles = Hunk_AllocName (numpackfiles * sizeof(packfile_t), "packfile");
 
 	Sys_FileSeek (packhandle, header.dirofs);
+	dpackfile_t* info = (dpackfile_t*)__PSRAM_NEXT;//calloc(MAX_FILES_IN_PACK, sizeof(dpackfile_t));
 	Sys_FileRead (packhandle, (void *)info, header.dirlen);
 
 // crc the directory to check for modifications
@@ -1679,6 +1683,7 @@ pack_t *COM_LoadPackFile (char *packfile)
 		newfiles[i].filepos = LittleLong(info[i].filepos);
 		newfiles[i].filelen = LittleLong(info[i].filelen);
 	}
+	///free(info);
 
 	pack = Hunk_Alloc (sizeof (pack_t));
 	strcpy (pack->filename, packfile);
