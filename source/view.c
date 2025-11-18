@@ -478,7 +478,6 @@ void V_UpdatePalette (void)
 	int		i, j;
 	qboolean	new;
 	byte	*basepal, *newpal;
-	byte	pal[768];
 	int		r,g,b;
 	qboolean force;
 
@@ -516,6 +515,7 @@ void V_UpdatePalette (void)
 		return;
 			
 	basepal = host_basepal;
+	byte* pal = (byte*)malloc(768);
 	newpal = pal;
 	
 	for (i=0 ; i<256 ; i++)
@@ -538,7 +538,8 @@ void V_UpdatePalette (void)
 		newpal += 3;
 	}
 
-	VID_ShiftPalette (pal);	
+	VID_ShiftPalette (pal);
+	free (pal);
 }
 
 /* 

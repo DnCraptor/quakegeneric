@@ -245,14 +245,10 @@ void R_PrintAliasStats (void)
 void WarpPalette (void)
 {
 	int		i,j;
-	byte	newpalette[768];
-	int		basecolor[3];
-	
-	basecolor[0] = 130;
-	basecolor[1] = 80;
-	basecolor[2] = 50;
+	static const int basecolor[3] = { 130, 80, 50 };
 
 // pull the colors halfway to bright brown
+	byte* newpalette = (byte*)malloc(768);
 	for (i=0 ; i<256 ; i++)
 	{
 		for (j=0 ; j<3 ; j++)
@@ -262,6 +258,7 @@ void WarpPalette (void)
 	}
 	
 	VID_ShiftPalette (newpalette);
+	free(newpalette);
 }
 
 

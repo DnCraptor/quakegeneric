@@ -844,13 +844,8 @@ void R_DrawBEntitiesOnList (void)
 R_EdgeDrawing
 ================
 */
-void R_EdgeDrawing (void)
+void R_EdgeDrawing (edge_t* ledges, surf_t* lsurfs)
 {
-	edge_t	ledges[NUMSTACKEDGES +
-				((CACHE_SIZE - 1) / sizeof(edge_t)) + 1];
-	surf_t	lsurfs[NUMSTACKSURFACES +
-				((CACHE_SIZE - 1) / sizeof(surf_t)) + 1];
-
 	if (auxedges)
 	{
 		r_edges = auxedges;
@@ -923,7 +918,11 @@ r_refdef must be set before the first call
 */
 void R_RenderView_ (void)
 {
-	byte	warpbuffer[WARP_WIDTH * WARP_HEIGHT];
+	byte* warpbuffer = (byte*)Hunk_TempAlloc(
+		(WARP_WIDTH * WARP_HEIGHT) +
+		(NUMSTACKEDGES + ((CACHE_SIZE - 1) / sizeof(edge_t)) + 1) * sizeof(edge_t) +
+		(NUMSTACKSURFACES +	((CACHE_SIZE - 1) / sizeof(surf_t)) + 1) * sizeof(surf_t)
+	);
 
 	r_warpbuffer = warpbuffer;
 
@@ -953,8 +952,13 @@ SetVisibilityByPassages ();
 		S_ExtraUpdate ();	// don't let sound get messed up if going slow
 		VID_LockBuffer ();
 	}
-	
-	R_EdgeDrawing ();
+
+	edge_t*	ledges = (edge_t*)(warpbuffer + WARP_WIDTH * WARP_HEIGHT);
+	surf_t*	lsurfs = (surf_t*)(warpbuffer + 
+		(WARP_WIDTH * WARP_HEIGHT) +
+		(NUMSTACKEDGES + ((CACHE_SIZE - 1) / sizeof(edge_t)) + 1) * sizeof(edge_t)
+	);
+	R_EdgeDrawing (ledges, lsurfs);
 
 	if (!r_dspeeds.value)
 	{
