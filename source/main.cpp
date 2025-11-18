@@ -622,7 +622,7 @@ extern "C" void QG_GetMouseMove(int *x, int *y) {
 }
 
 extern "C" void QG_Quit(void) {
-
+	Sys_Printf ("QG_Quit\n");
 }
 
 extern "C" void QG_DrawFrame(void *pixels) {
@@ -639,7 +639,6 @@ extern "C" void QG_SetPalette(unsigned char palette[768]) {
 		    palette[i3 + 2]; // B
         graphics_set_palette(i, pal888);
 	}
-	Sys_Printf ("QG_SetPalette done\n");
 }
 
 extern "C" void QG_GetJoyAxes(float *axes)
@@ -756,7 +755,7 @@ int main() {
         psram_pin = rp2350a ? BUTTER_PSRAM_GPIO : 47;
         psram_init(psram_pin);
         if(butter_psram_size()) {
-            memset(PSRAM_DATA, 0, butter_psram_size());
+           /// memset(PSRAM_DATA, 0, butter_psram_size());
         }
     #endif
     exception_set_exclusive_handler(HARDFAULT_EXCEPTION, sigbus);

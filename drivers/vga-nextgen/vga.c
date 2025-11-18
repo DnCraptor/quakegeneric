@@ -14,6 +14,7 @@
 
 /// TODO: .h
 extern uint32_t conv_color[1224];
+extern uint8_t* FRAME_BUF;
 bool SELECT_VGA = false;
 uint8_t* get_line_buffer(int line);
 void vsync_handler();
@@ -85,7 +86,7 @@ void __time_critical_func() dma_handler_VGA() {
         vsync_handler();
         screen_line = 0;
         frame_number++;
-        input_buffer = get_line_buffer(screen_line);
+        input_buffer = FRAME_BUF;
     }
 
     if (screen_line >= mode.h_width) {

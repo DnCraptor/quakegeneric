@@ -638,14 +638,12 @@ Output:
 Each surface has a linked list of its visible spans
 ==============
 */
-void R_ScanEdges (void)
+void R_ScanEdges (espan_t* basespans)
 {
 	int		iv, bottom;
-	byte	basespans[MAXSPANS*sizeof(espan_t)+CACHE_SIZE];
-	espan_t	*basespan_p;
 	surf_t	*s;
 
-	basespan_p = (espan_t *)
+	espan_t* basespan_p = (espan_t *)
 			((intptr_t)(basespans + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
 	max_span_p = &basespan_p[MAXSPANS - r_refdef.vrect.width];
 
@@ -737,16 +735,18 @@ void R_ScanEdges (void)
 // mark that the head (background start) span is pre-included
 	surfaces[1].spanstate = 1;
 
-	if (newedges[iv])
+	if (newedges[iv]) {
 		R_InsertNewEdges (newedges[iv], edge_head.next);
+	}
 
 	(*pdrawfunc) ();
 
 // draw whatever's left in the span list
-	if (r_drawculledpolys)
+	if (r_drawculledpolys) {
 		R_DrawCulledPolys ();
-	else
+	} else {
 		D_DrawSurfaces ();
+	}
 }
 
 

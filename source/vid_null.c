@@ -60,7 +60,7 @@ void	VID_Init (unsigned char *palette)
 	
 	d_pzbuffer = zbuffer;
 
-	surfcache_size = D_SurfaceCacheForRes(BASEWIDTH, BASEHEIGHT);
+	surfcache_size = 652800; /// D_SurfaceCacheForRes(BASEWIDTH, BASEHEIGHT);
 	surfcache = __PSRAM_SURF_CACHE; /// malloc(surfcache_size);
 	D_InitCaches (surfcache, surfcache_size);
 
@@ -70,7 +70,7 @@ void	VID_Init (unsigned char *palette)
 
 void	VID_Shutdown (void)
 {
-		free(surfcache);
+	///	free(surfcache);
 }
 
 void	VID_Update (vrect_t *rects)
