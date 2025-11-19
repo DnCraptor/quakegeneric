@@ -36,7 +36,9 @@ set(VGA_HDMI ON)
 #set(ILI9341 ON)
 
 #set(CPU_MHZ 252)
-set(CPU_MHZ 378)
+#set(CPU_MHZ 378)
+set(CPU_MHZ 504)
+set(FLASH_MHZ 166)
 set (PORT_VERSION "1.09")
 
 #set (MURM ON)
@@ -289,11 +291,17 @@ if (BUTTER_PSRAM_GPIO)
     target_compile_definitions(${PROJECT_NAME} PRIVATE BUTTER_PSRAM_GPIO=${BUTTER_PSRAM_GPIO})
 endif()
 
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    PORT_VERSION="${PORT_VERSION}"
+    CPU_MHZ=${CPU_MHZ}
+    MAX_PSRAM_FREQ_MHZ=${FLASH_MHZ}
+    DEFAULT_THROTTLING=0
+    DEBUG=0
+)
+
 IF(MURM2)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
-        PORT_VERSION="${PORT_VERSION}"
         MURM2=1
-        CPU_MHZ=${CPU_MHZ}
 
         KBD_CLOCK_PIN=2
         KBD_DATA_PIN=3
@@ -352,14 +360,10 @@ IF(MURM2)
         TFT_CLK_PIN=19
         TFT_INV=${TFT_INV}
 
-        DEFAULT_THROTTLING=0
         PICO_DEFAULT_LED_PIN=25
     )
 ELSEIF(PICO_PC)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
-        PORT_VERSION="${PORT_VERSION}"
-        CPU_MHZ=${CPU_MHZ}
-
         PICO_PC=1
 
         # GP-5  UXT1-10
@@ -418,14 +422,10 @@ ELSEIF(PICO_PC)
         # HDMI 8 pins starts from pin:
         HDMI_BASE_PIN=12
 
-        DEFAULT_THROTTLING=0
         PICO_DEFAULT_LED_PIN=25
     )
 ELSEIF(PICO_DV)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
-        PORT_VERSION="${PORT_VERSION}"
-        CPU_MHZ=${CPU_MHZ}
-
         PICO_DV=1
 
         # DBG1 1/2
@@ -479,15 +479,10 @@ ELSEIF(PICO_DV)
         # HDMI 8 pins starts from pin:
         HDMI_BASE_PIN=6
 
-        DEFAULT_THROTTLING=0
         PICO_DEFAULT_LED_PIN=25
-
-        DEBUG=0
 )
 ELSEIF(ZERO)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
-        PORT_VERSION="${PORT_VERSION}"
-        CPU_MHZ=${CPU_MHZ}
         ZERO=1
 
         KBD_CLOCK_PIN=0
@@ -538,14 +533,11 @@ ELSEIF(ZERO)
         # HDMI 8 pins starts from pin:
         HDMI_BASE_PIN=22
 
-        DEFAULT_THROTTLING=0
         PICO_RP2040=1
         PICO_DEFAULT_LED_PIN=25
     )
 ELSEIF(ZERO2)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
-        PORT_VERSION="${PORT_VERSION}"
-        CPU_MHZ=${CPU_MHZ}
         ZERO2=1
 
         # PS2 keyboard
@@ -599,13 +591,9 @@ ELSEIF(ZERO2)
         HDMI_BASE_PIN=32
 
 #        PICO_DEFAULT_LED_PIN=25
-        DEFAULT_THROTTLING=0
     )
 ELSE()
     target_compile_definitions(${PROJECT_NAME} PRIVATE
-        PORT_VERSION="${PORT_VERSION}"
-        CPU_MHZ=${CPU_MHZ}
-
         KBD_CLOCK_PIN=0
         KBD_DATA_PIN=1
 
@@ -662,7 +650,6 @@ ELSE()
         TFT_CLK_PIN=13
         TFT_INV=${TFT_INV}
 
-        DEFAULT_THROTTLING=0
         PICO_DEFAULT_LED_PIN=25
     )
 ENDIF()

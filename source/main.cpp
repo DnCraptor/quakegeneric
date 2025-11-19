@@ -486,7 +486,7 @@ void __no_inline_not_in_flash_func(psram_init)(uint cs_pin) {
     // Using an rxdelay equal to the divisor isn't enough when running the APS6404 close to 133MHz.
     // So: don't allow running at divisor 1 above 100MHz (because delay of 2 would be too late),
     // and add an extra 1 to the rxdelay if the divided clock is > 100MHz (i.e. sys clock > 200MHz).
-    const int max_psram_freq = 166000000;
+    const int max_psram_freq = MAX_PSRAM_FREQ_MHZ * 1000000;
     const int clock_hz = clock_get_hz(clk_sys);
     int divisor = (clock_hz + max_psram_freq - 1) / max_psram_freq;
     if (divisor == 1 && clock_hz > 100000000) {
@@ -625,9 +625,19 @@ extern "C" void QG_Quit(void) {
 	Sys_Printf ("QG_Quit\n");
 }
 
+extern "C" bool SELECT_VGA;
 extern "C" void QG_DrawFrame(void *pixels) {
-//	FRAME_BUF = (uint8_t*)pixels;
-    memcpy(FRAME_BUF, pixels, QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y);
+    if (SELECT_VGA) {
+        memcpy(FRAME_BUF, pixels, QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y);
+    } else {
+        uint8_t* p_s = (uint8_t*)pixels;
+        uint8_t* p_t = FRAME_BUF;
+        while(p_t < &FRAME_BUF[QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y]) {
+            uint8_t v = *p_s++;
+            if (v >= 240) v = 239; // W/A for special hdmi values
+            *p_t++ = v;
+        }
+    }
 }
 
 extern "C" void QG_SetPalette(unsigned char palette[768]) {
@@ -658,7 +668,7 @@ static void finish_him(void) {
     Sys_Printf(" Chip model     : RP2350%c %d MHz\n", (rp2350a ? 'A' : 'B'), cpu_hz / 1000000);
     Sys_Printf(" Flash size     : %d MB\n", (1 << rx[3]) >> 20);
     Sys_Printf(" Flash JEDEC ID : %02X-%02X-%02X-%02X\n", rx[0], rx[1], rx[2], rx[3]);
-    Sys_Printf(" PSRAM on GP%02d  : %d MB QSPI\n", psram_pin, butter_psram_size() >> 20);
+    Sys_Printf(" PSRAM on GP%02d  : %d MB QSPI %d MHz\n", psram_pin, butter_psram_size() >> 20, MAX_PSRAM_FREQ_MHZ);
     Sys_Printf(" SP after switch: 0x%08X\n", sp_after);
     Sys_Printf(" --------------------------------------\n");
 
@@ -666,17 +676,18 @@ static void finish_him(void) {
     nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
 #endif
 
+/*
 #if PICO_RP2350
     if (psram_pin != PSRAM_PIN_SCK)
 #endif
     #ifndef MURM2
         init_psram();
     #endif
+*/
     // send kbd reset only after initial process passed
 #ifndef KBDUSB
     keyboard_send(0xFF);
 #endif
-
     sem_init(&vga_start_semaphore, 0, 1);
     multicore_launch_core1(render_core);
     sem_release(&vga_start_semaphore);
