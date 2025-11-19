@@ -46,13 +46,14 @@ set(FLASH_MHZ 100)
 set (PORT_VERSION "1.09")
 
 #set (MURM ON)
-set (MURM2 ON)
+#set (MURM2 ON)
 #set (PICO_PC ON)
 #set (PICO_DV ON)
 #set (ZERO ON)
 #set (ZERO2 ON)
 
 set(KBDUSB ON)
+#set(FIXED_TIME_STEP ON)        # enable fixed 60hz timestep
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
@@ -663,6 +664,10 @@ ENDIF()
 if(DVI_HSTX)
     target_link_libraries(${PROJECT_NAME} PRIVATE dvi_hstx)
     target_compile_definitions(${PROJECT_NAME} PRIVATE DVI_HSTX)
+endif()
+
+if (FIXED_TIME_STEP)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE FIXED_TIME_STEP)
 endif()
 
 IF(TFT)

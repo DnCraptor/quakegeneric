@@ -966,30 +966,17 @@ static void finish_him(void) {
 	QG_Create(argc, argv);
 	Sys_Printf ("QG_Create done\n");
 
-#if 0
-    const float ticks_per_second = cpu_hz;
-    // Настраиваем SysTick: тактирование от системной частоты
-    // и максимальное значение 24-битного счётчика
-    systick_hw->rvr = 0xFFFFFF;  // reload value (24 бита макс)
-    systick_hw->cvr = 0;         // current value
-    systick_hw->csr = (1 << 0) | (1 << 2);  // ENABLE = бит 0, CLKSOURCE = бит 2
-    uint32_t start = systick_hw->cvr;
-	while (1) {
-        // Считаем прошедшие такты ARM
-        uint32_t now = systick_hw->cvr;
-        // SysTick counts down, 24-bit wrap
-        float elapsed_ticks = 0.0 + ((start - now) & 0xFFFFFF);
-		QG_Tick(elapsed_ticks / ticks_per_second);
-        start = now;
-	}
-#else
+    // main loop
     uint64_t t, old_t = time_us_64();
     while (true) {
         t = time_us_64();
+#if FIXED_TIME_STEP
+        QG_Tick(1.0 / 60.0);                // simulate 60fps tick rate
+#else
         QG_Tick((t - old_t) / 1000000.0);
+#endif
         old_t = t;
     }
-#endif
     __unreachable();
 }
 
