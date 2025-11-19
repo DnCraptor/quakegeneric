@@ -29,6 +29,7 @@ option(ZERO2 "RP2350-PiZero" OFF)
 #set(m1p2launcher ON)
 
 set(VGA_HDMI ON)
+#set(DVI_HSTX ON)       # enable DVI HSTX driver (RP2350 only)
 #set(SOFTTV ON)
 #set(TFT ON)
 #set(TFT_INV 0)
@@ -52,6 +53,7 @@ set (PORT_VERSION "1.09")
 #set (ZERO2 ON)
 
 set(KBDUSB ON)
+#set(FIXED_TIME_STEP ON)        # enable fixed 60hz timestep
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
@@ -122,6 +124,7 @@ add_subdirectory(drivers/tv)
 add_subdirectory(drivers/tv-software)
 add_subdirectory(drivers/graphics)
 add_subdirectory(drivers/psram)
+add_subdirectory(drivers/dvi_hstx)
 
 #target_compile_definitions(${PROJECT_NAME} PRIVATE VGA)
 
@@ -354,7 +357,6 @@ IF(MURM2)
 
         # HDMI 8 pins starts from pin:
         HDMI_BASE_PIN=12
-
 
         # TFT
         TFT_CS_PIN=12
@@ -658,6 +660,15 @@ ELSE()
         PICO_DEFAULT_LED_PIN=25
     )
 ENDIF()
+
+if(DVI_HSTX)
+    target_link_libraries(${PROJECT_NAME} PRIVATE dvi_hstx)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE DVI_HSTX)
+endif()
+
+if (FIXED_TIME_STEP)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE FIXED_TIME_STEP)
+endif()
 
 IF(TFT)
     target_link_libraries(${PROJECT_NAME} PRIVATE st7789)

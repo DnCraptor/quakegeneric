@@ -35,6 +35,11 @@
 #include "nespad.h"
 #endif
 
+#if DVI_HSTX
+#include "dvi_defs.h"
+#include "dvi_modes.h"
+#endif
+
 #include "quakegeneric.h"
 #include "quakedef.h"
 #include "sys.h"
@@ -388,34 +393,38 @@ inline static bool isInReport(hid_keyboard_report_t const *report, const unsigne
 }
 
 int map_kc(uint8_t kc) {
+    if (kc >= HID_KEY_A && kc <= HID_KEY_Z) {
+        return 'a' + (kc - HID_KEY_A);
+    }
+    if (kc >= HID_KEY_1 && kc <= HID_KEY_9) {  // HID_KEY_0 handled in a switch
+        return '1' + (kc - HID_KEY_1);
+    }
+    
     switch(kc) {
+        case HID_KEY_0              : return '0';
+        case HID_KEY_MINUS          : return '-';
+        case HID_KEY_EQUAL          : return '=';
+        case HID_KEY_BRACKET_LEFT   : return '[';
+        case HID_KEY_BRACKET_RIGHT  : return ']';
+        case HID_KEY_BACKSLASH      : return '\\';
+        case HID_KEY_SEMICOLON      : return ';';
+        case HID_KEY_APOSTROPHE     : return '\'';
+        case HID_KEY_GRAVE          : return '`';
+        case HID_KEY_COMMA          : return ',';
+        case HID_KEY_PERIOD         : return '.';
+        case HID_KEY_SLASH          : return '/';
+
         case HID_KEY_TAB: return K_TAB;
-        case HID_KEY_RETURN:
+        case HID_KEY_ENTER:
         case HID_KEY_KEYPAD_ENTER:
-        case HID_KEY_P:
             return K_ENTER;
-        case HID_KEY_ESCAPE: return K_ESCAPE;
-        case HID_KEY_SPACE:
-        case HID_KEY_KEYPAD_0:
-        case HID_KEY_O:
-            return K_SPACE;
-        case HID_KEY_BACKSPACE: return K_BACKSPACE;
-        case HID_KEY_ARROW_UP:
-        case HID_KEY_W:
-        case HID_KEY_KEYPAD_8:
-            return K_UPARROW;
-        case HID_KEY_ARROW_DOWN:
-        case HID_KEY_S:
-        case HID_KEY_KEYPAD_2:
-            return K_DOWNARROW;
-        case HID_KEY_ARROW_LEFT:
-        case HID_KEY_A:
-        case HID_KEY_KEYPAD_4:
-            return K_LEFTARROW;
-        case HID_KEY_ARROW_RIGHT:
-        case HID_KEY_D:
-        case HID_KEY_KEYPAD_6:
-            return K_RIGHTARROW;
+        case HID_KEY_ESCAPE:        return K_ESCAPE;
+        case HID_KEY_SPACE:         return K_SPACE;
+        case HID_KEY_BACKSPACE:     return K_BACKSPACE;
+        case HID_KEY_ARROW_UP:      return K_UPARROW;
+        case HID_KEY_ARROW_DOWN:    return K_DOWNARROW;
+        case HID_KEY_ARROW_LEFT:    return K_LEFTARROW;
+        case HID_KEY_ARROW_RIGHT:   return K_RIGHTARROW;
 
         case HID_KEY_F1: return K_F1;
         case HID_KEY_F2: return K_F2;
@@ -518,6 +527,97 @@ void repeat_me_for_input() {
 //uint8_t* FRAME_BUF = (uint8_t*)0x20000000; // temp "trash" value
 uint8_t FRAME_BUF[QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y] = { 0 };
 
+#if DVI_HSTX
+
+enum {
+    HSTX_OUT_PIN_LAYOUT_MURMULATOR2,
+    HSTX_OUT_PIN_LAYOUT_PICODVISOCK,
+};
+
+static union dvi_hstx_pin_layout_t hstx_out_pin_layouts[] = {
+    {   // Murmulator 2
+    .clock_n = 0, .clock_p = 1,
+    .lane0_n = 2, .lane0_p = 3,
+    .lane1_n = 4, .lane1_p = 5,
+    .lane2_n = 6, .lane2_p = 7,
+    },
+    {   // Pico-DVI-Sock
+    .clock_n = 15-12, .clock_p = 14-12,
+    .lane0_n = 13-12, .lane0_p = 12-12,
+    .lane1_n = 19-12, .lane1_p = 18-12,
+    .lane2_n = 17-12, .lane2_p = 16-12,
+    }
+};
+
+// palette used by the DVI/VGA HSTX driver
+static uint32_t linebuf_pal[256];
+struct linebuf_cb_info_8bpp_t {
+    const uint8_t  *pic;
+    const uint32_t *pal;
+};
+static linebuf_cb_info_8bpp_t cb_index8_priv = {.pic = FRAME_BUF, .pal = linebuf_pal};
+
+// line buffer callback used for converting the picture
+extern "C" void linebuf_cb_index8_a(const struct dvi_linebuf_task_t *task, void *priv);
+
+void render_core() {
+    // init hstx driver here!
+
+    int mode     = DVI_MODE_320x240;
+    int hstx_div = clock_get_hz(clk_sys)/(dvi_modes[mode].timings.pixelclock*5);
+
+    // configure HSTX clock divider
+    clock_configure_int_divider(clk_hstx, CLOCKS_CLK_HSTX_CTRL_AUXSRC_VALUE_CLK_SYS, 0, clock_get_hz(clk_sys), hstx_div);
+
+    // configure timings
+    struct dvi_timings_t dvi_timings;
+    memcpy(&dvi_timings, &dvi_modes[mode].timings, sizeof(struct dvi_timings_t));
+
+    // adjust timings
+    dvi_adjust_timings(&dvi_timings, DVI_HSTX_MODE_XRGB8888, dvi_modes[mode].pixel_rep, 0);
+
+    // enable pins
+    dvi_configure_hstx_command_expander(DVI_HSTX_MODE_XRGB8888, dvi_modes[mode].pixel_rep);
+    dvi_configure_hstx_output(hstx_out_pin_layouts[HSTX_OUT_PIN_LAYOUT_MURMULATOR2], GPIO_SLEW_RATE_FAST, GPIO_DRIVE_STRENGTH_4MA);
+
+    // allocate memory for the linebuf
+    uint32_t linebuf_memsize;
+    dvi_linebuf_get_memsize(&dvi_timings, &linebuf_memsize, dvi_modes[mode].pixel_rep);
+    uint32_t *linebuf = (uint32_t*)malloc(linebuf_memsize);
+    printf("line buffer size = %d bytes\n", linebuf_memsize);
+    printf("line buffer ptr  = %08X\n", linebuf);
+
+    // allocate DMA channels
+    struct dvi_resources_t dvires;
+    for (int i = 0; i < 3; i++) dvires.dma_channels[i] = dma_claim_unused_channel(true);
+    dvires.irq_dma = DMA_IRQ_0;
+    dvires.irq_linebuf_callback = user_irq_claim_unused(true);
+
+    // set timings
+    dvi_linebuf_set_timings(&dvi_timings, dvi_modes[mode].pixel_rep);
+    dvi_linebuf_set_line_rep(dvi_modes[mode].line_rep);
+
+    // set resources
+    dvi_linebuf_set_resources(&dvires, linebuf);
+
+    // fill HSTX command list
+    dvi_linebuf_fill_hstx_cmdlist();
+
+    // initialize DMA channels and IRQ handlers
+    dvi_linebuf_init_dma();
+
+    // set callback
+    dvi_linebuf_set_cb(linebuf_cb_index8_a, &cb_index8_priv);
+
+    // and start display output
+    dvi_linebuf_start();
+
+    while (true) {
+        tight_loop_contents();
+    }
+    __unreachable();
+}
+#else
 void __scratch_x("render") render_core() {
     multicore_lockout_victim_init();
     graphics_init();
@@ -529,6 +629,7 @@ void __scratch_x("render") render_core() {
     }
     __unreachable();
 }
+#endif
 
 #if SOFTTV
 typedef struct tv_out_mode_t {
@@ -765,6 +866,27 @@ extern "C" void QG_Quit(void) {
 	Sys_Printf ("QG_Quit\n");
 }
 
+// -----------------------------------------
+// QG_DrawFrame()/QG_SetPalette() interfaces
+#if DVI_HSTX
+
+extern "C" void QG_DrawFrame(void *pixels) {
+#ifdef KBDUSB
+    repeat_me_for_input();
+#endif
+    memcpy(FRAME_BUF, pixels, QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y);
+}
+
+extern "C" void QG_SetPalette(unsigned char palette[768]) {
+    uint8_t *p = palette;
+    for (int i = 0; i < 256; i++) {
+        // TODO: "prebake" the palette for the VGA HSTX driver (not required for DVI)
+        linebuf_pal[i] = (p[2] << 0) | (p[1] << 8) | (p[0] << 16); p += 3;
+    }
+}
+
+#else
+
 extern "C" bool SELECT_VGA;
 extern "C" void QG_DrawFrame(void *pixels) {
 #ifdef KBDUSB
@@ -793,6 +915,9 @@ extern "C" void QG_SetPalette(unsigned char palette[768]) {
         graphics_set_palette(i, pal888);
 	}
 }
+
+#endif
+// -----------------------
 
 extern "C" void QG_GetJoyAxes(float *axes)
 {
@@ -845,21 +970,17 @@ static void finish_him(void) {
 	QG_Create(argc, argv);
 	Sys_Printf ("QG_Create done\n");
 
-    const float ticks_per_second = cpu_hz;
-    // Настраиваем SysTick: тактирование от системной частоты
-    // и максимальное значение 24-битного счётчика
-    systick_hw->rvr = 0xFFFFFF;  // reload value (24 бита макс)
-    systick_hw->cvr = 0;         // current value
-    systick_hw->csr = (1 << 0) | (1 << 2);  // ENABLE = бит 0, CLKSOURCE = бит 2
-    uint32_t start = systick_hw->cvr;
-	while (1) {
-        // Считаем прошедшие такты ARM
-        uint32_t now = systick_hw->cvr;
-        // SysTick counts down, 24-bit wrap
-        float elapsed_ticks = 0.0 + ((start - now) & 0xFFFFFF);
-		QG_Tick(elapsed_ticks / ticks_per_second);
-        start = now;
-	}
+    // main loop
+    uint64_t t, old_t = time_us_64();
+    while (true) {
+        t = time_us_64();
+#if FIXED_TIME_STEP
+        QG_Tick(1.0 / 60.0);                // simulate 60fps tick rate
+#else
+        QG_Tick((t - old_t) / 1000000.0);
+#endif
+        old_t = t;
+    }
     __unreachable();
 }
 
