@@ -391,11 +391,6 @@ void Hunk_Print (qboolean all)
 	
 }
 
-static inline uint32_t get_sp(void) {
-    uint32_t sp;
-    __asm volatile("mov %0, sp" : "=r"(sp));
-    return sp;
-}
 /*
 ===================
 Hunk_AllocName

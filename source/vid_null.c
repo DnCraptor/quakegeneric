@@ -32,7 +32,7 @@ viddef_t	vid;				// global video state
 byte	vid_buffer[BASEWIDTH*BASEHEIGHT];
 short*	zbuffer = (short*)__PSRAM_Z_BUFF;
 /// short zbuffer[BASEWIDTH*BASEHEIGHT]; // 153600 = 0x25800
-byte	*surfcache;
+byte	*surfcache = 0;
 size_t	surfcache_size;
 
 void	VID_SetPalette (unsigned char *palette)
@@ -60,9 +60,11 @@ void	VID_Init (unsigned char *palette)
 	
 	d_pzbuffer = zbuffer;
 
-	surfcache_size = D_SurfaceCacheForRes(BASEWIDTH, BASEHEIGHT); // 652800
-	/// TODO: may be moved to SRSAM?
-	surfcache = Hunk_AllocName(surfcache_size, "surfcache");
+	if (!surfcache) {
+		surfcache_size = D_SurfaceCacheForRes(BASEWIDTH, BASEHEIGHT); // 652800
+		/// TODO: may be moved to SRSAM?
+		surfcache = (byte*)alloc(surfcache_size, "surfcache");
+	}
 	D_InitCaches (surfcache, surfcache_size);
 
 	// quake generic

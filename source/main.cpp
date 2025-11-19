@@ -36,6 +36,7 @@
 #endif
 
 #include "quakegeneric.h"
+#include "quakedef.h"
 #include "sys.h"
 
 #define HOME_DIR (char*)"/QUAKE"
@@ -549,12 +550,6 @@ uint32_t __not_in_flash_func(butter_psram_size)() { return 0; }
 uint8_t* PSRAM_DATA = (uint8_t*)0;
 uint32_t __not_in_flash_func(butter_psram_size)() { return 0; }
 #endif
-
-static inline uint32_t get_sp(void) {
-    uint32_t sp;
-    __asm volatile("mov %0, sp" : "=r"(sp));
-    return sp;
-}
 
 #define STACK_CORE0 0x11800000
 

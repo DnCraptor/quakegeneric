@@ -48,16 +48,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define UNUSED(x)	(x = x)	// for pesky compiler / lint warnings
 
-#define __PSRAM_BASE ((char*)(0x11000000ul))
-#define __PSRAM_Z_BUFF (__PSRAM_BASE + 7*1024*1024) // 0x11700000
-#define __PSRAM_CL_ENT (__PSRAM_Z_BUFF + 153600) // 0x11725800
-#define __PSRAM_STAT_CL_ENT (__PSRAM_CL_ENT + 110400) // 0x11740740
-///#define __PSRAM_SURF_CACHE (__PSRAM_STAT_CL_ENT + 23552) // 0x11746340
-///#define __PSRAM_NEXT (__PSRAM_STAT_CL_ENT + 652800) // 0x117E5940 (108224 bytes)
-#define __PSRAM_NEXT (__PSRAM_STAT_CL_ENT + 23552) // 0x11746340
-
 #define	MINIMUM_MEMORY			0x550000 // 5.3 MB
 #define	MINIMUM_MEMORY_LEVELPAK	(MINIMUM_MEMORY + 0x100000) // 6.3 MB
+
+#define __PSRAM_HUNK_SIZE MINIMUM_MEMORY_LEVELPAK
+
+#define __PSRAM_BASE ((char*)(0x11000000ul))
+#define __PSRAM_Z_BUFF (__PSRAM_BASE + __PSRAM_HUNK_SIZE)
+// #define __PSRAM_CL_ENT (__PSRAM_Z_BUFF + 153600)
+// #define __PSRAM_STAT_CL_ENT (__PSRAM_CL_ENT + 110400)
+#define __PSRAM_NEXT (__PSRAM_Z_BUFF + 153600)
 
 #define MAX_NUM_ARGVS	50
 
@@ -307,6 +307,8 @@ extern	cvar_t	chase_active;
 void Chase_Init (void);
 void Chase_Reset (void);
 void Chase_Update (void);
+
+#include "psram_alloc.h"
 
 #ifdef __cplusplus
 }

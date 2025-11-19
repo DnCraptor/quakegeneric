@@ -1674,7 +1674,7 @@ pack_t *COM_LoadPackFile (char *packfile)
 	newfiles = Hunk_AllocName (numpackfiles * sizeof(packfile_t), "packfile");
 
 	Sys_FileSeek (packhandle, header.dirofs);
-	dpackfile_t* info = (dpackfile_t*)__PSRAM_NEXT;//calloc(MAX_FILES_IN_PACK, sizeof(dpackfile_t));
+	dpackfile_t* info = (dpackfile_t*)alloc_base_sz(MAX_FILES_IN_PACK * sizeof(dpackfile_t), "dpackfile_t* info");
 	Sys_FileRead (packhandle, (void *)info, header.dirlen);
 
 // crc the directory to check for modifications
@@ -1691,7 +1691,7 @@ pack_t *COM_LoadPackFile (char *packfile)
 		newfiles[i].filepos = LittleLong(info[i].filepos);
 		newfiles[i].filelen = LittleLong(info[i].filelen);
 	}
-	///free(info);
+	free_base(); // info
 
 	pack = Hunk_Alloc (sizeof (pack_t));
 	strcpy (pack->filename, packfile);

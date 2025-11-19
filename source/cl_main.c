@@ -45,10 +45,10 @@ client_static_t	cls;
 client_state_t	cl;
 // FIXME: put these on hunk?
 efrag_t			cl_efrags[MAX_EFRAGS];
-entity_t*		cl_entities = (entity_t*)__PSRAM_CL_ENT;
 ///entity_t		cl_entities[MAX_EDICTS];
-//entity_t		cl_static_entities[MAX_STATIC_ENTITIES]; // 23552
-entity_t* cl_static_entities = (entity_t*)__PSRAM_STAT_CL_ENT;
+///entity_t		cl_static_entities[MAX_STATIC_ENTITIES]; // 23552
+entity_t*		cl_entities = 0;
+entity_t*		cl_static_entities = 0;
 lightstyle_t	cl_lightstyle[MAX_LIGHTSTYLES];
 dlight_t		cl_dlights[MAX_DLIGHTS];
 
@@ -75,7 +75,10 @@ void CL_ClearState (void)
 
 // clear other arrays	
 	memset (cl_efrags, 0, sizeof(cl_efrags));
-	memset (cl_entities, 0, 110400);
+	if (!cl_entities) {
+		cl_entities = (entity_t*)alloc(MAX_EDICTS * sizeof(entity_t), "cl_entities");
+	}
+	memset (cl_entities, 0, MAX_EDICTS * sizeof(entity_t));
 	memset (cl_dlights, 0, sizeof(cl_dlights));
 	memset (cl_lightstyle, 0, sizeof(cl_lightstyle));
 	memset (cl_temp_entities, 0, sizeof(cl_temp_entities));
@@ -252,7 +255,7 @@ void CL_PrintEntities_f (void)
 {
 	entity_t	*ent;
 	int			i;
-	
+
 	for (i=0,ent=cl_entities ; i<cl.num_entities ; i++,ent++)
 	{
 		Con_Printf ("%3i:",i);

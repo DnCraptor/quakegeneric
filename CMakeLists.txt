@@ -36,9 +36,12 @@ set(VGA_HDMI ON)
 #set(ILI9341 ON)
 
 #set(CPU_MHZ 252)
-#set(CPU_MHZ 378)
-set(CPU_MHZ 504)
-set(FLASH_MHZ 166)
+set(CPU_MHZ 378)
+#set(CPU_MHZ 504)
+
+set(FLASH_MHZ 100)
+#set(FLASH_MHZ 166)
+
 set (PORT_VERSION "1.09")
 
 #set (MURM ON)
@@ -166,6 +169,7 @@ file(GLOB_RECURSE SRC
 	${PROJECT_SOURCE_DIR}/source/pr_cmds.c
 	${PROJECT_SOURCE_DIR}/source/pr_edict.c
 	${PROJECT_SOURCE_DIR}/source/pr_exec.c
+    ${PROJECT_SOURCE_DIR}/source/psram_alloc.c
 	${PROJECT_SOURCE_DIR}/source/r_aclip.c
 	${PROJECT_SOURCE_DIR}/source/r_alias.c
 	${PROJECT_SOURCE_DIR}/source/r_bsp.c
@@ -274,6 +278,7 @@ target_compile_options(${PROJECT_NAME} PUBLIC
         -Wno-error=stringop-truncation
         -Wno-error=restrict
         -w
+        -fstack-usage
 )
 endif ()
 
