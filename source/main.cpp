@@ -710,6 +710,7 @@ extern "C" void QG_Init(void) {
 }
 
 extern "C" int QG_GetKey(int *down, int *key) {
+    repeat_me_for_input();
     if (!next_key_action) return 0;
     const key_action_t& k = key_actions[--next_key_action];
     *key = k.key;
