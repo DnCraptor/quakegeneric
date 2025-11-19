@@ -62,6 +62,23 @@ struct input_bits_t {
 input_bits_t gamepad1_bits = { false, false, false, false, false, false, false, false };
 static input_bits_t gamepad2_bits = { false, false, false, false, false, false, false, false };
 
+typedef struct key_action_s {
+    int key;
+    int down;
+} key_action_t;
+
+key_action_t key_actions[16] = { 0 };
+size_t next_key_action = 0;
+
+inline static void add_key(int key, int down) {
+    if (next_key_action == 16) return;
+    key_action_t& k = key_actions[next_key_action++];
+    k.key = key;
+    k.down = down;
+}
+
+#ifndef KBDUSB
+// TODO:
 extern "C" bool handleScancode(const uint32_t ps2scancode) {
     #if 0
     if (ps2scancode != 0x45 && ps2scancode != 0x1D && ps2scancode != 0xC5) {
@@ -321,7 +338,7 @@ extern "C" bool handleScancode(const uint32_t ps2scancode) {
     #endif
     return true;
 }
-
+#endif
 
 #if USE_NESPAD
 
@@ -357,11 +374,86 @@ inline static bool isInReport(hid_keyboard_report_t const *report, const unsigne
     return false;
 }
 
+int map_kc(uint8_t kc) {
+    switch(kc) {
+        case HID_KEY_TAB: return K_TAB;
+        case HID_KEY_RETURN:
+        case HID_KEY_KEYPAD_ENTER:
+        case HID_KEY_P:
+            return K_ENTER;
+        case HID_KEY_ESCAPE: return K_ESCAPE;
+        case HID_KEY_SPACE:
+        case HID_KEY_KEYPAD_0:
+        case HID_KEY_O:
+            return K_SPACE;
+        case HID_KEY_BACKSPACE: return K_BACKSPACE;
+        case HID_KEY_ARROW_UP:
+        case HID_KEY_W:
+        case HID_KEY_KEYPAD_8:
+            return K_UPARROW;
+        case HID_KEY_ARROW_DOWN:
+        case HID_KEY_S:
+        case HID_KEY_KEYPAD_2:
+            return K_DOWNARROW;
+        case HID_KEY_ARROW_LEFT:
+        case HID_KEY_A:
+        case HID_KEY_KEYPAD_4:
+            return K_LEFTARROW;
+        case HID_KEY_ARROW_RIGHT:
+        case HID_KEY_D:
+        case HID_KEY_KEYPAD_6:
+            return K_RIGHTARROW;
+
+        case HID_KEY_F1: return K_F1;
+        case HID_KEY_F2: return K_F2;
+        case HID_KEY_F3: return K_F3;
+        case HID_KEY_F4: return K_F4;
+        case HID_KEY_F5: return K_F5;
+        case HID_KEY_F6: return K_F6;
+        case HID_KEY_F7: return K_F7;
+        case HID_KEY_F8: return K_F8;
+        case HID_KEY_F9: return K_F9;
+        case HID_KEY_F10: return K_F10;
+        case HID_KEY_F11: return K_F11;
+        case HID_KEY_F12: return K_F12;
+
+        case HID_KEY_INSERT: return K_INS;
+        case HID_KEY_DELETE: return K_DEL;
+        case HID_KEY_PAGE_DOWN: return K_PGDN;
+        case HID_KEY_PAGE_UP: return K_PGUP;
+        case HID_KEY_HOME: return K_HOME;
+        case HID_KEY_END: return K_END;
+
+        case HID_KEY_PAUSE: return K_PAUSE;
+    }
+    return 0;
+}
+
 void __not_in_flash_func(process_kbd_report)(
     hid_keyboard_report_t const *report,
     hid_keyboard_report_t const *prev_report
 ) {
+    uint8_t up_mods = prev_report->modifier & ~(report->modifier);
+    if (up_mods & (KEYBOARD_MODIFIER_LEFTALT | KEYBOARD_MODIFIER_RIGHTALT)) add_key(K_ALT, 0);
+    if (up_mods & (KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_RIGHTCTRL)) add_key(K_CTRL, 0);
+    if (up_mods & (KEYBOARD_MODIFIER_LEFTSHIFT | KEYBOARD_MODIFIER_RIGHTSHIFT)) add_key(K_SHIFT, 0);
+    uint8_t new_mods = report->modifier & ~(prev_report->modifier);
+    if (new_mods & (KEYBOARD_MODIFIER_LEFTALT | KEYBOARD_MODIFIER_RIGHTALT)) add_key(K_ALT, 1);
+    if (new_mods & (KEYBOARD_MODIFIER_LEFTCTRL | KEYBOARD_MODIFIER_RIGHTCTRL)) add_key(K_CTRL, 1);
+    if (new_mods & (KEYBOARD_MODIFIER_LEFTSHIFT | KEYBOARD_MODIFIER_RIGHTSHIFT)) add_key(K_SHIFT, 1);
 
+    for (unsigned char kc: prev_report->keycode) {
+        if ( !isInReport(report, kc) ) {
+            int ikc = map_kc(kc);
+            if (ikc) add_key(ikc, 0);
+        }
+    }
+    for (unsigned char kc: report->keycode) {
+        if ( !isInReport(prev_report, kc) ) {
+            int ikc = map_kc(kc);
+            if (ikc) add_key(ikc, 1);
+        }
+    }
 }
 
 Ps2Kbd_Mrmltr ps2kbd(
@@ -618,7 +710,11 @@ extern "C" void QG_Init(void) {
 }
 
 extern "C" int QG_GetKey(int *down, int *key) {
-	return 0;
+    if (!next_key_action) return 0;
+    const key_action_t& k = key_actions[--next_key_action];
+    *key = k.key;
+    *down = k.down;
+    return 1;
 }
 
 extern "C" void QG_GetMouseMove(int *x, int *y) {
