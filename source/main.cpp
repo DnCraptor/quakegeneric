@@ -393,34 +393,38 @@ inline static bool isInReport(hid_keyboard_report_t const *report, const unsigne
 }
 
 int map_kc(uint8_t kc) {
+    if (kc >= HID_KEY_A && kc <= HID_KEY_Z) {
+        return 'a' + (kc - HID_KEY_A);
+    }
+    if (kc >= HID_KEY_1 && kc <= HID_KEY_9) {  // HID_KEY_0 handled in a switch
+        return '1' + (kc - HID_KEY_1);
+    }
+    
     switch(kc) {
+        case HID_KEY_0              : return '0';
+        case HID_KEY_MINUS          : return '-';
+        case HID_KEY_EQUAL          : return '=';
+        case HID_KEY_BRACKET_LEFT   : return '[';
+        case HID_KEY_BRACKET_RIGHT  : return ']';
+        case HID_KEY_BACKSLASH      : return '\\';
+        case HID_KEY_SEMICOLON      : return ';';
+        case HID_KEY_APOSTROPHE     : return '\'';
+        case HID_KEY_GRAVE          : return '`';
+        case HID_KEY_COMMA          : return ',';
+        case HID_KEY_PERIOD         : return '.';
+        case HID_KEY_SLASH          : return '/';
+
         case HID_KEY_TAB: return K_TAB;
-        case HID_KEY_RETURN:
+        case HID_KEY_ENTER:
         case HID_KEY_KEYPAD_ENTER:
-        case HID_KEY_P:
             return K_ENTER;
-        case HID_KEY_ESCAPE: return K_ESCAPE;
-        case HID_KEY_SPACE:
-        case HID_KEY_KEYPAD_0:
-        case HID_KEY_O:
-            return K_SPACE;
-        case HID_KEY_BACKSPACE: return K_BACKSPACE;
-        case HID_KEY_ARROW_UP:
-        case HID_KEY_W:
-        case HID_KEY_KEYPAD_8:
-            return K_UPARROW;
-        case HID_KEY_ARROW_DOWN:
-        case HID_KEY_S:
-        case HID_KEY_KEYPAD_2:
-            return K_DOWNARROW;
-        case HID_KEY_ARROW_LEFT:
-        case HID_KEY_A:
-        case HID_KEY_KEYPAD_4:
-            return K_LEFTARROW;
-        case HID_KEY_ARROW_RIGHT:
-        case HID_KEY_D:
-        case HID_KEY_KEYPAD_6:
-            return K_RIGHTARROW;
+        case HID_KEY_ESCAPE:        return K_ESCAPE;
+        case HID_KEY_SPACE:         return K_SPACE;
+        case HID_KEY_BACKSPACE:     return K_BACKSPACE;
+        case HID_KEY_ARROW_UP:      return K_UPARROW;
+        case HID_KEY_ARROW_DOWN:    return K_DOWNARROW;
+        case HID_KEY_ARROW_LEFT:    return K_LEFTARROW;
+        case HID_KEY_ARROW_RIGHT:   return K_RIGHTARROW;
 
         case HID_KEY_F1: return K_F1;
         case HID_KEY_F2: return K_F2;
