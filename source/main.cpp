@@ -394,7 +394,7 @@ void repeat_me_for_input() {
 //uint8_t* FRAME_BUF = (uint8_t*)0x20000000; // temp "trash" value
 uint8_t FRAME_BUF[QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y] = { 0 };
 
-void __scratch_y("render") render_core() {
+void __scratch_x("render") render_core() {
     multicore_lockout_victim_init();
     graphics_init();
     graphics_set_buffer(FRAME_BUF, QUAKEGENERIC_RES_X, QUAKEGENERIC_RES_Y);
@@ -550,8 +550,16 @@ uint8_t* PSRAM_DATA = (uint8_t*)0;
 uint32_t __not_in_flash_func(butter_psram_size)() { return 0; }
 #endif
 
+static inline uint32_t get_sp(void) {
+    uint32_t sp;
+    __asm volatile("mov %0, sp" : "=r"(sp));
+    return sp;
+}
+
+#define STACK_CORE0 0x11800000
+
 void sigbus(void) {
-    Sys_Printf("SIGBUS exception caught...\n");
+    Sys_Printf("SIGBUS exception caught... SP %ph (%d)\n", get_sp(), STACK_CORE0 - get_sp());
     while(1) {
         sleep_ms(33);
         gpio_put(PICO_DEFAULT_LED_PIN, true);
@@ -562,6 +570,7 @@ void sigbus(void) {
 }
 void __attribute__((naked, noreturn)) __printflike(1, 0) dummy_panic(__unused const char *fmt, ...) {
     Sys_Printf("*** PANIC ***\n");
+    Sys_Printf("SP %ph (%s)\n", get_sp(), STACK_CORE0 - get_sp());
     if (fmt)
         Sys_Printf((char*)fmt);
     while(1) {
@@ -771,6 +780,6 @@ int main() {
     #endif
     exception_set_exclusive_handler(HARDFAULT_EXCEPTION, sigbus);
 #endif
-    switch_stack(0x11800000, finish_him);
+    switch_stack(STACK_CORE0, finish_him);
     __unreachable();
 }
