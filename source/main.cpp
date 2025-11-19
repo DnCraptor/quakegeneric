@@ -344,14 +344,27 @@ extern "C" bool handleScancode(const uint32_t ps2scancode) {
 
 static void nespad_tick(void) {
     nespad_read();
+    if ((nespad_state & DPAD_A) && !gamepad1_bits.a) add_key(K_JOY1, 1);
+    if (!(nespad_state & DPAD_A) && gamepad1_bits.a) add_key(K_JOY1, 0);
     gamepad1_bits.a = (nespad_state & DPAD_A) != 0;
+
+    if ((nespad_state & DPAD_B) && !gamepad1_bits.b) add_key(K_JOY2, 1);
+    if (!(nespad_state & DPAD_B) && gamepad1_bits.b) add_key(K_JOY2, 0);
     gamepad1_bits.b = (nespad_state & DPAD_B) != 0;
+
+    if ((nespad_state & DPAD_START) && !gamepad1_bits.start) add_key(K_JOY3, 1);
+    if (!(nespad_state & DPAD_START) && gamepad1_bits.start) add_key(K_JOY3, 0);
     gamepad1_bits.start = (nespad_state & DPAD_START) != 0;
+
+    if ((nespad_state & DPAD_SELECT) && !gamepad1_bits.select) add_key(K_JOY4, 1);
+    if (!(nespad_state & DPAD_SELECT) && gamepad1_bits.select) add_key(K_JOY4, 0);
+    gamepad1_bits.select = (nespad_state & DPAD_SELECT) != 0;
+// TODO:
     gamepad1_bits.up = (nespad_state & DPAD_UP) != 0;
     gamepad1_bits.down = (nespad_state & DPAD_DOWN) != 0;
     gamepad1_bits.left = (nespad_state & DPAD_LEFT) != 0;
     gamepad1_bits.right = (nespad_state & DPAD_RIGHT) != 0;
-
+// TODO:
     gamepad2_bits.a = (nespad_state2 & DPAD_A) != 0;
     gamepad2_bits.b = (nespad_state2 & DPAD_B) != 0;
     gamepad2_bits.select = (nespad_state2 & DPAD_SELECT) != 0;
@@ -454,6 +467,24 @@ void __not_in_flash_func(process_kbd_report)(
             if (ikc) add_key(ikc, 1);
         }
     }
+}
+
+static hid_mouse_report_t prev_report = { 0 };
+static int cumulative_dx = 0, cumulative_dy = 0;
+void __not_in_flash_func(process_mouse_report)(hid_mouse_report_t const * report) {
+    uint8_t btns_a = prev_report.buttons & ~(report->buttons);
+    if (btns_a & MOUSE_BUTTON_LEFT) add_key(K_MOUSE1, 0);
+    if (btns_a & MOUSE_BUTTON_RIGHT) add_key(K_MOUSE2, 0);
+    if (btns_a & MOUSE_BUTTON_MIDDLE) add_key(K_MOUSE3, 0);
+
+    btns_a = ~prev_report.buttons & report->buttons;
+    if (btns_a & MOUSE_BUTTON_LEFT) add_key(K_MOUSE1, 1);
+    if (btns_a & MOUSE_BUTTON_RIGHT) add_key(K_MOUSE2, 1);
+    if (btns_a & MOUSE_BUTTON_MIDDLE) add_key(K_MOUSE3, 1);
+
+    prev_report = *report;
+    cumulative_dx += report->x;
+    cumulative_dy += report->y;
 }
 
 Ps2Kbd_Mrmltr ps2kbd(
@@ -710,7 +741,9 @@ extern "C" void QG_Init(void) {
 }
 
 extern "C" int QG_GetKey(int *down, int *key) {
+#ifdef KBDUSB
     repeat_me_for_input();
+#endif
     if (!next_key_action) return 0;
     const key_action_t& k = key_actions[--next_key_action];
     *key = k.key;
@@ -719,7 +752,13 @@ extern "C" int QG_GetKey(int *down, int *key) {
 }
 
 extern "C" void QG_GetMouseMove(int *x, int *y) {
-
+#ifdef KBDUSB
+    repeat_me_for_input();
+#endif
+    *x = cumulative_dx;
+    *y = cumulative_dy;
+    cumulative_dx = 0;
+    cumulative_dy = 0;
 }
 
 extern "C" void QG_Quit(void) {
@@ -728,6 +767,9 @@ extern "C" void QG_Quit(void) {
 
 extern "C" bool SELECT_VGA;
 extern "C" void QG_DrawFrame(void *pixels) {
+#ifdef KBDUSB
+    repeat_me_for_input();
+#endif
     if (SELECT_VGA) {
         memcpy(FRAME_BUF, pixels, QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y);
     } else {
