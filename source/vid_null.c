@@ -60,8 +60,9 @@ void	VID_Init (unsigned char *palette)
 	
 	d_pzbuffer = zbuffer;
 
-	surfcache_size = 652800; /// D_SurfaceCacheForRes(BASEWIDTH, BASEHEIGHT);
-	surfcache = __PSRAM_SURF_CACHE; /// malloc(surfcache_size);
+	surfcache_size = D_SurfaceCacheForRes(BASEWIDTH, BASEHEIGHT); // 652800
+	/// TODO: may be moved to SRSAM?
+	surfcache = Hunk_AllocName(surfcache_size, "surfcache");
 	D_InitCaches (surfcache, surfcache_size);
 
 	// quake generic
