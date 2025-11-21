@@ -868,7 +868,6 @@ extern "C" void QG_Quit(void) {
 
 // -----------------------------------------
 // QG_DrawFrame()/QG_SetPalette() interfaces
-#if DVI_HSTX
 
 extern "C" void QG_DrawFrame(void *pixels) {
 #ifdef KBDUSB
@@ -876,6 +875,8 @@ extern "C" void QG_DrawFrame(void *pixels) {
 #endif
     memcpy(FRAME_BUF, pixels, QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y);
 }
+
+#if DVI_HSTX
 
 extern "C" void QG_SetPalette(unsigned char palette[768]) {
     uint8_t *p = palette;
@@ -886,24 +887,6 @@ extern "C" void QG_SetPalette(unsigned char palette[768]) {
 }
 
 #else
-
-extern "C" bool SELECT_VGA;
-extern "C" void QG_DrawFrame(void *pixels) {
-#ifdef KBDUSB
-    repeat_me_for_input();
-#endif
-    if (SELECT_VGA) {
-        memcpy(FRAME_BUF, pixels, QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y);
-    } else {
-        uint8_t* p_s = (uint8_t*)pixels;
-        uint8_t* p_t = FRAME_BUF;
-        while(p_t < &FRAME_BUF[QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y]) {
-            uint8_t v = *p_s++;
-            if (v >= 240) v = 239; // W/A for special hdmi values
-            *p_t++ = v;
-        }
-    }
-}
 
 extern "C" void QG_SetPalette(unsigned char palette[768]) {
 	for (int i = 0; i < 256; i++) {

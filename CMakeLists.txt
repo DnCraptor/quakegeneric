@@ -29,7 +29,7 @@ option(ZERO2 "RP2350-PiZero" OFF)
 #set(m1p2launcher ON)
 
 set(VGA_HDMI ON)
-set(DVI_HSTX ON)       # enable DVI HSTX driver (Murmulator 2.0 only)
+#set(DVI_HSTX ON)       # enable DVI HSTX driver (Murmulator 2.0 only)
 #set(SOFTTV ON)
 #set(TFT ON)
 #set(TFT_INV 0)
@@ -37,16 +37,17 @@ set(DVI_HSTX ON)       # enable DVI HSTX driver (Murmulator 2.0 only)
 #set(ILI9341 ON)
 
 #set(CPU_MHZ 252)
-set(CPU_MHZ 378)
-#set(CPU_MHZ 504)
+#set(CPU_MHZ 378)
+set(CPU_MHZ 504)
 
-set(FLASH_MHZ 100)
-#set(FLASH_MHZ 166)
+#set(FLASH_MHZ 88)
+#set(FLASH_MHZ 100)
+set(FLASH_MHZ 166)
 
 set (PORT_VERSION "1.09")
 
-#set (MURM ON)
-set (MURM2 ON)
+set (MURM ON)
+#set (MURM2 ON)
 #set (PICO_PC ON)
 #set (PICO_DV ON)
 #set (ZERO ON)
@@ -86,6 +87,7 @@ endif()
 IF(MURM2)
     SET(BUILD_NAME "m2${PROJECT_NAME}")
     set (BUTTER_PSRAM_GPIO 8)
+    set (DVI_HSTX ON)
 ELSEIF(PICO_PC)
     SET(BUILD_NAME "PC${PROJECT_NAME}")
     set (BUTTER_PSRAM_GPIO 8)
@@ -281,7 +283,7 @@ target_compile_options(${PROJECT_NAME} PUBLIC
         -Wno-error=stringop-truncation
         -Wno-error=restrict
         -w
-        -fstack-usage
+#        -fstack-usage
 )
 endif ()
 
