@@ -30,8 +30,8 @@ void CDAudio_Play(byte track, qboolean looping)
 	} else {
 		play_file = malloc(sizeof(FIL));
 	}
-	char b[64];
-	snprintf(b, 64, "/QUAKE/CD/out%02d.cdr", track);
+	char b[22];
+	snprintf(b, 22, "/QUAKE/CD/out%02d.cdr", track);
 	Con_Printf("CDAudio_Play %s %s\n", b, looping ? "(in a loop)" : "");
 	play_looping = looping;
 	play_paused = 0;
@@ -41,12 +41,28 @@ void CDAudio_Play(byte track, qboolean looping)
 	// TODO: prebuf
 }
 
+qboolean CDAudio_GetPCM(unsigned char* buf, size_t len) {
+	if (!play_file || play_paused || (!play_looping && f_eof(play_file))) return 0;
+	UINT br;
+	if (f_read(play_file, buf, len, &br) != FR_OK) return 0;
+	if (br < len) {
+		if (play_looping) {
+			if (f_lseek(play_file, 0) != FR_OK) return 0;
+			return CDAudio_GetPCM(buf + br, len - br);
+		} else {
+			memset(buf + br, 0, len - br);
+			CDAudio_Stop();
+		}
+	}
+	return 1;
+}
 
 void CDAudio_Stop(void)
 {
 	if (play_file) {
 		Con_Printf("CDAudio_Stop\n");
 		f_close(play_file);
+		free(play_file);
 		play_file = 0;
 	}
 }
