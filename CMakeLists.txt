@@ -165,6 +165,7 @@ file(GLOB_RECURSE SRC
 	${PROJECT_SOURCE_DIR}/source/mathlib.c
 	${PROJECT_SOURCE_DIR}/source/main.cpp
 	${PROJECT_SOURCE_DIR}/source/menu.c
+	${PROJECT_SOURCE_DIR}/source/mixer.cpp
 	${PROJECT_SOURCE_DIR}/source/model.c
 	${PROJECT_SOURCE_DIR}/source/net_loop.c
 	${PROJECT_SOURCE_DIR}/source/net_main.c

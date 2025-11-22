@@ -21,6 +21,7 @@
 #endif
 
 #include "graphics.h"
+#include "mixer.h"
 
 #include "audio.h"
 #include "ff.h"
@@ -66,6 +67,7 @@ struct input_bits_t {
 
 input_bits_t gamepad1_bits = { false, false, false, false, false, false, false, false };
 static input_bits_t gamepad2_bits = { false, false, false, false, false, false, false, false };
+static input_bits_t kbd_bits = { false, false, false, false, false, false, false, false };
 
 typedef struct key_action_s {
     int key;
@@ -77,6 +79,21 @@ volatile static size_t next_key_action = 0;
 
 inline static void add_key(int key, int down) {
     if (next_key_action == 32) return;
+    if (next_key_action > 0) { // reduce actions
+        const key_action_t& pk = key_actions[next_key_action - 1];
+        if (pk.key == key && pk.down == down) return;
+    }
+    // <-> protection
+    if (kbd_bits.right && key == K_LEFTARROW) add_key(K_RIGHTARROW, 0);
+    if (kbd_bits.left && key == K_RIGHTARROW) add_key(K_LEFTARROW, 0);
+    if (kbd_bits.up && key == K_DOWNARROW) add_key(K_UPARROW, 0);
+    if (kbd_bits.down && key == K_UPARROW) add_key(K_DOWNARROW, 0);
+
+    if (key == K_RIGHTARROW) kbd_bits.right = down;
+    if (key == K_LEFTARROW) kbd_bits.left = down;
+    if (key == K_DOWNARROW) kbd_bits.down = down;
+    if (key == K_UPARROW) kbd_bits.up = down;
+
     key_action_t& k = key_actions[next_key_action++];
     k.key = key;
     k.down = down;
@@ -1076,6 +1093,7 @@ int main() {
     #endif
     exception_set_exclusive_handler(HARDFAULT_EXCEPTION, sigbus);
 #endif
+    mixer_init();
     switch_stack(STACK_CORE0, finish_him);
     __unreachable();
 }
