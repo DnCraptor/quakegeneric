@@ -25,14 +25,18 @@ static qboolean play_paused = 0;
 
 void CDAudio_Play(byte track, qboolean looping)
 {
-	char b[256];
-	snprintf(b, 256, "/QUAKE/CD/out%02d.cdr", track);
+	if (play_file) {
+		f_close(play_file);
+	} else {
+		play_file = malloc(sizeof(FIL));
+	}
+	char b[64];
+	snprintf(b, 64, "/QUAKE/CD/out%02d.cdr", track);
 	Con_Printf("CDAudio_Play %s %s\n", b, looping ? "(in a loop)" : "");
 	play_looping = looping;
 	play_paused = 0;
-	play_file = malloc(sizeof(FIL));
 	if (f_open(play_file, b, FA_READ) != FR_OK) {
-		CDAudio_Stop();
+		
 	}
 	// TODO: prebuf
 }
@@ -43,7 +47,6 @@ void CDAudio_Stop(void)
 	if (play_file) {
 		Con_Printf("CDAudio_Stop\n");
 		f_close(play_file);
-		free(play_file);
 		play_file = 0;
 	}
 }
