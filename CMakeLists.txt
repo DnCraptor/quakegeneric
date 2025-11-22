@@ -28,21 +28,21 @@ option(ZERO2 "RP2350-PiZero" OFF)
 
 #set(m1p2launcher ON)
 
-#set(VGA_HDMI ON)
+set(VGA_HDMI ON)
 #set(DVI_HSTX ON)       # enable DVI HSTX driver (Murmulator 2.0 only)
 #set(SOFTTV ON)
-set(TFT ON)
+#set(TFT ON)
 #set(TFT_INV 0)
-set(TFT_INV 1)
+#set(TFT_INV 1)
 #set(ILI9341 ON)
 
 #set(CPU_MHZ 252)
 #set(CPU_MHZ 378)
 set(CPU_MHZ 504)
 
-#set(FLASH_MHZ 88)
-#set(FLASH_MHZ 100)
-set(FLASH_MHZ 166)
+#set(PSRAM_MHZ 88)
+#set(PSRAM_MHZ 100)
+set(PSRAM_MHZ 166)
 
 set (PORT_VERSION "1.09")
 
@@ -304,7 +304,7 @@ endif()
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     PORT_VERSION="${PORT_VERSION}"
     CPU_MHZ=${CPU_MHZ}
-    MAX_PSRAM_FREQ_MHZ=${FLASH_MHZ}
+    MAX_PSRAM_FREQ_MHZ=${PSRAM_MHZ}
     DEFAULT_THROTTLING=0
     DEBUG=0
 )
@@ -701,7 +701,7 @@ if(DVI_HSTX)
     SET(BUILD_NAME "${BUILD_NAME}-HSTX")
 endif()
 
-SET(BUILD_NAME "${BUILD_NAME}-${CPU_MHZ}MHz-F${FLASH_MHZ}MHz-${PORT_VERSION}")
+SET(BUILD_NAME "${BUILD_NAME}-${CPU_MHZ}MHz-P${PSRAM_MHZ}MHz-${PORT_VERSION}")
 
 IF(m1p2launcher)
     IF(MURM2)

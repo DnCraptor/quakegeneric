@@ -1,7 +1,7 @@
 #include "graphics.h"
 #include <string.h>
 
-static struct video_mode_t video_mode[] = {
+static struct video_mode_t __scratch_x("video_mode") video_mode[] = {
     { // 640x480 60Hz
         .h_total = 524,
         .h_width = 480,
@@ -68,7 +68,7 @@ void draw_window(const char title[TEXTMODE_COLS + 1], uint32_t x, uint32_t y, ui
     draw_text(line, x + (width - strlen(line)) / 2, y, 14, 3);
 }
 
-struct video_mode_t graphics_get_video_mode(int mode)
+struct video_mode_t __time_critical_func() graphics_get_video_mode(int mode)
 {
     return video_mode[mode];
 }

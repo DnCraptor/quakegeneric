@@ -828,7 +828,7 @@ static void __not_in_flash_func(flash_info)() {
     }
 }
 
-extern "C" void vsync_handler() {
+extern "C" void __time_critical_func() vsync_handler() {
 
 }
 
@@ -836,7 +836,7 @@ extern "C" uint8_t* get_line_buffer(int line) {
     return FRAME_BUF + QUAKEGENERIC_RES_X * line;
 }
 
-extern "C" int get_video_mode() {
+extern "C" int __time_critical_func() get_video_mode() {
     return 0;
 }
 

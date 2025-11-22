@@ -33,7 +33,7 @@ const struct pio_program pio_program_VGA = {
 };
 
 
-static uint32_t* lines_pattern[4];
+static uint32_t* __scratch_x("lines_pattern") lines_pattern[4];
 static uint32_t* lines_pattern_data = NULL;
 static int _SM_VGA = -1;
 
@@ -73,11 +73,11 @@ static uint16_t* txt_palette_fast = NULL;
 
 enum graphics_mode_t graphics_mode = GRAPHICSMODE_DEFAULT;
 
+static uint32_t __scratch_x("frame_number") frame_number = 0;
+static uint32_t __scratch_x("screen_line") screen_line = 0;
+
 void __time_critical_func() dma_handler_VGA() {
     dma_hw->ints0 = 1u << dma_chan_ctrl;
-    static uint32_t frame_number = 0;
-    static uint32_t screen_line = 0;
-    static uint8_t* input_buffer = NULL;
     screen_line++;
 
     struct video_mode_t mode = graphics_get_video_mode(get_video_mode());
@@ -86,7 +86,6 @@ void __time_critical_func() dma_handler_VGA() {
         vsync_handler();
         screen_line = 0;
         frame_number++;
-        input_buffer = FRAME_BUF;
     }
 
     if (screen_line >= mode.h_width) {
@@ -108,11 +107,6 @@ void __time_critical_func() dma_handler_VGA() {
             dma_channel_set_read_addr(dma_chan_ctrl, &lines_pattern[0], false);
         return;
     }
-
-    if (!input_buffer) {
-        dma_channel_set_read_addr(dma_chan_ctrl, &lines_pattern[0], false);
-        return;
-    } //если нет видеобуфера - рисуем пустую строку
 
     int y, line_number;
 
