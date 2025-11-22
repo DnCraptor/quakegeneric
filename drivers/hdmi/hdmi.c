@@ -43,8 +43,8 @@ static int dma_chan_pal_conv;
 
 //DMA буферы
 //основные строчные данные
-static uint32_t* __scratch_x("hdmi_ptr_3") dma_lines[2] = { NULL,NULL };
-static uint32_t* __scratch_x("hdmi_ptr_4") DMA_BUF_ADDR[2];
+static uint32_t* __scratch_y("hdmi_ptr_3") dma_lines[2] = { NULL,NULL };
+static uint32_t* __scratch_y("hdmi_ptr_4") DMA_BUF_ADDR[2];
 
 //ДМА палитра для конвертации
 //в хвосте этой памяти выделяется dma_data
@@ -165,7 +165,7 @@ uint8_t* get_line_buffer(int line);
 void vsync_handler();
 int get_video_mode();
 
-static void __scratch_x("hdmi_driver") dma_handler_HDMI() {
+static void __scratch_y("hdmi_driver") dma_handler_HDMI() {
     static uint32_t inx_buf_dma;
     static uint line = 0;
     struct video_mode_t mode = graphics_get_video_mode(get_video_mode());

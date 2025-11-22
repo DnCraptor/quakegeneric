@@ -28,12 +28,12 @@ option(ZERO2 "RP2350-PiZero" OFF)
 
 #set(m1p2launcher ON)
 
-set(VGA_HDMI ON)
+#set(VGA_HDMI ON)
 #set(DVI_HSTX ON)       # enable DVI HSTX driver (Murmulator 2.0 only)
 #set(SOFTTV ON)
-#set(TFT ON)
+set(TFT ON)
 #set(TFT_INV 0)
-#set(TFT_INV 1)
+set(TFT_INV 1)
 #set(ILI9341 ON)
 
 #set(CPU_MHZ 252)

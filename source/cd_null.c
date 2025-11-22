@@ -41,6 +41,7 @@ void CDAudio_Play(byte track, qboolean looping)
 void CDAudio_Stop(void)
 {
 	if (play_file) {
+		Con_Printf("CDAudio_Stop\n");
 		f_close(play_file);
 		free(play_file);
 		play_file = 0;
@@ -50,12 +51,14 @@ void CDAudio_Stop(void)
 
 void CDAudio_Pause(void)
 {
+	Con_Printf("CDAudio_Pause\n");
 	play_paused = 1;
 }
 
 
 void CDAudio_Resume(void)
 {
+	Con_Printf("CDAudio_Resume\n");
 	play_paused = 0;
 }
 

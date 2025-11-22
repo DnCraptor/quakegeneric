@@ -591,6 +591,7 @@ void _Host_Frame (float time)
 	int			pass1, pass2, pass3;
 
 	if (setjmp (host_abortserver) ) {
+		Con_Printf("WARN: host_abortserver handled!\n");
 		return;			// something bad happened, or the server disconnected
 	}
 

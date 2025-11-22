@@ -36,7 +36,11 @@
 #define MADCTL_MX  (1 << 6) // Column Address Order (X flip)
 
 uint8_t TFT_FLAGS = MADCTL_ROW_COLUMN_EXCHANGE | MADCTL_BGR_PIXEL_ORDER;
+#if TFT_INV
+uint8_t TFT_INVERSION = 1;
+#else
 uint8_t TFT_INVERSION = 0;
+#endif
 
 #define CHECK_BIT(var, pos) (((var)>>(pos)) & 1)
 
@@ -44,7 +48,7 @@ static uint sm = 0;
 static PIO pio = pio0;
 static uint st7789_chan;
 
-static uint16_t __scratch_x("tft_palette") palette[64];
+static uint16_t __scratch_x("tft_palette") palette[256];
 
 static uint graphics_buffer_width = 0;
 static uint graphics_buffer_height = 0;
@@ -242,79 +246,18 @@ void graphics_init() {
     
     lcd_init(init_seq);
     gpio_put(TFT_LED_PIN, 1);
-
-    for (uint8_t c = 0; c <= 0b00111111; ++c) {
-        size_t idx = 0;
-        switch (c)
-        {
-        case 0b000000: idx = 0; break; // black
-
-        case 0b000001: idx = 4; break; // red
-        case 0b000010: idx = 4; break;
-
-        case 0b000011: idx = 12; break; // light red
-        case 0b010011: idx = 12; break;
-
-        case 0b000100: idx = 2; break; // green
-        case 0b001000: idx = 2; break;
-        case 0b001001: idx = 2; break;
-
-        case 0b001100: idx = 10; break; // light green
-
-        case 0b010000: idx = 1; break; // blue
-        case 0b100000: idx = 1; break;
-
-        case 0b110000: idx = 9; break; // light blue
-
-        case 0b000101: idx = 8; break; // yellow
-        case 0b000110: idx = 8; break;
-        case 0b001010: idx = 8; break;
-        case 0b001011: idx = 8; break;
-        case 0b001110: idx = 8; break;
-
-        case 0b001111: idx = 14; break; // light tellow
-
-        case 0b010001: idx = 5; break; // magenta
-        case 0b010010: idx = 5; break;
-        case 0b100001: idx = 5; break;
-        case 0b100010: idx = 5; break;
-        case 0b110010: idx = 5; break;
-        case 0b100011: idx = 5; break;
-
-        case 0b110011: idx = 13; break; // light magenta
-
-        case 0b010100: idx = 3; break; // cyan
-        case 0b100100: idx = 3; break;
-        case 0b011000: idx = 3; break;
-        case 0b101000: idx = 3; break;
-        case 0b111000: idx = 3; break;
-        case 0b101100: idx = 3; break;
-
-        case 0b111100: idx = 11; break; // light cyan
-
-        case 0b010101: idx = 7; break; // gray
-        case 0b010110: idx = 7; break;
-        case 0b100101: idx = 7; break;
-        case 0b100110: idx = 7; break;
-        case 0b010111: idx = 7; break;
-        case 0b011001: idx = 7; break;
-        case 0b011111: idx = 7; break;
-        case 0b111001: idx = 7; break;
-        case 0b111010: idx = 7; break;
-        case 0b101001: idx = 7; break;
-        case 0b101010: idx = 7; break;
-
-        case 0b111111: idx = 15; break; // white
-
-        case 0b000111: idx = 16; break; // orange
-
-        default: idx = 15; break;
-        }
-        palette[c] = textmode_palette_tft[idx];
-    }
+    for (int i = 0; i < 256; ++i) palette[i] = (uint16_t)i << 8;
     clrScr(0);
 
     create_dma_channel();
+}
+
+void graphics_set_palette(uint8_t i, uint32_t color) {
+    palette[i] = RGB888(
+        ((color >> 16) & 0xFF),
+        ((color >> 8) & 0xFF),
+        (color & 0xFF)
+    );
 }
 
 void inline graphics_set_mode(const enum graphics_mode_t mode) {
@@ -360,21 +303,16 @@ uint8_t* get_line_buffer(int line);
 void vsync_handler();
 
 void __inline __scratch_x("refresh_lcd") refresh_lcd() {
-    vsync_handler();
-    switch (graphics_mode) {
-        case GRAPHICSMODE_DEFAULT: {
-            lcd_set_window(graphics_buffer_shift_x, graphics_buffer_shift_y, graphics_buffer_width,
-                           graphics_buffer_height);
-            start_pixels();
-            for (register size_t y = 0; y < graphics_buffer_height; ++y) {
-                register uint8_t* bitmap = get_line_buffer(y);
-                if (!bitmap) continue;
-                for (register size_t x = 0; x < graphics_buffer_width; ++x) {
-                    register uint8_t c = bitmap[x ^ 2];
-                    st7789_lcd_put_pixel(pio, sm, palette[c & 0b111111]);
-                }
-            }
-            stop_pixels();
+    lcd_set_window(graphics_buffer_shift_x, graphics_buffer_shift_y, graphics_buffer_width,
+                    graphics_buffer_height);
+    start_pixels();
+    for (register size_t y = 0; y < graphics_buffer_height; ++y) {
+        register uint8_t* bitmap = get_line_buffer(y);
+        if (!bitmap) continue;
+        for (register size_t x = 0; x < graphics_buffer_width; ++x) {
+            st7789_lcd_put_pixel(pio, sm, palette[ bitmap[x] ]);
         }
     }
+    stop_pixels();
+    vsync_handler();
 }

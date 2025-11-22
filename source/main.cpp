@@ -525,7 +525,7 @@ void repeat_me_for_input() {
 }
 
 //uint8_t* FRAME_BUF = (uint8_t*)0x20000000; // temp "trash" value
-uint8_t FRAME_BUF[QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y] = { 0 };
+uint8_t __aligned(4) FRAME_BUF[QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y] = { 0 };
 
 #if DVI_HSTX
 
@@ -626,6 +626,9 @@ void __scratch_x("render") render_core() {
     sem_acquire_blocking(&vga_start_semaphore);
     while (true) {
         tight_loop_contents();
+#if TFT
+        refresh_lcd();
+#endif
     }
     __unreachable();
 }
