@@ -19,23 +19,37 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "quakedef.h"
 
+static FIL* play_file = 0;
+static qboolean play_looping = 0;
+static qboolean play_paused = 0;
+
 void CDAudio_Play(byte track, qboolean looping)
 {
+	Con_Printf("CDAudio_Play %d %d\n", track, looping);
+	/// TODO: .ccd
+	play_looping = looping;
 }
 
 
 void CDAudio_Stop(void)
 {
+	if (play_file) {
+		f_close(play_file);
+		free(play_file);
+		play_file = 0;
+	}
 }
 
 
 void CDAudio_Pause(void)
 {
+	play_paused = 1;
 }
 
 
 void CDAudio_Resume(void)
 {
+	play_paused = 0;
 }
 
 
@@ -52,4 +66,5 @@ int CDAudio_Init(void)
 
 void CDAudio_Shutdown(void)
 {
+	CDAudio_Stop();
 }

@@ -72,11 +72,11 @@ typedef struct key_action_s {
     int down;
 } key_action_t;
 
-key_action_t key_actions[16] = { 0 };
-size_t next_key_action = 0;
+static key_action_t key_actions[32] = { 0 };
+volatile static size_t next_key_action = 0;
 
 inline static void add_key(int key, int down) {
-    if (next_key_action == 16) return;
+    if (next_key_action == 32) return;
     key_action_t& k = key_actions[next_key_action++];
     k.key = key;
     k.down = down;
@@ -907,6 +907,67 @@ extern "C" void QG_GetJoyAxes(float *axes)
     *axes = 0;
 }
 
+static int argc = 1;
+static char** argv = nullptr;
+static char arg0[] = "quake";
+static char buf[256];     // Статический, чтобы указатели в argv были валидны
+
+static void create_argv() {
+    FIL* f = new FIL();
+    if (f_open(f, "/quake/argv.conf", FA_READ) == FR_OK) {
+        UINT br = 0;
+        if (f_read(f, buf, sizeof(buf) - 1, &br) == FR_OK && br > 0) {
+            // Гарантировать 0-терминацию
+            buf[br] = 0;
+            // === Подсчёт токенов ===
+            int count = 1; // Включая argv[0]
+            bool in_token = false;
+            for (UINT i = 0; i < br; ++i) {
+                char c = buf[i];
+                bool sep = (c == ' ' || c == '\t' || c == '\r' || c == '\n');
+                if (!sep) {
+                    if (!in_token)
+                        ++count;
+                    in_token = true;
+                } else {
+                    buf[i] = 0;   // нормализуем
+                    in_token = false;
+                }
+            }
+            // === Выделение argv ===
+            argv = new char*[count + 1];
+            int idx = 0;
+            // argv[0] = "quake"
+            argv[idx++] = arg0;
+            // === Заполнение argv ===
+            char* p = buf;
+            while (idx < count && p < buf + br) {
+                if (*p != 0) {
+                    argv[idx++] = p;
+                    // перейти к концу токена
+                    while (*p) ++p;
+                }
+                ++p; // пропуск нулевого разделителя
+            }
+            // NULL-терминатор
+            argv[idx] = nullptr;
+            argc = count;
+        } else {
+            f_close(f);
+            goto hw;
+        }
+        f_close(f);
+    } else {
+        hw:
+        // файл отсутствует → использовать только arg0
+        argv = new char*[2];
+        argv[0] = arg0;
+        argv[1] = nullptr;
+        argc = 1;
+    }
+    delete f;
+}
+
 __attribute__((noreturn))
 static void finish_him(void) {
     uint32_t sp_after;
@@ -943,13 +1004,7 @@ static void finish_him(void) {
     multicore_launch_core1(render_core);
     sem_release(&vga_start_semaphore);
 
-    int argc = 3;
-    char* argv[] = {
-        "quake",
-        "-basedir",
-        HOME_DIR,
-        0
-    };
+    create_argv();
 	QG_Create(argc, argv);
 	Sys_Printf ("QG_Create done\n");
 
