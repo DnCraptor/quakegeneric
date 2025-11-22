@@ -917,12 +917,16 @@ r_refdef must be set before the first call
 */
 void R_RenderView_ (void)
 {
-	byte* warpbuffer = (byte*)Hunk_TempAlloc(
-		(WARP_WIDTH * WARP_HEIGHT) +
-		(NUMSTACKEDGES + ((CACHE_SIZE - 1) / sizeof(edge_t)) + 1) * sizeof(edge_t) +
-		(NUMSTACKSURFACES +	((CACHE_SIZE - 1) / sizeof(surf_t)) + 1) * sizeof(surf_t) +
-		(MAXSPANS * sizeof(espan_t) + CACHE_SIZE)
-	);
+	static byte* warpbuffer = 0;
+	if (!warpbuffer) {
+		warpbuffer = (byte*)alloc(
+			(WARP_WIDTH * WARP_HEIGHT) +
+			(NUMSTACKEDGES + ((CACHE_SIZE - 1) / sizeof(edge_t)) + 1) * sizeof(edge_t) +
+			(NUMSTACKSURFACES +	((CACHE_SIZE - 1) / sizeof(surf_t)) + 1) * sizeof(surf_t) +
+			(MAXSPANS * sizeof(espan_t) + CACHE_SIZE),
+			"warpbuffer"
+		);
+	}
 
 	r_warpbuffer = warpbuffer;
 

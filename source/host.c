@@ -590,8 +590,12 @@ void _Host_Frame (float time)
 	static double		time3 = 0;
 	int			pass1, pass2, pass3;
 
+	int hm = Hunk_HighMark();
+	int lm = Hunk_LowMark();
 	if (setjmp (host_abortserver) ) {
 		Con_Printf("WARN: host_abortserver handled!\n");
+		Hunk_FreeToLowMark(lm);
+		Hunk_FreeToHighMark(hm);
 		return;			// something bad happened, or the server disconnected
 	}
 

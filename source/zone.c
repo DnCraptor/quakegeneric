@@ -438,13 +438,13 @@ void *Hunk_Alloc (int size)
 
 int	Hunk_LowMark (void)
 {
-	Sys_Printf("Hunk_LowMark %ph\n", hunk_low_used);
+	//Sys_Printf("Hunk_LowMark %ph\n", hunk_low_used);
 	return hunk_low_used;
 }
 
 void Hunk_FreeToLowMark (int mark)
 {
-	Sys_Printf("Hunk_FreeToLowMark(%ph)\n", mark);
+	//Sys_Printf("Hunk_FreeToLowMark(%ph)\n", mark);
 	if (mark < 0 || mark > hunk_low_used)
 		Sys_Error ("Hunk_FreeToLowMark: bad mark %i", mark);
 	memset (hunk_base + mark, 0, hunk_low_used - mark);
@@ -455,21 +455,21 @@ int	Hunk_HighMark (void)
 {
 	if (hunk_tempactive)
 	{
-		Sys_Printf("Hunk_HighMark hunk_tempactive!\n");
+		//Sys_Printf("Hunk_HighMark hunk_tempactive!\n");
 		hunk_tempactive = false;
 		Hunk_FreeToHighMark (hunk_tempmark);
 	}
 
-	Sys_Printf("Hunk_HighMark %ph\n", hunk_high_used);
+	//Sys_Printf("Hunk_HighMark %ph\n", hunk_high_used);
 	return hunk_high_used;
 }
 
 void Hunk_FreeToHighMark (int mark)
 {
-	Sys_Printf("Hunk_FreeToHighMark(%ph)\n", mark);
+	//Sys_Printf("Hunk_FreeToHighMark(%ph)\n", mark);
 	if (hunk_tempactive)
 	{
-		Sys_Printf("Hunk_FreeToHighMark hunk_tempactive!\n");
+		//Sys_Printf("Hunk_FreeToHighMark hunk_tempactive!\n");
 		hunk_tempactive = false;
 		Hunk_FreeToHighMark (hunk_tempmark);
 	}
