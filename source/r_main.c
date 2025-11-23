@@ -844,8 +844,15 @@ void R_DrawBEntitiesOnList (void)
 R_EdgeDrawing
 ================
 */
-void R_EdgeDrawing (edge_t* ledges, surf_t* lsurfs, espan_t* basespan_p)
+static void R_EdgeDrawing ()
 {
+	static void* ledges = 0;
+	static void* lsurfs = 0;
+	if (!ledges) {
+		ledges = alloc((NUMSTACKEDGES + ((CACHE_SIZE - 1) / sizeof(edge_t)) + 1) * sizeof(edge_t), "ledges");
+		lsurfs = alloc((NUMSTACKSURFACES +	((CACHE_SIZE - 1) / sizeof(surf_t)) + 1) * sizeof(surf_t), "lsurfs");
+	}
+
 	if (auxedges)
 	{
 		r_edges = auxedges;
@@ -875,7 +882,7 @@ void R_EdgeDrawing (edge_t* ledges, surf_t* lsurfs, espan_t* basespan_p)
 	R_RenderWorld ();
 
 	if (r_drawculledpolys)
-		R_ScanEdges (basespan_p);
+		R_ScanEdges ();
 
 // only the world can be drawn back to front with no z reads or compares, just
 // z writes, so have the driver turn z compares on now
@@ -903,7 +910,7 @@ void R_EdgeDrawing (edge_t* ledges, surf_t* lsurfs, espan_t* basespan_p)
 	}
 	
 	if (!(r_drawpolys | r_drawculledpolys)) {
-		R_ScanEdges (basespan_p);
+		R_ScanEdges ();
 	}
 }
 
@@ -920,10 +927,7 @@ void R_RenderView_ (void)
 	static byte* warpbuffer = 0;
 	if (!warpbuffer) {
 		warpbuffer = (byte*)alloc(
-			(WARP_WIDTH * WARP_HEIGHT) +
-			(NUMSTACKEDGES + ((CACHE_SIZE - 1) / sizeof(edge_t)) + 1) * sizeof(edge_t) +
-			(NUMSTACKSURFACES +	((CACHE_SIZE - 1) / sizeof(surf_t)) + 1) * sizeof(surf_t) +
-			(MAXSPANS * sizeof(espan_t) + CACHE_SIZE),
+			WARP_WIDTH * WARP_HEIGHT,
 			"warpbuffer"
 		);
 	}
@@ -957,19 +961,7 @@ SetVisibilityByPassages ();
 		VID_LockBuffer ();
 	}
 
-	{
-		edge_t*	ledges = (edge_t*)(warpbuffer + (WARP_WIDTH * WARP_HEIGHT));
-		surf_t*	lsurfs = (surf_t*)(warpbuffer + 
-			(WARP_WIDTH * WARP_HEIGHT) +
-			(NUMSTACKEDGES + ((CACHE_SIZE - 1) / sizeof(edge_t)) + 1) * sizeof(edge_t)
-		);
-		espan_t* basespan_p = (espan_t*)(warpbuffer + 
-			(WARP_WIDTH * WARP_HEIGHT) +
-			(NUMSTACKEDGES + ((CACHE_SIZE - 1) / sizeof(edge_t)) + 1) * sizeof(edge_t) +
-			(NUMSTACKSURFACES +	((CACHE_SIZE - 1) / sizeof(surf_t)) + 1) * sizeof(surf_t)
-		);
-		R_EdgeDrawing (ledges, lsurfs, basespan_p);
-	}
+	R_EdgeDrawing ();
 
 	if (!r_dspeeds.value)
 	{
