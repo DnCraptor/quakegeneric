@@ -205,9 +205,11 @@ R_RemoveEdges
 */
 void R_RemoveEdges (edge_t *pedge)
 {
-
 	do
 	{
+		if (pedge->next >= 0x20000000 + 520*1024) {
+			Sys_Printf("pedge: %ph; pedge->next: %ph; pedge->prev: %ph\n", pedge, pedge->next, pedge->prev);
+		}
 		pedge->next->prev = pedge->prev;
 		pedge->prev->next = pedge->next;
 	} while ((pedge = pedge->nextremove) != NULL);

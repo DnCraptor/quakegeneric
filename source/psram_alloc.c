@@ -38,6 +38,6 @@ void* alloc(unsigned int sz, const char* for_what) {
 	if (base > get_sp()) {
 		Sys_Printf("WARN! PSRAM alloc(%d, %s) crosses core0 stack: %ph over SP %ph\n", sz, for_what, base, get_sp());
 	}
-	Sys_Printf("alloc(%d, %s) %ph -> %ph\n", sz, for_what, res, base);
+	Sys_Printf("alloc(%d, %s) %ph -> %ph (sp: %ph)\n", sz, for_what, res, base, get_sp());
 	return res;
 }
