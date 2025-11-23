@@ -644,11 +644,8 @@ void R_ScanEdges ()
 {
 	int		iv, bottom;
 	surf_t	*s;
+	byte	basespans[MAXSPANS*sizeof(espan_t)+CACHE_SIZE];
 
-	static void* basespans = 0;
-	if (!basespans) {
-		basespans = alloc(MAXSPANS * sizeof(espan_t) + CACHE_SIZE, "basespans");
-	}
 	espan_t* basespan_p = (espan_t *)
 			((intptr_t)(basespans + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
 	max_span_p = &basespan_p[MAXSPANS - r_refdef.vrect.width];

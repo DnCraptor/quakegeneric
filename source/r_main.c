@@ -846,12 +846,8 @@ R_EdgeDrawing
 */
 static void R_EdgeDrawing ()
 {
-	static void* ledges = 0;
-	static void* lsurfs = 0;
-	if (!ledges) {
-		ledges = alloc((NUMSTACKEDGES + ((CACHE_SIZE - 1) / sizeof(edge_t)) + 1) * sizeof(edge_t), "ledges");
-		lsurfs = alloc((NUMSTACKSURFACES +	((CACHE_SIZE - 1) / sizeof(surf_t)) + 1) * sizeof(surf_t), "lsurfs");
-	}
+	edge_t ledges[NUMSTACKEDGES + ((CACHE_SIZE - 1) / sizeof(edge_t)) + 1];
+	surf_t lsurfs[NUMSTACKSURFACES + ((CACHE_SIZE - 1) / sizeof(surf_t)) + 1];
 
 	if (auxedges)
 	{
