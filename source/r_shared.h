@@ -65,7 +65,13 @@ extern	entity_t		*currententity;
 #define	MINEDGES			NUMSTACKEDGES
 #define NUMSTACKSURFACES	800
 #define MINSURFACES			NUMSTACKSURFACES
-#define	MAXSPANS			3000
+
+// wbcbz7 note: those are allocated at stack in R_ScanEdges() and
+// periodically flushed (aka drawn) inside this function....
+// we could probably malloc it instead and get away with much smaller amount to save on SRAM
+// placing it in SRAM already gives extra 2.5 fps so it's worth it
+// upd: smaller amounts don't make rendering faster sadly
+#define	MAXSPANS			3000			// ca. 48k on SRAM heap
 
 // !!! if this is changed, it must be changed in asm_draw.h too !!!
 typedef struct espan_s

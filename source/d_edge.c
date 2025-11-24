@@ -80,7 +80,7 @@ D_DrawSolidSurface
 
 // FIXME: clean this up
 
-void D_DrawSolidSurface (surf_t *surf, int color)
+void __no_inline_not_in_flash_func(D_DrawSolidSurface) (surf_t *surf, int color)
 {
 	espan_t	*span;
 	byte	*pdest;
@@ -120,7 +120,7 @@ void D_DrawSolidSurface (surf_t *surf, int color)
 D_CalcGradients
 ==============
 */
-void D_CalcGradients (msurface_t *pface)
+void __not_in_flash_func(D_CalcGradients) (msurface_t *pface)
 {
 	mplane_t	*pplane;
 	float		mipscale;

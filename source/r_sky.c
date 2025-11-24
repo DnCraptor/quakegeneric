@@ -94,7 +94,7 @@ void R_InitSky (texture_t *mt)
 R_MakeSky
 =================
 */
-void R_MakeSky (void)
+void __no_inline_not_in_flash_func(R_MakeSky) (void)
 {
 	int			x, y;
 	int			ofs, baseofs;

@@ -113,7 +113,7 @@ void D_DrawTurbulent8Span (void)
 Turbulent8
 =============
 */
-void Turbulent8 (espan_t *pspan)
+void __not_in_flash_func(Turbulent8) (espan_t *pspan)
 {
 	int				count;
 	fixed16_t		snext, tnext;

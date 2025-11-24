@@ -293,7 +293,7 @@ void R_TransformFrustum (void)
 TransformVector
 ================
 */
-void TransformVector (vec3_t in, vec3_t out)
+void __not_in_flash_func(TransformVector) (vec3_t in, vec3_t out)
 {
 	out[0] = DotProduct(in,vright);
 	out[1] = DotProduct(in,vup);
