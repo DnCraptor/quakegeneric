@@ -50,8 +50,9 @@ qboolean		r_leftclipped, r_rightclipped;
 static qboolean	makeleftedge, makerightedge;
 qboolean		r_nearzionly;
 
-int		sintable[SIN_BUFFER_SIZE];
-int		intsintable[SIN_BUFFER_SIZE];
+// NOTE: used for turbulence drawing only so should be safe performance-wise to be moved to PSRAM
+__psram_bss ("r_draw") int		sintable[SIN_BUFFER_SIZE];
+__psram_bss ("r_draw") int		intsintable[SIN_BUFFER_SIZE];
 
 mvertex_t	r_leftenter, r_leftexit;
 mvertex_t	r_rightenter, r_rightexit;
