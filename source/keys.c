@@ -27,24 +27,24 @@ key up events are sent even if in console mode
 
 
 #define		MAXCMDLINE	256
-char	key_lines[32][MAXCMDLINE];
-int		key_linepos;
-int		shift_down=false;
-int		key_lastpress;
+__psram_bss("keys") char	key_lines[32][MAXCMDLINE];
+__psram_bss("keys") int		key_linepos;
+__psram_bss("keys") int		shift_down=false;
+__psram_bss("keys") int		key_lastpress;
 
-int		edit_line=0;
-int		history_line=0;
+__psram_bss("keys") int		edit_line=0;
+__psram_bss("keys") int		history_line=0;
 
-keydest_t	key_dest;
+__psram_bss("keys") keydest_t	key_dest;
 
-int		key_count;			// incremented every key event
+__psram_bss("keys") int		key_count;			// incremented every key event
 
-char	*keybindings[256];
-qboolean	consolekeys[256];	// if true, can't be rebound while in console
-qboolean	menubound[256];	// if true, can't be rebound while in menu
-int		keyshift[256];		// key to map to if shift held down in console
-int		key_repeats[256];	// if > 1, it is autorepeating
-qboolean	keydown[256];
+__psram_bss("keys") char	*keybindings[256];
+__psram_bss("keys") qboolean	consolekeys[256];	// if true, can't be rebound while in console
+__psram_bss("keys") qboolean	menubound[256];	// if true, can't be rebound while in menu
+__psram_bss("keys") int		keyshift[256];		// key to map to if shift held down in console
+__psram_bss("keys") int		key_repeats[256];	// if > 1, it is autorepeating
+__psram_bss("keys") qboolean	keydown[256];
 
 typedef struct
 {
@@ -52,7 +52,7 @@ typedef struct
 	int		keynum;
 } keyname_t;
 
-keyname_t keynames[] =
+__psram_data("keys") keyname_t keynames[] =
 {
 	{"TAB", K_TAB},
 	{"ENTER", K_ENTER},
