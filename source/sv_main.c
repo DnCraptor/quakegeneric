@@ -21,10 +21,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 
-server_t		sv = { 0 };
-server_static_t	svs = { 0 };
+__psram_bss ("sv") server_t		sv = { 0 };
+__psram_bss ("sv") server_static_t	svs = { 0 };
 
-char	localmodels[MAX_MODELS][5] = { { 0 } };			// inline model names for precache
+__psram_bss ("sv") char	localmodels[MAX_MODELS][5] = { { 0 } };			// inline model names for precache
 
 //============================================================================
 
