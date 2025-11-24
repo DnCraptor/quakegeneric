@@ -25,19 +25,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "quakedef.h"
 #include "r_local.h"
 
-model_t	*loadmodel;
-char	loadname[32];	// for hunk tags
+__psram_bss ("model") model_t	*loadmodel;
+__psram_bss ("model") char	loadname[32];	// for hunk tags
 
 void Mod_LoadSpriteModel (model_t *mod, void *buffer);
 void Mod_LoadBrushModel (model_t *mod, void *buffer);
 void Mod_LoadAliasModel (model_t *mod, void *buffer);
 model_t *Mod_LoadModel (model_t *mod, qboolean crash);
 
-byte	mod_novis[MAX_MAP_LEAFS/8];
+__psram_bss ("model") byte	mod_novis[MAX_MAP_LEAFS/8];
 
 #define	MAX_MOD_KNOWN	256
-model_t	mod_known[MAX_MOD_KNOWN];
-int		mod_numknown;
+__psram_bss ("model") model_t	mod_known[MAX_MOD_KNOWN];
+__psram_bss ("model") int		mod_numknown;
 
 // values for model_t's needload
 #define NL_PRESENT		0
@@ -345,7 +345,7 @@ model_t *Mod_ForName (char *name, qboolean crash)
 ===============================================================================
 */
 
-byte	*mod_base;
+__psram_bss ("model") byte	*mod_base;
 
 
 /*

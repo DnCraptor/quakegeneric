@@ -54,6 +54,12 @@ jmp_buf 	host_abortserver;
 byte		*host_basepal;
 byte		*host_colormap;
 
+#define COLORMAP_IN_SRAM
+
+#ifdef COLORMAP_IN_SRAM
+byte		colormap_sram[256*64 + 8];
+#endif
+
 cvar_t	host_framerate = {"host_framerate","0"};	// set for slow motion
 cvar_t	host_speeds = {"host_speeds","0"};			// set for running times
 
@@ -843,7 +849,11 @@ void Host_Init (quakeparms_t *parms)
 		host_basepal = (byte *)COM_LoadHunkFile ("gfx/palette.lmp");
 		if (!host_basepal)
 			Sys_Error ("Couldn't load gfx/palette.lmp");
-		host_colormap = (byte *)COM_LoadHunkFile ("gfx/colormap.lmp");
+#ifndef COLORMAP_IN_SRAM
+			host_colormap = (byte *)COM_LoadHunkFile ("gfx/colormap.lmp");
+#else
+			host_colormap = (byte *)COM_LoadStackFile("gfx/colormap.lmp", &colormap_sram, sizeof(colormap_sram));
+#endif
 		if (!host_colormap)
 			Sys_Error ("Couldn't load gfx/colormap.lmp");
 

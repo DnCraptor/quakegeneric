@@ -22,75 +22,75 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "quakedef.h"
 #include "net_vcr.h"
 
-qsocket_t	*net_activeSockets = NULL;
-qsocket_t	*net_freeSockets = NULL;
-int			net_numsockets = 0;
+__psram_bss ("net_main") qsocket_t	*net_activeSockets = NULL;
+__psram_bss ("net_main") qsocket_t	*net_freeSockets = NULL;
+__psram_bss ("net_main") int			net_numsockets = 0;
 
-qboolean	serialAvailable = false;
-qboolean	ipxAvailable = false;
-qboolean	tcpipAvailable = false;
+__psram_bss ("net_main") qboolean	serialAvailable = false;
+__psram_bss ("net_main") qboolean	ipxAvailable = false;
+__psram_bss ("net_main") qboolean	tcpipAvailable = false;
 
-int			net_hostport;
-int			DEFAULTnet_hostport = 26000;
+__psram_bss ("net_main") int			net_hostport;
+__psram_data("net_main") int			DEFAULTnet_hostport = 26000;
 
-char		my_ipx_address[NET_NAMELEN];
-char		my_tcpip_address[NET_NAMELEN];
+__psram_bss ("net_main") char		my_ipx_address[NET_NAMELEN];
+__psram_bss ("net_main") char		my_tcpip_address[NET_NAMELEN];
 
 void (*GetComPortConfig) (int portNumber, int *port, int *irq, int *baud, qboolean *useModem);
 void (*SetComPortConfig) (int portNumber, int port, int irq, int baud, qboolean useModem);
 void (*GetModemConfig) (int portNumber, char *dialType, char *clear, char *init, char *hangup);
 void (*SetModemConfig) (int portNumber, char *dialType, char *clear, char *init, char *hangup);
 
-static qboolean	listening = false;
+__psram_bss ("net_main") static qboolean	listening = false;
 
-qboolean	slistInProgress = false;
-qboolean	slistSilent = false;
-qboolean	slistLocal = true;
-static double	slistStartTime;
-static int		slistLastShown;
+__psram_bss ("net_main") qboolean	slistInProgress = false;
+__psram_bss ("net_main") qboolean	slistSilent = false;
+__psram_data("net_main") qboolean	slistLocal = true;
+__psram_bss ("net_main") static double	slistStartTime;
+__psram_bss ("net_main") static int		slistLastShown;
 
 static void Slist_Send(void);
 static void Slist_Poll(void);
-PollProcedure	slistSendProcedure = {NULL, 0.0, Slist_Send};
-PollProcedure	slistPollProcedure = {NULL, 0.0, Slist_Poll};
+__psram_data("net_main") PollProcedure	slistSendProcedure = {NULL, 0.0, Slist_Send};
+__psram_data("net_main") PollProcedure	slistPollProcedure = {NULL, 0.0, Slist_Poll};
 
 
-sizebuf_t		net_message;
-int				net_activeconnections = 0;
+__psram_bss ("net_main") sizebuf_t		net_message;
+__psram_bss ("net_main") int				net_activeconnections = 0;
 
-int messagesSent = 0;
-int messagesReceived = 0;
-int unreliableMessagesSent = 0;
-int unreliableMessagesReceived = 0;
+__psram_bss ("net_main") int messagesSent = 0;
+__psram_bss ("net_main") int messagesReceived = 0;
+__psram_bss ("net_main") int unreliableMessagesSent = 0;
+__psram_bss ("net_main") int unreliableMessagesReceived = 0;
 
-cvar_t	net_messagetimeout = {"net_messagetimeout","300"};
-cvar_t	hostname = {"hostname", "UNNAMED"};
+__psram_data("net_main") cvar_t	net_messagetimeout = {"net_messagetimeout","300"};
+__psram_data("net_main") cvar_t	hostname = {"hostname", "UNNAMED"};
 
-qboolean	configRestored = false;
-cvar_t	config_com_port = {"_config_com_port", "0x3f8", true};
-cvar_t	config_com_irq = {"_config_com_irq", "4", true};
-cvar_t	config_com_baud = {"_config_com_baud", "57600", true};
-cvar_t	config_com_modem = {"_config_com_modem", "1", true};
-cvar_t	config_modem_dialtype = {"_config_modem_dialtype", "T", true};
-cvar_t	config_modem_clear = {"_config_modem_clear", "ATZ", true};
-cvar_t	config_modem_init = {"_config_modem_init", "", true};
-cvar_t	config_modem_hangup = {"_config_modem_hangup", "AT H", true};
+__psram_bss ("net_main") qboolean	configRestored = false;
+__psram_data("net_main") cvar_t	config_com_port = {"_config_com_port", "0x3f8", true};
+__psram_data("net_main") cvar_t	config_com_irq = {"_config_com_irq", "4", true};
+__psram_data("net_main") cvar_t	config_com_baud = {"_config_com_baud", "57600", true};
+__psram_data("net_main") cvar_t	config_com_modem = {"_config_com_modem", "1", true};
+__psram_data("net_main") cvar_t	config_modem_dialtype = {"_config_modem_dialtype", "T", true};
+__psram_data("net_main") cvar_t	config_modem_clear = {"_config_modem_clear", "ATZ", true};
+__psram_data("net_main") cvar_t	config_modem_init = {"_config_modem_init", "", true};
+__psram_data("net_main") cvar_t	config_modem_hangup = {"_config_modem_hangup", "AT H", true};
 
 #ifdef IDGODS
 cvar_t	idgods = {"idgods", "0"};
 #endif
 
-int	vcrFile = -1;
-qboolean recording = false;
+__psram_data("net_main") int	vcrFile = -1;
+__psram_bss ("net_main") qboolean recording = false;
 
 // these two macros are to make the code more readable
 #define sfunc	net_drivers[sock->driver]
 #define dfunc	net_drivers[net_driverlevel]
 
-int	net_driverlevel;
+__psram_bss ("net_main") int	net_driverlevel;
 
 
-double			net_time;
+__psram_bss ("net_main") double			net_time;
 
 double SetNetTime(void)
 {
@@ -362,8 +362,8 @@ NET_Connect
 ===================
 */
 
-int hostCacheCount = 0;
-hostcache_t hostcache[HOSTCACHESIZE];
+__psram_bss ("net_main") int hostCacheCount = 0;
+__psram_bss ("net_main") hostcache_t hostcache[HOSTCACHESIZE];
 
 qsocket_t *NET_Connect (char *host)
 {
@@ -447,7 +447,7 @@ NET_CheckNewConnections
 ===================
 */
 
-struct
+__psram_bss ("net_main") struct
 {
 	double		time;
 	int			op;
@@ -526,7 +526,7 @@ returns -1 if connection is invalid
 =================
 */
 
-struct
+__psram_bss ("net_main") struct
 {
 	double		time;
 	int			op;
@@ -614,7 +614,7 @@ returns 1 if the message was sent properly
 returns -1 if the connection died
 ==================
 */
-struct
+__psram_bss ("net_main") struct
 {
 	double		time;
 	int			op;
@@ -922,7 +922,7 @@ void		NET_Shutdown (void)
 }
 
 
-static PollProcedure *pollProcedureList = NULL;
+__psram_bss ("net_main") static PollProcedure *pollProcedureList = NULL;
 
 void NET_Poll(void)
 {

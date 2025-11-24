@@ -29,7 +29,7 @@ extern int vcrFile;
 // everything necessary (events, timestamps, and data) to duplicate the game
 // from the viewpoint of everything above the network layer.
 
-static struct
+__psram_bss ("net_vcr") static struct
 {
 	double		time;
 	int			op;

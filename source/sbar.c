@@ -22,44 +22,44 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "quakedef.h"
 
 
-int			sb_updates;		// if >= vid.numpages, no update needed
+__psram_bss ("sbar") int			sb_updates;		// if >= vid.numpages, no update needed
 
 #define STAT_MINUS		10	// num frame for '-' stats digit
-qpic_t		*sb_nums[2][11];
-qpic_t		*sb_colon, *sb_slash;
-qpic_t		*sb_ibar;
-qpic_t		*sb_sbar;
-qpic_t		*sb_scorebar;
+__psram_bss ("sbar") qpic_t		*sb_nums[2][11];
+__psram_bss ("sbar") qpic_t		*sb_colon, *sb_slash;
+__psram_bss ("sbar") qpic_t		*sb_ibar;
+__psram_bss ("sbar") qpic_t		*sb_sbar;
+__psram_bss ("sbar") qpic_t		*sb_scorebar;
 
-qpic_t      *sb_weapons[7][8];   // 0 is active, 1 is owned, 2-5 are flashes
-qpic_t      *sb_ammo[4];
-qpic_t		*sb_sigil[4];
-qpic_t		*sb_armor[3];
-qpic_t		*sb_items[32];
+__psram_bss ("sbar") qpic_t      *sb_weapons[7][8];   // 0 is active, 1 is owned, 2-5 are flashes
+__psram_bss ("sbar") qpic_t      *sb_ammo[4];
+__psram_bss ("sbar") qpic_t		*sb_sigil[4];
+__psram_bss ("sbar") qpic_t		*sb_armor[3];
+__psram_bss ("sbar") qpic_t		*sb_items[32];
 
-qpic_t	*sb_faces[7][2];		// 0 is gibbed, 1 is dead, 2-6 are alive
+__psram_bss ("sbar") qpic_t	*sb_faces[7][2];		// 0 is gibbed, 1 is dead, 2-6 are alive
 							// 0 is static, 1 is temporary animation
-qpic_t	*sb_face_invis;
-qpic_t	*sb_face_quad;
-qpic_t	*sb_face_invuln;
-qpic_t	*sb_face_invis_invuln;
+__psram_bss ("sbar") qpic_t	*sb_face_invis;
+__psram_bss ("sbar") qpic_t	*sb_face_quad;
+__psram_bss ("sbar") qpic_t	*sb_face_invuln;
+__psram_bss ("sbar") qpic_t	*sb_face_invis_invuln;
 
-qboolean	sb_showscores;
+__psram_bss ("sbar") qboolean	sb_showscores;
 
-int			sb_lines;			// scan lines to draw
+__psram_bss ("sbar") int			sb_lines;			// scan lines to draw
 
-qpic_t      *rsb_invbar[2];
-qpic_t      *rsb_weapons[5];
-qpic_t      *rsb_items[2];
-qpic_t      *rsb_ammo[3];
-qpic_t      *rsb_teambord;		// PGM 01/19/97 - team color border
+__psram_bss ("sbar") qpic_t      *rsb_invbar[2];
+__psram_bss ("sbar") qpic_t      *rsb_weapons[5];
+__psram_bss ("sbar") qpic_t      *rsb_items[2];
+__psram_bss ("sbar") qpic_t      *rsb_ammo[3];
+__psram_bss ("sbar") qpic_t      *rsb_teambord;		// PGM 01/19/97 - team color border
 
 //MED 01/04/97 added two more weapons + 3 alternates for grenade launcher
-qpic_t      *hsb_weapons[7][5];   // 0 is active, 1 is owned, 2-5 are flashes
+__psram_bss ("sbar") qpic_t      *hsb_weapons[7][5];   // 0 is active, 1 is owned, 2-5 are flashes
 //MED 01/04/97 added array to simplify weapon parsing
-int         hipweapons[4] = {HIT_LASER_CANNON_BIT,HIT_MJOLNIR_BIT,4,HIT_PROXIMITY_GUN_BIT};
+__psram_data("sbar") int         hipweapons[4] = {HIT_LASER_CANNON_BIT,HIT_MJOLNIR_BIT,4,HIT_PROXIMITY_GUN_BIT};
 //MED 01/04/97 added hipnotic items array
-qpic_t      *hsb_items[2];
+__psram_bss ("sbar") qpic_t      *hsb_items[2];
 
 void Sbar_MiniDeathmatchOverlay (void);
 void Sbar_DeathmatchOverlay (void);
@@ -375,13 +375,13 @@ void Sbar_DrawNum (int x, int y, int num, int digits, int color)
 
 //=============================================================================
 
-int		fragsort[MAX_SCOREBOARD];
+__psram_bss ("sbar") int		fragsort[MAX_SCOREBOARD];
 
-char	scoreboardtext[MAX_SCOREBOARD][20];
-int		scoreboardtop[MAX_SCOREBOARD];
-int		scoreboardbottom[MAX_SCOREBOARD];
-int		scoreboardcount[MAX_SCOREBOARD];
-int		scoreboardlines;
+__psram_bss ("sbar") char	scoreboardtext[MAX_SCOREBOARD][20];
+__psram_bss ("sbar") int		scoreboardtop[MAX_SCOREBOARD];
+__psram_bss ("sbar") int		scoreboardbottom[MAX_SCOREBOARD];
+__psram_bss ("sbar") int		scoreboardcount[MAX_SCOREBOARD];
+__psram_bss ("sbar") int		scoreboardlines;
 
 /*
 ===============

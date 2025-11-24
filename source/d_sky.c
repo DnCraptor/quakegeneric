@@ -32,7 +32,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 D_Sky_uv_To_st
 =================
 */
-void D_Sky_uv_To_st (int u, int v, fixed16_t *s, fixed16_t *t)
+void __not_in_flash_func(D_Sky_uv_To_st) (int u, int v, fixed16_t *s, fixed16_t *t)
 {
 	float	wu, wv, temp;
 	vec3_t	end;
@@ -62,7 +62,7 @@ void D_Sky_uv_To_st (int u, int v, fixed16_t *s, fixed16_t *t)
 D_DrawSkyScans8
 =================
 */
-void D_DrawSkyScans8 (espan_t *pspan)
+void __no_inline_not_in_flash_func(D_DrawSkyScans8) (espan_t *pspan)
 {
 	int				count, spancount, u, v;
 	unsigned char	*pdest;

@@ -10,8 +10,15 @@ void* free_base(void) {
 	lock = 0;
 }
 
-void* alloc_base(const char* for_what) {
-	Sys_Printf("alloc_base(%s) %ph\n", for_what, base);
+void psram_sections_init()
+{
+	memcpy(&__psram_data_start__, &__psram_data_load__, (&__psram_data_end__ - &__psram_data_start__));
+	memset(&__psram_bss_start__, 0, (&__psram_bss_end__ - &__psram_bss_start__));
+}
+
+void *alloc_base(const char *for_what)
+{
+    Sys_Printf("alloc_base(%s) %ph\n", for_what, base);
 	if (base > get_sp()) {
 		Sys_Printf("WARN! PSRAM alloc_base crosses core0 stack: %ph\n", get_sp());
 	}

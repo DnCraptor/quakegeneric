@@ -113,7 +113,7 @@ void D_DrawTurbulent8Span (void)
 Turbulent8
 =============
 */
-void Turbulent8 (espan_t *pspan)
+void __not_in_flash_func(Turbulent8) (espan_t *pspan)
 {
 	int				count;
 	fixed16_t		snext, tnext;
@@ -245,7 +245,7 @@ void Turbulent8 (espan_t *pspan)
 D_DrawSpans8
 =============
 */
-void D_DrawSpans8 (espan_t *pspan)
+void __no_inline_not_in_flash_func(D_DrawSpans8) (espan_t *pspan)
 {
 	int				count, spancount;
 	unsigned char	*pbase, *pdest;
@@ -378,7 +378,7 @@ void D_DrawSpans8 (espan_t *pspan)
 D_DrawZSpans
 =============
 */
-void D_DrawZSpans (espan_t *pspan)
+void __no_inline_not_in_flash_func(D_DrawZSpans) (espan_t *pspan)
 {
 	int				count, doublecount, izistep;
 	int				izi;

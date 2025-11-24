@@ -41,17 +41,17 @@ cvar_t	m_forward = {"m_forward","1", true};
 cvar_t	m_side = {"m_side","0.8", true};
 
 
-client_static_t	cls;
-client_state_t	cl;
+__psram_bss ("cl_main") client_static_t	cls;
+__psram_bss ("cl_main") client_state_t	cl;
 // FIXME: put these on hunk?
-efrag_t			cl_efrags[MAX_EFRAGS];
+__psram_bss ("cl_main") efrag_t			cl_efrags[MAX_EFRAGS];
 ///entity_t		cl_entities[MAX_EDICTS];
-entity_t*		cl_entities;
-lightstyle_t	cl_lightstyle[MAX_LIGHTSTYLES];
-dlight_t		cl_dlights[MAX_DLIGHTS];
+__psram_bss ("cl_main") entity_t*		cl_entities;
+__psram_bss ("cl_main") lightstyle_t	cl_lightstyle[MAX_LIGHTSTYLES];
+__psram_bss ("cl_main") dlight_t		cl_dlights[MAX_DLIGHTS];
 
-int				cl_numvisedicts;
-entity_t		*cl_visedicts[MAX_VISEDICTS];
+__psram_bss ("cl_main") int				cl_numvisedicts;
+__psram_bss ("cl_main") entity_t		*cl_visedicts[MAX_VISEDICTS];
 
 /*
 =====================

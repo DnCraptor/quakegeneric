@@ -167,7 +167,7 @@ sentinel at the end (actually, this is the active edge table starting at
 edge_head.next).
 ==============
 */
-void R_InsertNewEdges (edge_t *edgestoadd, edge_t *edgelist)
+void __not_in_flash_func(R_InsertNewEdges) (edge_t *edgestoadd, edge_t *edgelist)
 {
 	edge_t	*next_edge;
 
@@ -203,7 +203,7 @@ addedge:
 R_RemoveEdges
 ==============
 */
-void R_RemoveEdges (edge_t *pedge)
+void __not_in_flash_func(R_RemoveEdges) (edge_t *pedge)
 {
 	do
 	{
@@ -285,7 +285,7 @@ pushback:
 R_CleanupSpan
 ==============
 */
-void R_CleanupSpan ()
+void __not_in_flash_func(R_CleanupSpan) ()
 {
 	surf_t	*surf;
 	int		iu;
@@ -399,7 +399,7 @@ gotposition:
 R_TrailingEdge
 ==============
 */
-void R_TrailingEdge (surf_t *surf, edge_t *edge)
+void __not_in_flash_func(R_TrailingEdge) (surf_t *surf, edge_t *edge)
 {
 	espan_t			*span;
 	int				iu;
@@ -440,7 +440,7 @@ void R_TrailingEdge (surf_t *surf, edge_t *edge)
 R_LeadingEdge
 ==============
 */
-void R_LeadingEdge (edge_t *edge)
+void __not_in_flash_func(R_LeadingEdge) (edge_t *edge)
 {
 	espan_t			*span;
 	surf_t			*surf, *surf2;
@@ -568,7 +568,7 @@ gotposition:
 R_GenerateSpans
 ==============
 */
-void R_GenerateSpans (void)
+void __not_in_flash_func(R_GenerateSpans) (void)
 {
 	edge_t			*edge;
 	surf_t			*surf;
@@ -604,7 +604,7 @@ void R_GenerateSpans (void)
 R_GenerateSpansBackward
 ==============
 */
-void R_GenerateSpansBackward (void)
+void __not_in_flash_func(R_GenerateSpansBackward) (void)
 {
 	edge_t			*edge;
 
@@ -640,11 +640,20 @@ Output:
 Each surface has a linked list of its visible spans
 ==============
 */
-void R_ScanEdges ()
+void __no_inline_not_in_flash_func(R_ScanEdges) ()
 {
 	int		iv, bottom;
 	surf_t	*s;
+#if 0
 	byte	basespans[MAXSPANS*sizeof(espan_t)+CACHE_SIZE];
+#else
+	byte   *basespans = (byte*)malloc(MAXSPANS*sizeof(espan_t)+CACHE_SIZE);
+	if (basespans == NULL) {
+		Sys_Error("R_ScanEdges: unable to allocate basespans (wanted %d bytes)\n",
+			MAXSPANS*sizeof(espan_t)+CACHE_SIZE
+		);
+	}
+#endif
 
 	espan_t* basespan_p = (espan_t *)
 			((intptr_t)(basespans + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
@@ -709,6 +718,7 @@ void R_ScanEdges ()
 		
 			if (r_drawculledpolys)
 			{
+				// wbcbz7 note: dead code
 				R_DrawCulledPolys ();
 			}
 			else
@@ -746,10 +756,16 @@ void R_ScanEdges ()
 
 // draw whatever's left in the span list
 	if (r_drawculledpolys) {
+		// wbcbz7 note: dead code
 		R_DrawCulledPolys ();
 	} else {
 		D_DrawSurfaces ();
 	}
+
+#if 0
+#else
+	free(basespans);
+#endif
 }
 
 
