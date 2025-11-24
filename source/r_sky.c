@@ -24,22 +24,22 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "d_local.h"
 
 
-int		iskyspeed = 8;
-int		iskyspeed2 = 2;
-float	skyspeed, skyspeed2;
+__psram_data("r_sky") int		iskyspeed = 8;
+__psram_data("r_sky") int		iskyspeed2 = 2;
+__psram_bss ("r_sky") float	skyspeed, skyspeed2;
 
-float		skytime;
+__psram_bss ("r_sky") float		skytime;
 
-byte		*r_skysource;
+__psram_bss ("r_sky") byte		*r_skysource;
 
-int r_skymade;
-int r_skydirect;		// not used?
+__psram_bss ("r_sky") int r_skymade;
+__psram_bss ("r_sky") int r_skydirect;		// not used?
 
 
 // TODO: clean up these routines
 
-byte	bottomsky[128*131];
-byte	bottommask[128*131];
+__psram_bss ("r_sky") byte	bottomsky[128*131];
+__psram_bss ("r_sky") byte	bottommask[128*131];
 byte	newsky[128*256];	// newsky and topsky both pack in here, 128 bytes
 							//  of newsky on the left of each scan, 128 bytes
 							//  of topsky on the right, because the low-level
