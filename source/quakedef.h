@@ -39,6 +39,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <stdint.h>
 
 #include "ff.h"
+#include "psram_alloc.h"
 
 #define	VID_LockBuffer()
 #define	VID_UnlockBuffer()
@@ -53,7 +54,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define __PSRAM_HUNK_SIZE MINIMUM_MEMORY_LEVELPAK
 
-#define __PSRAM_BASE ((char*)(0x11000000ul))
+#define __PSRAM_BASE (&__psram_heap_start__)
 #define __PSRAM_Z_BUFF (__PSRAM_BASE + __PSRAM_HUNK_SIZE)
 // #define __PSRAM_CL_ENT (__PSRAM_Z_BUFF + 153600)
 // #define __PSRAM_STAT_CL_ENT (__PSRAM_CL_ENT + 110400)

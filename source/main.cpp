@@ -1024,6 +1024,9 @@ static void finish_him(void) {
     }
     Sys_Printf(" Sound          : %s\n", is_i2s_enabled ? "i2s" : "PWM");
     Sys_Printf(" SP after switch: 0x%08X\n", sp_after);
+    Sys_Printf(" .psram_data size:  0x%08X\n", (&__psram_data_end__ - &__psram_data_start__));
+    Sys_Printf(" .psram_bss  size:  0x%08X\n", (&__psram_bss_end__ - &__psram_bss_start__));
+    Sys_Printf(" .psram_heap start: 0x%08X\n", (&__psram_heap_start__));
     Sys_Printf(" --------------------------------------\n");
 
     if (new_cpu_mhz != cpu_mhz) {
@@ -1251,7 +1254,6 @@ int main() {
     #endif
 
     f_mount(&fs, "", 1);
-    load_config();
 
 #if PICO_RP2350
     rp2350a = (*((io_ro_32*)(SYSINFO_BASE + SYSINFO_PACKAGE_SEL_OFFSET)) & 1);
@@ -1264,6 +1266,9 @@ int main() {
     #endif
     exception_set_exclusive_handler(HARDFAULT_EXCEPTION, sigbus);
 #endif
+
+    psram_sections_init();      // init psram_data/psram_bss sections 
+    load_config();
 
     switch_stack(STACK_CORE0, finish_him);
     __unreachable();
