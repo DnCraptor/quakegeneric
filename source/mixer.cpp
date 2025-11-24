@@ -34,8 +34,8 @@ void mixer_init() {
     if (is_i2s_enabled) {
         i2s_volume(&i2s_config, 0);
     } else {
-        PWM_init_pin(PWM_PIN0, (1 << 8) - 1);
-        PWM_init_pin(PWM_PIN1, (1 << 8) - 1);
+        PWM_init_pin(PWM_PIN0, (1 << 12) - 1);
+        PWM_init_pin(PWM_PIN1, (1 << 12) - 1);
     }
 }
 
