@@ -28,7 +28,7 @@ typedef unsigned char 		byte;
 #undef false
 
 //typedef int qboolean;
-typedef byte qboolean;		// heavily saves on memory but might blow things up, beware
+typedef signed char qboolean;		// heavily saves on memory but might blow things up, beware
 #define true (1)
 #define false (0)
 
