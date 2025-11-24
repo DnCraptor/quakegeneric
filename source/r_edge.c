@@ -644,7 +644,16 @@ void __no_inline_not_in_flash_func(R_ScanEdges) ()
 {
 	int		iv, bottom;
 	surf_t	*s;
+#if 0
 	byte	basespans[MAXSPANS*sizeof(espan_t)+CACHE_SIZE];
+#else
+	byte   *basespans = (byte*)malloc(MAXSPANS*sizeof(espan_t)+CACHE_SIZE);
+	if (basespans == NULL) {
+		Sys_Error("R_ScanEdges: unable to allocate basespans (wanted %d bytes)\n",
+			MAXSPANS*sizeof(espan_t)+CACHE_SIZE
+		);
+	}
+#endif
 
 	espan_t* basespan_p = (espan_t *)
 			((intptr_t)(basespans + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
@@ -709,6 +718,7 @@ void __no_inline_not_in_flash_func(R_ScanEdges) ()
 		
 			if (r_drawculledpolys)
 			{
+				// wbcbz7 note: dead code
 				R_DrawCulledPolys ();
 			}
 			else
@@ -746,10 +756,16 @@ void __no_inline_not_in_flash_func(R_ScanEdges) ()
 
 // draw whatever's left in the span list
 	if (r_drawculledpolys) {
+		// wbcbz7 note: dead code
 		R_DrawCulledPolys ();
 	} else {
 		D_DrawSurfaces ();
 	}
+
+#if 0
+#else
+	free(basespans);
+#endif
 }
 
 
