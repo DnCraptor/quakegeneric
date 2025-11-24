@@ -171,7 +171,7 @@ void D_CalcGradients (msurface_t *pface)
 D_DrawSurfaces
 ==============
 */
-void D_DrawSurfaces (void)
+void __no_inline_not_in_flash_func(D_DrawSurfaces) (void)
 {
 	surf_t			*s;
 	msurface_t		*pface;
