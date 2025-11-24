@@ -45,10 +45,24 @@
 #include "quakedef.h"
 #include "sys.h"
 
+extern "C" qboolean CDAudio_GetSamples(int16_t* buf, size_t n);
+
 #define HOME_DIR (char*)"/QUAKE"
 
 bool rp2350a = true;
 uint8_t rx[4] = { 0 };
+
+static int cpu_mhz = CPU_MHZ;
+static int new_cpu_mhz = CPU_MHZ;
+static int vreg = VREG_VOLTAGE_1_60;
+static int new_vreg = VREG_VOLTAGE_1_60;
+int flash_mhz = 88;
+int psram_mhz = MAX_PSRAM_FREQ_MHZ;
+static uint new_flash_timings = 0;
+static uint new_psram_timings = 0;
+
+extern "C" bool is_i2s_enabled;
+extern "C" int testPins(uint32_t pin0, uint32_t pin1);
 
 struct semaphore vga_start_semaphore;
 
@@ -545,7 +559,6 @@ void repeat_me_for_input() {
 uint8_t __aligned(4) FRAME_BUF[QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y] = { 0 };
 
 #if DVI_HSTX
-
 enum {
     HSTX_OUT_PIN_LAYOUT_MURMULATOR2,
     HSTX_OUT_PIN_LAYOUT_PICODVISOCK,
@@ -576,10 +589,11 @@ static linebuf_cb_info_8bpp_t cb_index8_priv = {.pic = FRAME_BUF, .pal = linebuf
 
 // line buffer callback used for converting the picture
 extern "C" void linebuf_cb_index8_a(const struct dvi_linebuf_task_t *task, void *priv);
+#endif
 
-void render_core() {
+void __scratch_x("render") render_core() {
+#if DVI_HSTX
     // init hstx driver here!
-
     int mode     = DVI_MODE_320x240;
     int hstx_div = clock_get_hz(clk_sys)/(dvi_modes[mode].timings.pixelclock*5);
 
@@ -628,28 +642,34 @@ void render_core() {
 
     // and start display output
     dvi_linebuf_start();
-
-    while (true) {
-        tight_loop_contents();
-    }
-    __unreachable();
-}
 #else
-void __scratch_x("render") render_core() {
     multicore_lockout_victim_init();
     graphics_init();
     graphics_set_buffer(FRAME_BUF, QUAKEGENERIC_RES_X, QUAKEGENERIC_RES_Y);
     graphics_set_bgcolor(0x000000);
     sem_acquire_blocking(&vga_start_semaphore);
+#endif
+    mixer_init();
+    uint64_t tick = time_us_64();
+    uint64_t last_cd_tick = 0;
+    int16_t samples[2];
     while (true) {
-        tight_loop_contents();
+        // Sound Blaster sampling
+        if (tick > last_cd_tick + (1000000 / 44100)) {
+            last_cd_tick = tick;
+            if (!CDAudio_GetSamples(samples, 1)) {
+                samples[0] = 0;
+                samples[1] = 0;
+            }
+            mixer_samples(samples, 1);
+        }
 #if TFT
         refresh_lcd();
 #endif
+        tick = time_us_64();
     }
     __unreachable();
 }
-#endif
 
 #if SOFTTV
 typedef struct tv_out_mode_t {
@@ -712,38 +732,38 @@ uint32_t __not_in_flash_func(butter_psram_size)() {
 void __no_inline_not_in_flash_func(psram_init)(uint cs_pin) {
     gpio_set_function(cs_pin, GPIO_FUNC_XIP_CS1);
 
-    // Enable direct mode, PSRAM CS, clkdiv of 10.
-    qmi_hw->direct_csr = 10 << QMI_DIRECT_CSR_CLKDIV_LSB | \
-                               QMI_DIRECT_CSR_EN_BITS | \
-                               QMI_DIRECT_CSR_AUTO_CS1N_BITS;
-    while (qmi_hw->direct_csr & QMI_DIRECT_CSR_BUSY_BITS)
-        ;
+    // Enable direct mode, PSRAM CS, clkdiv of 10
+    qmi_hw->direct_csr = 10 << QMI_DIRECT_CSR_CLKDIV_LSB |
+                         QMI_DIRECT_CSR_EN_BITS |
+                         QMI_DIRECT_CSR_AUTO_CS1N_BITS;
+
+    while (qmi_hw->direct_csr & QMI_DIRECT_CSR_BUSY_BITS) {
+        tight_loop_contents();
+    }
 
     // Enable QPI mode on the PSRAM
     const uint CMD_QPI_EN = 0x35;
     qmi_hw->direct_tx = QMI_DIRECT_TX_NOPUSH_BITS | CMD_QPI_EN;
 
-    while (qmi_hw->direct_csr & QMI_DIRECT_CSR_BUSY_BITS)
-        ;
+    while (qmi_hw->direct_csr & QMI_DIRECT_CSR_BUSY_BITS) {
+        tight_loop_contents();
+    }
 
-    // Set PSRAM timing for APS6404
-    //
-    // Using an rxdelay equal to the divisor isn't enough when running the APS6404 close to 133MHz.
-    // So: don't allow running at divisor 1 above 100MHz (because delay of 2 would be too late),
-    // and add an extra 1 to the rxdelay if the divided clock is > 100MHz (i.e. sys clock > 200MHz).
-    const int max_psram_freq = MAX_PSRAM_FREQ_MHZ * 1000000;
+    // Set PSRAM timing
+    const int max_psram_freq = MAX_PSRAM_FREQ_MHZ * MHZ;
     const int clock_hz = clock_get_hz(clk_sys);
     int divisor = (clock_hz + max_psram_freq - 1) / max_psram_freq;
+
     if (divisor == 1 && clock_hz > 100000000) {
         divisor = 2;
     }
+
     int rxdelay = divisor;
     if (clock_hz / divisor > 100000000) {
         rxdelay += 1;
     }
 
-    // - Max select must be <= 8us.  The value is given in multiples of 64 system clocks.
-    // - Min deselect must be >= 18ns.  The value is given in system clock cycles - ceil(divisor / 2).
+    // Calculate timing parameters
     const int clock_period_fs = 1000000000000000ll / clock_hz;
     const int max_select = (125 * 1000000) / clock_period_fs;  // 125 = 8000ns / 64
     const int min_deselect = (18 * 1000000 + (clock_period_fs - 1)) / clock_period_fs - (divisor + 1) / 2;
@@ -755,25 +775,24 @@ void __no_inline_not_in_flash_func(psram_init)(uint cs_pin) {
                           rxdelay << QMI_M1_TIMING_RXDELAY_LSB |
                           divisor << QMI_M1_TIMING_CLKDIV_LSB;
 
-    // Set PSRAM commands and formats
-    qmi_hw->m[1].rfmt =
-        QMI_M0_RFMT_PREFIX_WIDTH_VALUE_Q << QMI_M0_RFMT_PREFIX_WIDTH_LSB |\
-        QMI_M0_RFMT_ADDR_WIDTH_VALUE_Q   << QMI_M0_RFMT_ADDR_WIDTH_LSB |\
-        QMI_M0_RFMT_SUFFIX_WIDTH_VALUE_Q << QMI_M0_RFMT_SUFFIX_WIDTH_LSB |\
-        QMI_M0_RFMT_DUMMY_WIDTH_VALUE_Q  << QMI_M0_RFMT_DUMMY_WIDTH_LSB |\
-        QMI_M0_RFMT_DATA_WIDTH_VALUE_Q   << QMI_M0_RFMT_DATA_WIDTH_LSB |\
-        QMI_M0_RFMT_PREFIX_LEN_VALUE_8   << QMI_M0_RFMT_PREFIX_LEN_LSB |\
-        6                                << QMI_M0_RFMT_DUMMY_LEN_LSB;
+    // Set PSRAM read format
+    qmi_hw->m[1].rfmt = QMI_M0_RFMT_PREFIX_WIDTH_VALUE_Q << QMI_M0_RFMT_PREFIX_WIDTH_LSB |
+                        QMI_M0_RFMT_ADDR_WIDTH_VALUE_Q << QMI_M0_RFMT_ADDR_WIDTH_LSB |
+                        QMI_M0_RFMT_SUFFIX_WIDTH_VALUE_Q << QMI_M0_RFMT_SUFFIX_WIDTH_LSB |
+                        QMI_M0_RFMT_DUMMY_WIDTH_VALUE_Q << QMI_M0_RFMT_DUMMY_WIDTH_LSB |
+                        QMI_M0_RFMT_DATA_WIDTH_VALUE_Q << QMI_M0_RFMT_DATA_WIDTH_LSB |
+                        QMI_M0_RFMT_PREFIX_LEN_VALUE_8 << QMI_M0_RFMT_PREFIX_LEN_LSB |
+                        6 << QMI_M0_RFMT_DUMMY_LEN_LSB;
 
     qmi_hw->m[1].rcmd = 0xEB;
 
-    qmi_hw->m[1].wfmt =
-        QMI_M0_WFMT_PREFIX_WIDTH_VALUE_Q << QMI_M0_WFMT_PREFIX_WIDTH_LSB |\
-        QMI_M0_WFMT_ADDR_WIDTH_VALUE_Q   << QMI_M0_WFMT_ADDR_WIDTH_LSB |\
-        QMI_M0_WFMT_SUFFIX_WIDTH_VALUE_Q << QMI_M0_WFMT_SUFFIX_WIDTH_LSB |\
-        QMI_M0_WFMT_DUMMY_WIDTH_VALUE_Q  << QMI_M0_WFMT_DUMMY_WIDTH_LSB |\
-        QMI_M0_WFMT_DATA_WIDTH_VALUE_Q   << QMI_M0_WFMT_DATA_WIDTH_LSB |\
-        QMI_M0_WFMT_PREFIX_LEN_VALUE_8   << QMI_M0_WFMT_PREFIX_LEN_LSB;
+    // Set PSRAM write format
+    qmi_hw->m[1].wfmt = QMI_M0_WFMT_PREFIX_WIDTH_VALUE_Q << QMI_M0_WFMT_PREFIX_WIDTH_LSB |
+                        QMI_M0_WFMT_ADDR_WIDTH_VALUE_Q << QMI_M0_WFMT_ADDR_WIDTH_LSB |
+                        QMI_M0_WFMT_SUFFIX_WIDTH_VALUE_Q << QMI_M0_WFMT_SUFFIX_WIDTH_LSB |
+                        QMI_M0_WFMT_DUMMY_WIDTH_VALUE_Q << QMI_M0_WFMT_DUMMY_WIDTH_LSB |
+                        QMI_M0_WFMT_DATA_WIDTH_VALUE_Q << QMI_M0_WFMT_DATA_WIDTH_LSB |
+                        QMI_M0_WFMT_PREFIX_LEN_VALUE_8 << QMI_M0_WFMT_PREFIX_LEN_LSB;
 
     qmi_hw->m[1].wcmd = 0x38;
 
@@ -782,8 +801,7 @@ void __no_inline_not_in_flash_func(psram_init)(uint cs_pin) {
 
     // Enable writes to PSRAM
     hw_set_bits(&xip_ctrl_hw->ctrl, XIP_CTRL_WRITABLE_M1_BITS);
-
-    // init size
+    // detect a chip size
     butter_psram_size();
 }
 #else
@@ -819,24 +837,6 @@ void __attribute__((naked, noreturn)) __printflike(1, 0) dummy_panic(__unused co
         gpio_put(PICO_DEFAULT_LED_PIN, false);
     }
 }
-
-#ifndef PICO_RP2040
-void __not_in_flash() flash_timings() {
-        const int max_flash_freq = 88 * MHZ;
-        const int clock_hz = CPU_MHZ * MHZ;
-        int divisor = (clock_hz + max_flash_freq - 1) / max_flash_freq;
-        if (divisor == 1 && clock_hz > 100000000) {
-            divisor = 2;
-        }
-        int rxdelay = divisor;
-        if (clock_hz / divisor > 100000000) {
-            rxdelay += 1;
-        }
-        qmi_hw->m[0].timing = 0x60007000 |
-                            rxdelay << QMI_M0_TIMING_RXDELAY_LSB |
-                            divisor << QMI_M0_TIMING_CLKDIV_LSB;
-}
-#endif
 
 static void __not_in_flash_func(flash_info)() {
     if (rx[0] == 0) {
@@ -992,17 +992,46 @@ __attribute__((noreturn))
 static void finish_him(void) {
     uint32_t sp_after;
     __asm volatile("mov %0, sp" : "=r"(sp_after));
-    f_mount(&fs, "", 1);
+
     f_unlink("quake.log");
+
+    static uint8_t link_i2s_code = 0xFF;
+    if (link_i2s_code == 0xFF) {
+        if (I2S_BCK_PIO != I2S_LCK_PIO && I2S_LCK_PIO != I2S_DATA_PIO && I2S_BCK_PIO != I2S_DATA_PIO) {
+            link_i2s_code = testPins(I2S_DATA_PIO, I2S_BCK_PIO);
+            is_i2s_enabled = link_i2s_code != 0;
+        }
+    }
+    mixer_init();
+
     Sys_Printf(" Hardware info\n");
     Sys_Printf(" --------------------------------------\n");
     uint32_t cpu_hz = clock_get_hz(clk_sys);
     Sys_Printf(" Chip model     : RP2350%c %d MHz\n", (rp2350a ? 'A' : 'B'), cpu_hz / 1000000);
+    Sys_Printf(" VREG           : %d\n", vreg);
     Sys_Printf(" Flash size     : %d MB\n", (1 << rx[3]) >> 20);
     Sys_Printf(" Flash JEDEC ID : %02X-%02X-%02X-%02X\n", rx[0], rx[1], rx[2], rx[3]);
-    Sys_Printf(" PSRAM on GP%02d  : %d MB QSPI %d MHz\n", psram_pin, butter_psram_size() >> 20, MAX_PSRAM_FREQ_MHZ);
+    if (new_flash_timings == qmi_hw->m[0].timing) {
+        Sys_Printf(" Flash timings  : %p\n", new_flash_timings);
+    } else {
+        Sys_Printf(" Flash max freq.: %d MHz [T%p]\n", flash_mhz, qmi_hw->m[0].timing);
+    }
+    Sys_Printf(" PSRAM on GP%02d  : %d MB QSPI\n", psram_pin, butter_psram_size() >> 20);
+    if (new_psram_timings == qmi_hw->m[1].timing) {
+        Sys_Printf(" PSRAM timings  :[T%p]\n", new_psram_timings);
+    } else {
+        Sys_Printf(" PSRAM max freq.: %d MHz [T%p]\n", psram_mhz, qmi_hw->m[1].timing);
+    }
+    Sys_Printf(" Sound          : %s\n", is_i2s_enabled ? "i2s" : "PWM");
     Sys_Printf(" SP after switch: 0x%08X\n", sp_after);
     Sys_Printf(" --------------------------------------\n");
+
+    if (new_cpu_mhz != cpu_mhz) {
+        Sys_Printf("WARN: Failed to overclock to %d MHz (from conf)\n", new_cpu_mhz);
+    }
+    if (new_vreg < VREG_VOLTAGE_0_55 || new_vreg > VREG_VOLTAGE_3_30) {
+        Sys_Printf("WARN: Unexpected VREG value: %d (from cong)\n", new_vreg);
+    }
 
 #if USE_NESPAD
     nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
@@ -1051,6 +1080,145 @@ void switch_stack(uint32_t new_sp, void (*entry)(void))
     );
 }
 
+static char* open_config(UINT* pbr) {
+    FILINFO fileinfo;
+    size_t file_size = 0;
+    const char cfn[] = "/quake/quake.conf";
+    if (f_stat(cfn, &fileinfo) != FR_OK || (fileinfo.fattrib & AM_DIR)) {
+        return 0;
+    } else {
+        file_size = (size_t)fileinfo.fsize & 0xFFFFFFFF;
+    }
+
+    FIL f;
+    if(f_open(&f, cfn, FA_READ) != FR_OK) {
+        return 0;
+    }
+    char* buff = (char*)malloc(file_size + 1);
+    if (f_read(&f, buff, file_size, pbr) != FR_OK) {
+        ///printf("Failed to read /quake/quake.conf\n");
+        free(buff);
+        buff = 0;
+    }
+    f_close(&f);
+    return buff;
+}
+
+inline static void tokenizeCfg(char* s, size_t sz) {
+    size_t i = 0;
+    for (; i < sz; ++i) {
+        if (s[i] == '=' || s[i] == '\n' || s[i] == '\r') {
+            s[i] = 0;
+        }
+    }
+    s[i] = 0;
+}
+
+static char* next_token(char* t) {
+    char *t1 = t + strlen(t);
+    while(!*t1++);
+    return t1 - 1;
+}
+
+void __not_in_flash() flash_timings() {
+    if (!new_flash_timings) {
+        const int max_flash_freq = flash_mhz * MHZ;
+        const int clock_hz = cpu_mhz * MHZ;
+        int divisor = (clock_hz + max_flash_freq - 1) / max_flash_freq;
+        if (divisor == 1 && clock_hz > 100000000) {
+            divisor = 2;
+        }
+        int rxdelay = divisor;
+        if (clock_hz / divisor > 100000000) {
+            rxdelay += 1;
+        }
+        qmi_hw->m[0].timing = 0x60007000 |
+                            rxdelay << QMI_M0_TIMING_RXDELAY_LSB |
+                            divisor << QMI_M0_TIMING_CLKDIV_LSB;
+    } else {
+        qmi_hw->m[0].timing = new_flash_timings;
+    }
+}
+
+void __not_in_flash() psram_timings() {
+    if (!new_psram_timings) {
+        const int max_psram_freq = psram_mhz * MHZ;
+        const int clock_hz = cpu_mhz * MHZ;
+        int divisor = (clock_hz + max_psram_freq - 1) / max_psram_freq;
+        if (divisor == 1 && clock_hz > 100000000) {
+            divisor = 2;
+        }
+        int rxdelay = divisor;
+        if (clock_hz / divisor > 100000000) {
+            rxdelay += 1;
+        }
+        qmi_hw->m[1].timing = (qmi_hw->m[1].timing & ~0x000000FFF) |
+                            rxdelay << QMI_M0_TIMING_RXDELAY_LSB |
+                            divisor << QMI_M0_TIMING_CLKDIV_LSB;
+    } else {
+        qmi_hw->m[1].timing = new_psram_timings;
+    }
+}
+
+static void load_config() {
+    UINT br;
+    char* buff = open_config(&br);
+    if (buff) {
+        tokenizeCfg(buff, br);
+        char *t = buff;
+        while (t - buff < br) {
+            if (strcmp(t, "CPU") == 0) {
+                t = next_token(t);
+                new_cpu_mhz = atoi(t);
+                if (clock_get_hz(clk_sys) != new_cpu_mhz * MHZ) {
+                    if (set_sys_clock_hz(new_cpu_mhz * MHZ, 0) ) {
+                        cpu_mhz = new_cpu_mhz;
+                    }
+                }
+            } else if (strcmp(t, "VREG") == 0) {
+                t = next_token(t);
+                new_vreg = atoi(t);
+                if (new_vreg != vreg && new_vreg >= VREG_VOLTAGE_0_55 && new_vreg <= VREG_VOLTAGE_3_30) {
+                    vreg = new_vreg;
+                    vreg_set_voltage((vreg_voltage)vreg);
+                }
+            } else if (!new_flash_timings && strcmp(t, "FLASH") == 0) {
+                t = next_token(t);
+                int new_flash_mhz = atoi(t);
+                if (flash_mhz != new_flash_mhz) {
+                    flash_mhz = new_flash_mhz;
+                    flash_timings();
+                }
+            } else if (strcmp(t, "FLASH_T") == 0) {
+                t = next_token(t);
+                char *endptr;
+                new_flash_timings = (uint)strtol(t, &endptr, 16);
+                if (*endptr == 0 && qmi_hw->m[0].timing != new_flash_timings) {
+                    flash_timings();
+                }
+            } else if (!new_psram_timings && strcmp(t, "PSRAM") == 0) {
+                t = next_token(t);
+                int new_psram_mhz = atoi(t);
+                if (psram_mhz != new_psram_mhz) {
+                    psram_mhz = new_psram_mhz;
+                    psram_timings();
+                }
+            } else if (strcmp(t, "PSRAM_T") == 0) {
+                t = next_token(t);
+                char *endptr;
+                new_psram_timings = (uint)strtol(t, &endptr, 16);
+                if (*endptr == 0 && qmi_hw->m[1].timing != new_psram_timings) {
+                    psram_timings();
+                }
+            } else { // unknown token
+                t = next_token(t);
+            }
+            t = next_token(t);
+        }
+        free(buff);
+    }
+}
+
 int main() {
     flash_info();
     vreg_disable_voltage_limit();
@@ -1082,18 +1250,21 @@ int main() {
     }
     #endif
 
+    f_mount(&fs, "", 1);
+    load_config();
+
 #if PICO_RP2350
     rp2350a = (*((io_ro_32*)(SYSINFO_BASE + SYSINFO_PACKAGE_SEL_OFFSET)) & 1);
     #ifdef BUTTER_PSRAM_GPIO
         psram_pin = rp2350a ? BUTTER_PSRAM_GPIO : 47;
         psram_init(psram_pin);
-        if(butter_psram_size()) {
-           /// memset(PSRAM_DATA, 0, butter_psram_size());
+        if(!butter_psram_size()) {
+            Sys_Error("No QSPI PSRAM detected\n");
         }
     #endif
     exception_set_exclusive_handler(HARDFAULT_EXCEPTION, sigbus);
 #endif
-    mixer_init();
+
     switch_stack(STACK_CORE0, finish_him);
     __unreachable();
 }

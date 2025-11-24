@@ -34,6 +34,8 @@
 
 #include "audio.h"
 
+bool is_i2s_enabled = false;
+
 /**
  * Initialize the I2S driver. Must be called before calling i2s_write or i2s_dma_write
  * i2s_config: I2S context obtained by i2s_get_default_config()
