@@ -230,6 +230,33 @@ void R_PrintDSpeeds (void)
 				dv_time);
 }
 
+/*
+=============
+R_SaveDSpeeds
+=============
+*/
+void R_SaveDSpeeds (void)
+{
+	float	ms, dp_time, r_time2, rw_time, db_time, se_time, de_time, dv_time;
+	ftdemo_point_t *p;
+
+	if (cls.ftd_buf == NULL) return;
+	p = &cls.ftd_buf[cls.ftd_framepos];
+	r_time2 = Sys_FloatTime ();
+
+	p->faceclip = c_faceclip;
+	p->polycount = r_polycount;
+	p->drawnpolycount = r_drawnpolycount;
+	p->surf = c_surf; c_surf = 0;
+	p->dp = (dp_time2 - dp_time1) * 1000;
+	p->rw = (rw_time2 - rw_time1) * 1000;
+	p->db = (db_time2 - db_time1) * 1000;
+	p->se = (se_time2 - se_time1) * 1000;
+	p->de = (de_time2 - de_time1) * 1000;
+	p->dv = (dv_time2 - dv_time1) * 1000;
+	p->r  = (r_time2 - r_time1)   * 1000;
+}
+
 
 /*
 =============

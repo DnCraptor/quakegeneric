@@ -59,6 +59,13 @@ typedef struct
 #define	NAME_LENGTH	64
 
 
+typedef struct {
+	float total;
+	float server;
+	float r, dp, rw, db, se, de, dv;
+	int   faceclip, polycount, drawnpolycount, surf;
+} ftdemo_point_t;
+
 //
 // client_state_t should hold all pieces of the client state
 //
@@ -119,12 +126,17 @@ typedef struct
 	qboolean	demorecording;
 	qboolean	demoplayback;
 	qboolean	timedemo;
+	qboolean    frametimedemo;
 	int			forcetrack;			// -1 = use normal cd track
 	FIL			*demofile;
 	int			td_lastframe;		// to meter out one message a frame
 	int			td_startframe;		// host_framecount at start
 	float		td_starttime;		// realtime at second frame of timedemo
 
+	ftdemo_point_t *ftd_buf;
+	int         ftd_framepos;		// circular buffer position
+	int         ftd_frames_total;
+	int         ftd_frames_recorded;
 
 // connection information
 	int			signon;			// 0 to SIGNONS
@@ -336,6 +348,8 @@ void CL_Stop_f (void);
 void CL_Record_f (void);
 void CL_PlayDemo_f (void);
 void CL_TimeDemo_f (void);
+void CL_FrameTimeDemo_f (void);
+void CL_FrameTimeDemoCloseFrame (void);
 
 //
 // cl_parse.c

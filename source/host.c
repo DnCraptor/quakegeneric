@@ -591,10 +591,14 @@ Runs all active servers
 */
 void _Host_Frame (float time)
 {
+	static double		time0 = 0;
 	static double		time1 = 0;
 	static double		time2 = 0;
 	static double		time3 = 0;
 	int			pass1, pass2, pass3;
+	ftdemo_point_t 	*p;
+
+	time0 = Sys_FloatTime();
 
 	int hm = Hunk_HighMark();
 	int lm = Hunk_LowMark();
@@ -663,7 +667,7 @@ void _Host_Frame (float time)
 	}
 
 // update video
-	if (host_speeds.value)
+	if (host_speeds.value || cls.frametimedemo)
 		time1 = Sys_FloatTime ();
 		
 	SCR_UpdateScreen ();
@@ -683,6 +687,13 @@ void _Host_Frame (float time)
 	
 	CDAudio_Update();
 
+	if (cls.frametimedemo && cls.ftd_buf != NULL) {
+		p = &cls.ftd_buf[cls.ftd_framepos];
+		p->total  = (Sys_FloatTime() - time0) * 1000;
+		p->server = (time1 - time0) * 1000;
+		CL_FrameTimeDemoCloseFrame();
+	}
+
 	if (host_speeds.value)
 	{
 		pass1 = (time1 - time3)*1000;
@@ -692,7 +703,7 @@ void _Host_Frame (float time)
 		Con_Printf ("%3i tot %3i server %3i gfx %3i snd\n",
 					pass1+pass2+pass3, pass1, pass2, pass3);
 	}
-	
+
 	host_framecount++;
 //	Sys_Printf("host_framecount: %d (%f s)\n", host_framecount, time);
 }
