@@ -1129,12 +1129,12 @@ void __not_in_flash() flash_timings() {
     if (!new_flash_timings) {
         const int max_flash_freq = flash_mhz * MHZ;
         const int clock_hz = cpu_mhz * MHZ;
-        int divisor = (clock_hz + max_flash_freq - 1) / max_flash_freq;
-        if (divisor == 1 && clock_hz > 100000000) {
+        int divisor = (clock_hz + max_flash_freq - (max_flash_freq >> 4) - 1) / max_flash_freq;
+        if (divisor == 1 && clock_hz >= 166000000) {
             divisor = 2;
         }
         int rxdelay = divisor;
-        if (clock_hz / divisor > 100000000) {
+        if (clock_hz / divisor > 100000000 && clock_hz >= 166000000) {
             rxdelay += 1;
         }
         qmi_hw->m[0].timing = 0x60007000 |
@@ -1149,12 +1149,12 @@ void __not_in_flash() psram_timings() {
     if (!new_psram_timings) {
         const int max_psram_freq = psram_mhz * MHZ;
         const int clock_hz = cpu_mhz * MHZ;
-        int divisor = (clock_hz + max_psram_freq - 1) / max_psram_freq;
-        if (divisor == 1 && clock_hz > 100000000) {
+        int divisor = (clock_hz + max_psram_freq - (max_psram_freq >> 4) - 1) / max_psram_freq;
+        if (divisor == 1 && clock_hz >= 166000000) {
             divisor = 2;
         }
         int rxdelay = divisor;
-        if (clock_hz / divisor > 100000000) {
+        if (clock_hz / divisor > 100000000 && clock_hz >= 166000000) {
             rxdelay += 1;
         }
         qmi_hw->m[1].timing = (qmi_hw->m[1].timing & ~0x000000FFF) |
