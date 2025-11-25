@@ -125,7 +125,7 @@ avelocities[0][i] = (rand()&255) * 0.01f;
 		p->next = active_particles;
 		active_particles = p;
 
-		p->die = cltime_f + 0.01;
+		p->die = cltime_f + 0.01f;
 		p->color = 0x6f;
 		p->type = pt_explode;
 		
@@ -309,7 +309,7 @@ void R_ParticleExplosion (vec3_t org)
 
 		p->die = cltime_f + 5.0f;
 		p->color = ramp1[0];
-		p->ramp = rand()&3;
+		p->ramp = (rand()&3) << PARTICLE_RAMP_FRACT;
 		if (i & 1)
 		{
 			p->type = pt_explode;
@@ -443,7 +443,7 @@ void R_RunParticleEffect (vec3_t org, vec3_t dir, int color, int count)
 		{	// rocket explosion
 			p->die = cltime_f + 5.0f;
 			p->color = ramp1[0];
-			p->ramp = rand()&3;
+			p->ramp = (rand()&3) << PARTICLE_RAMP_FRACT;
 			if (i & 1)
 			{
 				p->type = pt_explode;
@@ -607,16 +607,16 @@ void R_RocketTrail (vec3_t start, vec3_t end, int type)
 		switch (type)
 		{
 			case 0:	// rocket trail
-				p->ramp = (rand()&3);
-				p->color = ramp3[(int)p->ramp];
+				p->ramp = (rand()&3) << PARTICLE_RAMP_FRACT;
+				p->color = ramp3[(p->ramp) >> PARTICLE_RAMP_FRACT];
 				p->type = pt_fire;
 				for (j=0 ; j<3 ; j++)
 					p->org[j] = start[j] + ((rand()%6)-3);
 				break;
 
 			case 1:	// smoke smoke
-				p->ramp = (rand()&3) + 2;
-				p->color = ramp3[(int)p->ramp];
+				p->ramp = ((rand()&3) + 2) << PARTICLE_RAMP_FRACT;
+				p->color = ramp3[(p->ramp) >> PARTICLE_RAMP_FRACT];
 				p->type = pt_fire;
 				for (j=0 ; j<3 ; j++)
 					p->org[j] = start[j] + ((rand()%6)-3);
@@ -688,8 +688,8 @@ void R_DrawParticles (void)
 	particle_t		*p, *kill;
 	float			grav;
 	int				i;
-	float			time2, time3;
-	float			time1;
+	int 			time2, time3;
+	int 			time1;
 	float			dvel;
 	float			frametime;
 	float           cltime_f;
@@ -701,9 +701,9 @@ void R_DrawParticles (void)
 	VectorCopy (vpn, r_ppn);
 
 	frametime = cl.time - cl.oldtime;
-	time3 = frametime * 15;
-	time2 = frametime * 10; // 15;
-	time1 = frametime * 5;
+	time3 = frametime * 15 * (1 << PARTICLE_RAMP_FRACT);
+	time2 = frametime * 10 * (1 << PARTICLE_RAMP_FRACT); // 15;
+	time1 = frametime * 5  * (1 << PARTICLE_RAMP_FRACT);
 	grav = frametime * sv_gravity.value * 0.05f;
 	dvel = 4*frametime;
 	cltime_f = CLTIME_F();
@@ -748,19 +748,19 @@ void R_DrawParticles (void)
 			break;
 		case pt_fire:
 			p->ramp += time1;
-			if (p->ramp >= 6)
+			if (p->ramp >= (6 << PARTICLE_RAMP_FRACT))
 				p->die = -1;
 			else
-				p->color = ramp3[(int)p->ramp];
+				p->color = ramp3[(p->ramp) >> PARTICLE_RAMP_FRACT];
 			p->vel[2] += grav;
 			break;
 
 		case pt_explode:
 			p->ramp += time2;
-			if (p->ramp >=8)
+			if (p->ramp >= (8 << PARTICLE_RAMP_FRACT))
 				p->die = -1;
 			else
-				p->color = ramp1[(int)p->ramp];
+				p->color = ramp1[(p->ramp) >> PARTICLE_RAMP_FRACT];
 			for (i=0 ; i<3 ; i++)
 				p->vel[i] += p->vel[i]*dvel;
 			p->vel[2] -= grav;
@@ -768,10 +768,10 @@ void R_DrawParticles (void)
 
 		case pt_explode2:
 			p->ramp += time3;
-			if (p->ramp >=8)
+			if (p->ramp >= (8 << PARTICLE_RAMP_FRACT))
 				p->die = -1;
 			else
-				p->color = ramp2[(int)p->ramp];
+				p->color = ramp2[(p->ramp) >> PARTICLE_RAMP_FRACT];
 			for (i=0 ; i<3 ; i++)
 				p->vel[i] -= p->vel[i]*frametime;
 			p->vel[2] -= grav;

@@ -45,12 +45,13 @@ typedef struct particle_s
 // drivers never touch the following fields
 	struct particle_s	*next;
 	vec3_t		vel;
-	float		ramp;
 	float		die;
 	byte		color;
 	ptype_t		type;
+	int16_t		ramp;		// was float, now q1.7.8
 } particle_t;
 
+#define PARTICLE_RAMP_FRACT 10
 #define PARTICLE_Z_CLIP	8.0
 
 typedef struct polyvert_s {
