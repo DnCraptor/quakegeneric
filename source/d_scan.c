@@ -249,9 +249,9 @@ D_DrawSpans8
 //    perspective correction code reordered for better integer/fpu overlap
 void __no_inline_not_in_flash_func(D_DrawSpans8) (espan_t *pspan)
 {
-	int				count, spancount, pwidth;
+	int				count, count_next, spancount, spancount_now, pwidth;
 	unsigned char	*pbase, *pdest;
-	fixed16_t		s, t, snext, tnext, sstep, tstep;
+	fixed16_t		s, t, sstep, tstep;
 	float			sdivz, tdivz, zi, du, dv, spancountminus1;
 	float			sdivz8stepu, tdivz8stepu, zi8stepu;
 	register float  z;
@@ -319,6 +319,8 @@ void __no_inline_not_in_flash_func(D_DrawSpans8) (espan_t *pspan)
 
 		do
 		{
+			count_next = count - spancount;
+			static fixed16_t snext, tnext;
 			{
 				snext = (int)(sdivz * z) + sadjust;
 				if (snext > bbextents)
@@ -335,8 +337,9 @@ void __no_inline_not_in_flash_func(D_DrawSpans8) (espan_t *pspan)
 					tnext = 8;	// guard against round-off error on <0 steps
 			}
 
+			spancount_now = spancount;
 			// calculate s and t at the far end of the span
-			if (count >= 8) {
+			if (count_next >= 8) {
 				spancount = 8;
 				// calculate s/z, t/z, zi->fixed s and t at far end of span,
 				// calculate s and t steps across span by shifting
@@ -344,8 +347,8 @@ void __no_inline_not_in_flash_func(D_DrawSpans8) (espan_t *pspan)
 				tdivz += tdivz8stepu;
 				zi += zi8stepu;
 				z = (float)0x10000 / zi;	// prescale to 16.16 fixed-point
-			} else if (count > 0) {
-				spancount = count;
+			} else if (count_next > 0) {
+				spancount = count_next;
 				// calculate s/z, t/z, zi->fixed s and t at last pixel in span (so
 				// can't step off polygon), clamp, calculate s and t steps across
 				// span by division, biasing steps low so we don't run off the
@@ -357,7 +360,7 @@ void __no_inline_not_in_flash_func(D_DrawSpans8) (espan_t *pspan)
 				z = (float)0x10000 / zi;	// prescale to 16.16 fixed-point
 			}
 
-			if (spancount == 8) {
+			if (spancount_now == 8) {
 				sstep = (snext - s) >> 3;
 				tstep = (tnext - t) >> 3;
 
@@ -371,25 +374,23 @@ void __no_inline_not_in_flash_func(D_DrawSpans8) (espan_t *pspan)
 				*pdest++ = *(pbase + (s >> 16) + (t >> 16) * pwidth); s += sstep; t += tstep;
 			} else
 			{
-				if (spancount > 1)
+				if (spancount_now > 1)
 				{
-					sstep = (snext - s) / (spancount - 1);
-					tstep = (tnext - t) / (spancount - 1);
+					sstep = (snext - s) / (spancount_now - 1);
+					tstep = (tnext - t) / (spancount_now - 1);
 				}
 
-				int ii = spancount;
 				do
 				{
 					*pdest++ = *(pbase + (s >> 16) + (t >> 16) * pwidth);
 					s += sstep;
 					t += tstep;
-				} while (--ii);
+				} while (--spancount_now);
 			}
 
 			s = snext;
 			t = tnext;
-			count -= spancount;
-
+			count = count_next;
 		} while (count != 0);
 
 	} while ((pspan = pspan->pnext) != NULL);
