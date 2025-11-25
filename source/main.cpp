@@ -816,6 +816,7 @@ uint32_t __not_in_flash_func(butter_psram_size)() { return 0; }
 #define STACK_CORE0 0x11800000
 
 void sigbus(void) {
+    quietlog = 0;
     Sys_Printf("SIGBUS exception caught... SP %ph (%d)\n", get_sp(), STACK_CORE0 - get_sp());
     while(1) {
         sleep_ms(33);
@@ -826,6 +827,7 @@ void sigbus(void) {
     /// TODO: reset_usb_boot(0, 0);
 }
 void __attribute__((naked, noreturn)) __printflike(1, 0) dummy_panic(__unused const char *fmt, ...) {
+    quietlog = 0;
     Sys_Printf("*** PANIC ***\n");
     Sys_Printf("SP %ph (%s)\n", get_sp(), STACK_CORE0 - get_sp());
     if (fmt)
