@@ -198,10 +198,11 @@ void Sys_Fprintf (FIL* f, char *fmt, ...) {
 }
 
 void Sys_Printf (char *fmt, ...)
-{
-	if (FR_OK != f_open(&tmp_f_struct.f, "quake.log", FA_WRITE | FA_OPEN_ALWAYS | FA_OPEN_APPEND)) return;
+{	
 	UINT wb;
 	va_list         argptr;
+	if (quietlog) return;
+	if (FR_OK != f_open(&tmp_f_struct.f, "quake.log", FA_WRITE | FA_OPEN_ALWAYS | FA_OPEN_APPEND)) return;
 	va_start (argptr,fmt);
     vsnprintf(buf, 256, fmt, argptr);
 	va_end (argptr);

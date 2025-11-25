@@ -51,7 +51,7 @@ __psram_bss ("cl_main") efrag_t			cl_efrags[MAX_EFRAGS];
 __psram_bss ("cl_main") lightstyle_t	cl_lightstyle[MAX_LIGHTSTYLES];
 __psram_bss ("cl_main") dlight_t		cl_dlights[MAX_DLIGHTS];
 
-__psram_bss ("cl_main") int				cl_numvisedicts;
+						int				cl_numvisedicts;
 __psram_bss ("cl_main") entity_t		*cl_visedicts[MAX_VISEDICTS];
 
 /*

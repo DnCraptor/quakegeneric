@@ -39,6 +39,7 @@ __psram_bss ("common") qboolean		proghack;
 __psram_data("common") int             static_registered = 1;  // only for startup check, then set
 
 __psram_bss ("common") qboolean		msg_suppress_1 = 0;
+					   qboolean		quietlog;
 
 void COM_InitFilesystem (void);
 
@@ -1159,6 +1160,7 @@ void COM_Init (char *basedir)
 
 	COM_InitFilesystem ();
 	COM_CheckRegistered ();
+	if (COM_CheckParm("-quietlog")) quietlog = 1;
 }
 
 
