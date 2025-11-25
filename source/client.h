@@ -212,8 +212,8 @@ typedef struct
 //
 // information that is static for the entire time connected to a server
 //
-	struct model_s		*model_precache[MAX_MODELS];
-	struct sfx_s		*sound_precache[MAX_SOUNDS];
+//	struct model_s		*model_precache[MAX_MODELS];
+//	struct sfx_s		*sound_precache[MAX_SOUNDS];
 
 	char		levelname[40];	// for display on solo scoreboard
 	int			viewentity;		// cl_entitites[cl.viewentity] = player
@@ -233,6 +233,11 @@ typedef struct
 	scoreboard_t	*scores;		// [cl.maxclients]
 } client_state_t;
 
+// slow and rarely used client state (located in PSRAM)
+typedef struct {
+	struct model_s		*model_precache[MAX_MODELS];
+	struct sfx_s		*sound_precache[MAX_SOUNDS];
+} client_state_slow_t;
 
 //
 // cvars
@@ -272,6 +277,7 @@ extern	cvar_t	m_side;
 #define	MAX_STATIC_ENTITIES	128			// torches, etc
 
 extern	client_state_t	cl;
+extern	client_state_slow_t	clp;
 
 // FIXME, allocate dynamically
 extern	efrag_t			cl_efrags[MAX_EFRAGS];

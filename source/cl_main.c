@@ -42,11 +42,12 @@ cvar_t	m_side = {"m_side","0.8", true};
 
 
 __psram_bss ("cl_main") client_static_t	cls;
-__psram_bss ("cl_main") client_state_t	cl;
+						client_state_t	cl;
+__psram_bss ("cl_main") client_state_slow_t	clp;
 // FIXME: put these on hunk?
 __psram_bss ("cl_main") efrag_t			cl_efrags[MAX_EFRAGS];
 ///entity_t		cl_entities[MAX_EDICTS];
-__psram_bss ("cl_main") entity_t*		cl_entities;
+ 						entity_t*		cl_entities;
 __psram_bss ("cl_main") lightstyle_t	cl_lightstyle[MAX_LIGHTSTYLES];
 __psram_bss ("cl_main") dlight_t		cl_dlights[MAX_DLIGHTS];
 
