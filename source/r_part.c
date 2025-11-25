@@ -73,7 +73,7 @@ R_EntityParticles
 
 #define NUMVERTEXNORMALS	162
 extern	float	r_avertexnormals[NUMVERTEXNORMALS][3];
-vec3_t	avelocities[NUMVERTEXNORMALS];
+__psram_bss("r_part") vec3_t	avelocities[NUMVERTEXNORMALS];
 float	beamlength = 16;
 vec3_t	avelocity = {23, 7, 3};
 float	partstep = 0.01;
@@ -125,7 +125,7 @@ avelocities[0][i] = (rand()&255) * 0.01f;
 		p->next = active_particles;
 		active_particles = p;
 
-		p->die = cltime_f + 0.01f;
+		p->die = 0.01f;
 		p->color = 0x6f;
 		p->type = pt_explode;
 		
@@ -307,7 +307,7 @@ void R_ParticleExplosion (vec3_t org)
 		p->next = active_particles;
 		active_particles = p;
 
-		p->die = cltime_f + 5.0f;
+		p->die = 5.0f;
 		p->color = ramp1[0];
 		p->ramp = (rand()&3) << PARTICLE_RAMP_FRACT;
 		if (i & 1)
@@ -355,7 +355,7 @@ void R_ParticleExplosion2 (vec3_t org, int colorStart, int colorLength)
 		p->next = active_particles;
 		active_particles = p;
 
-		p->die = cltime_f + 0.3f;
+		p->die = 0.3f;
 		p->color = colorStart + (colorMod % colorLength);
 		colorMod++;
 
@@ -391,7 +391,7 @@ void R_BlobExplosion (vec3_t org)
 		p->next = active_particles;
 		active_particles = p;
 
-		p->die = cltime_f + 1.0f + (rand()&8)*0.05f;
+		p->die = 1.0f + (rand()&8)*0.05f;
 
 		if (i & 1)
 		{
@@ -441,7 +441,7 @@ void R_RunParticleEffect (vec3_t org, vec3_t dir, int color, int count)
 
 		if (count == 1024)
 		{	// rocket explosion
-			p->die = cltime_f + 5.0f;
+			p->die = 5.0f;
 			p->color = ramp1[0];
 			p->ramp = (rand()&3) << PARTICLE_RAMP_FRACT;
 			if (i & 1)
@@ -465,7 +465,7 @@ void R_RunParticleEffect (vec3_t org, vec3_t dir, int color, int count)
 		}
 		else
 		{
-			p->die = cltime_f + 0.1f*(rand()%5);
+			p->die = 0.1f*(rand()%5);
 			p->color = (color&~7) + (rand()&7);
 			p->type = pt_slowgrav;
 			for (j=0 ; j<3 ; j++)
@@ -505,7 +505,7 @@ void R_LavaSplash (vec3_t org)
 				p->next = active_particles;
 				active_particles = p;
 		
-				p->die = cltime_f + 2.0f + (rand()&31) * 0.02f;
+				p->die = 2.0f + (rand()&31) * 0.02f;
 				p->color = 224 + (rand()&7);
 				p->type = pt_slowgrav;
 				
@@ -550,7 +550,7 @@ void R_TeleportSplash (vec3_t org)
 				p->next = active_particles;
 				active_particles = p;
 		
-				p->die = cltime_f + 0.2f + (rand()&7) * 0.02f;
+				p->die = 0.2f + (rand()&7) * 0.02f;
 				p->color = 7 + (rand()&7);
 				p->type = pt_slowgrav;
 				
@@ -602,7 +602,7 @@ void R_RocketTrail (vec3_t start, vec3_t end, int type)
 		active_particles = p;
 		
 		VectorCopy (vec3_origin, p->vel);
-		p->die = cltime_f + 2.0f;
+		p->die = 2.0f;
 
 		switch (type)
 		{
@@ -631,7 +631,7 @@ void R_RocketTrail (vec3_t start, vec3_t end, int type)
 
 			case 3:
 			case 5:	// tracer
-				p->die = cltime_f + 0.5f;
+				p->die = 0.5f;
 				p->type = pt_static;
 				if (type == 3)
 					p->color = 52 + ((tracercount&4)<<1);
@@ -664,7 +664,7 @@ void R_RocketTrail (vec3_t start, vec3_t end, int type)
 			case 6:	// voor trail
 				p->color = 9*16 + 8 + (rand()&3);
 				p->type = pt_static;
-				p->die = cltime_f + 0.3f;
+				p->die = 0.3f;
 				for (j=0 ; j<3 ; j++)
 					p->org[j] = start[j] + ((rand()&15)-8);
 				break;
@@ -711,7 +711,7 @@ void R_DrawParticles (void)
 	for ( ;; ) 
 	{
 		kill = active_particles;
-		if (kill && kill->die < cltime_f)
+		if (kill && (kill->die -= frametime) < 0.0f)
 		{
 			active_particles = kill->next;
 			kill->next = free_particles;
@@ -726,7 +726,7 @@ void R_DrawParticles (void)
 		for ( ;; )
 		{
 			kill = p->next;
-			if (kill && kill->die < cltime_f)
+			if (kill && (kill->die -= frametime) < 0.0f)
 			{
 				p->next = kill->next;
 				kill->next = free_particles;
