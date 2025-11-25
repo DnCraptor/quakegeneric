@@ -31,26 +31,32 @@ typedef struct
 	float	zi;
 } emitpoint_t;
 
-typedef int ptype_t;
+typedef byte ptype_t;
 
 typedef enum {
 	pt_static, pt_grav, pt_slowgrav, pt_fire, pt_explode, pt_explode2, pt_blob, pt_blob2
 } __ptype_t;
 
 // !!! if this is changed, it must be changed in d_ifacea.h too !!!
+// TODO update d_ifacea.h!!!
 typedef struct particle_s
 {
+	// first two 8b cache lines
 // driver-usable fields
 	vec3_t		org;
-	float		color;
 // drivers never touch the following fields
-	struct particle_s	*next;
-	vec3_t		vel;
-	float		ramp;
-	float		die;
+	int16_t		ramp;		// was float, now q1.7.8
+	byte		color;
 	ptype_t		type;
+	
+	// different 8b cache line
+	struct particle_s	*next;
+	float		die;
+
+	vec3_t		vel;
 } particle_t;
 
+#define PARTICLE_RAMP_FRACT 10
 #define PARTICLE_Z_CLIP	8.0
 
 typedef struct polyvert_s {

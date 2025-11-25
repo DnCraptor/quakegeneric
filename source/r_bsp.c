@@ -453,7 +453,11 @@ void R_RecursiveWorldNode (mnode_t *node, int clipflags)
 	mplane_t	*plane;
 	msurface_t	*surf, **mark;
 	mleaf_t		*pleaf;
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+	float		d, dot;
+#else
 	double		d, dot;
+#endif
 
 	if (node->contents == CONTENTS_SOLID)
 		return;		// solid
@@ -484,7 +488,7 @@ void R_RecursiveWorldNode (mnode_t *node, int clipflags)
 			d = DotProduct (rejectpt, view_clipplanes[i].normal);
 			d -= view_clipplanes[i].dist;
 
-			if (d <= 0)
+			if (d <= 0.0f)
 				return;
 
 			acceptpt[0] = (float)node->minmaxs[pindex[3+0]];
@@ -494,7 +498,7 @@ void R_RecursiveWorldNode (mnode_t *node, int clipflags)
 			d = DotProduct (acceptpt, view_clipplanes[i].normal);
 			d -= view_clipplanes[i].dist;
 
-			if (d >= 0)
+			if (d >= 0.0f)
 				clipflags &= ~(1<<i);	// node is entirely on screen
 		}
 	}
@@ -548,7 +552,7 @@ void R_RecursiveWorldNode (mnode_t *node, int clipflags)
 			break;
 		}
 	
-		if (dot >= 0)
+		if (dot >= 0.0f)
 			side = 0;
 		else
 			side = 1;

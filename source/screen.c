@@ -72,12 +72,12 @@ CENTER PRINTING
 ===============================================================================
 */
 
-char		scr_centerstring[1024];
-float		scr_centertime_start;	// for slow victory printing
-float		scr_centertime_off;
-int			scr_center_lines;
-int			scr_erase_lines;
-int			scr_erase_center;
+__psram_bss ("screen") char		scr_centerstring[1024];
+__psram_bss ("screen") float		scr_centertime_start;	// for slow victory printing
+__psram_bss ("screen") float		scr_centertime_off;
+__psram_bss ("screen") int			scr_center_lines;
+__psram_bss ("screen") int			scr_erase_lines;
+__psram_bss ("screen") int			scr_erase_center;
 
 /*
 ==============

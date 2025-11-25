@@ -816,6 +816,7 @@ uint32_t __not_in_flash_func(butter_psram_size)() { return 0; }
 #define STACK_CORE0 0x11800000
 
 void sigbus(void) {
+    quietlog = 0;
     Sys_Printf("SIGBUS exception caught... SP %ph (%d)\n", get_sp(), STACK_CORE0 - get_sp());
     while(1) {
         sleep_ms(33);
@@ -826,6 +827,7 @@ void sigbus(void) {
     /// TODO: reset_usb_boot(0, 0);
 }
 void __attribute__((naked, noreturn)) __printflike(1, 0) dummy_panic(__unused const char *fmt, ...) {
+    quietlog = 0;
     Sys_Printf("*** PANIC ***\n");
     Sys_Printf("SP %ph (%s)\n", get_sp(), STACK_CORE0 - get_sp());
     if (fmt)
@@ -1024,6 +1026,9 @@ static void finish_him(void) {
     }
     Sys_Printf(" Sound          : %s\n", is_i2s_enabled ? "i2s" : "PWM");
     Sys_Printf(" SP after switch: 0x%08X\n", sp_after);
+    Sys_Printf(" .psram_data size:  0x%08X\n", (&__psram_data_end__ - &__psram_data_start__));
+    Sys_Printf(" .psram_bss  size:  0x%08X\n", (&__psram_bss_end__ - &__psram_bss_start__));
+    Sys_Printf(" .psram_heap start: 0x%08X\n", (&__psram_heap_start__));
     Sys_Printf(" --------------------------------------\n");
 
     if (new_cpu_mhz != cpu_mhz) {
@@ -1124,12 +1129,12 @@ void __not_in_flash() flash_timings() {
     if (!new_flash_timings) {
         const int max_flash_freq = flash_mhz * MHZ;
         const int clock_hz = cpu_mhz * MHZ;
-        int divisor = (clock_hz + max_flash_freq - 1) / max_flash_freq;
-        if (divisor == 1 && clock_hz > 100000000) {
+        int divisor = (clock_hz + max_flash_freq - (max_flash_freq >> 4) - 1) / max_flash_freq;
+        if (divisor == 1 && clock_hz >= 166000000) {
             divisor = 2;
         }
         int rxdelay = divisor;
-        if (clock_hz / divisor > 100000000) {
+        if (clock_hz / divisor > 100000000 && clock_hz >= 166000000) {
             rxdelay += 1;
         }
         qmi_hw->m[0].timing = 0x60007000 |
@@ -1144,12 +1149,12 @@ void __not_in_flash() psram_timings() {
     if (!new_psram_timings) {
         const int max_psram_freq = psram_mhz * MHZ;
         const int clock_hz = cpu_mhz * MHZ;
-        int divisor = (clock_hz + max_psram_freq - 1) / max_psram_freq;
-        if (divisor == 1 && clock_hz > 100000000) {
+        int divisor = (clock_hz + max_psram_freq - (max_psram_freq >> 4) - 1) / max_psram_freq;
+        if (divisor == 1 && clock_hz >= 166000000) {
             divisor = 2;
         }
         int rxdelay = divisor;
-        if (clock_hz / divisor > 100000000) {
+        if (clock_hz / divisor > 100000000 && clock_hz >= 166000000) {
             rxdelay += 1;
         }
         qmi_hw->m[1].timing = (qmi_hw->m[1].timing & ~0x000000FFF) |
@@ -1251,7 +1256,6 @@ int main() {
     #endif
 
     f_mount(&fs, "", 1);
-    load_config();
 
 #if PICO_RP2350
     rp2350a = (*((io_ro_32*)(SYSINFO_BASE + SYSINFO_PACKAGE_SEL_OFFSET)) & 1);
@@ -1264,6 +1268,9 @@ int main() {
     #endif
     exception_set_exclusive_handler(HARDFAULT_EXCEPTION, sigbus);
 #endif
+
+    psram_sections_init();      // init psram_data/psram_bss sections 
+    load_config();
 
     switch_stack(STACK_CORE0, finish_him);
     __unreachable();

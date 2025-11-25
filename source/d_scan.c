@@ -94,7 +94,7 @@ void D_WarpScreen (void)
 D_DrawTurbulent8Span
 =============
 */
-void D_DrawTurbulent8Span (void)
+void __no_inline_not_in_flash_func(D_DrawTurbulent8Span) (void)
 {
 	int		sturb, tturb;
 
@@ -113,7 +113,7 @@ void D_DrawTurbulent8Span (void)
 Turbulent8
 =============
 */
-void Turbulent8 (espan_t *pspan)
+void __not_in_flash_func(Turbulent8) (espan_t *pspan)
 {
 	int				count;
 	fixed16_t		snext, tnext;
@@ -245,19 +245,23 @@ void Turbulent8 (espan_t *pspan)
 D_DrawSpans8
 =============
 */
-void D_DrawSpans8 (espan_t *pspan)
+// w: IDEALLY it should be rewritten in assembly, of course
+//    perspective correction code reordered for better integer/fpu overlap
+void __no_inline_not_in_flash_func(D_DrawSpans8) (espan_t *pspan)
 {
-	int				count, spancount;
+	int				count, count_next, spancount, spancount_now, pwidth;
 	unsigned char	*pbase, *pdest;
-	fixed16_t		s, t, snext, tnext, sstep, tstep;
-	float			sdivz, tdivz, zi, z, du, dv, spancountminus1;
+	fixed16_t		s, t, sstep, tstep;
+	float			sdivz, tdivz, zi, du, dv, spancountminus1;
 	float			sdivz8stepu, tdivz8stepu, zi8stepu;
+	register float  z;
 
 	sstep = 0;	// keep compiler happy
 	tstep = 0;	// ditto
 
 	pbase = (unsigned char *)cacheblock;
-
+	pwidth = cachewidth;
+	
 	sdivz8stepu = d_sdivzstepu * 8;
 	tdivz8stepu = d_tdivzstepu * 8;
 	zi8stepu = d_zistepu * 8;
@@ -290,25 +294,34 @@ void D_DrawSpans8 (espan_t *pspan)
 		else if (t < 0)
 			t = 0;
 
-		do
-		{
+
 		// calculate s and t at the far end of the span
-			if (count >= 8)
-				spancount = 8;
-			else
-				spancount = count;
-
-			count -= spancount;
-
-			if (count)
-			{
+		if (count >= 8) {
+			spancount = 8;
 			// calculate s/z, t/z, zi->fixed s and t at far end of span,
 			// calculate s and t steps across span by shifting
-				sdivz += sdivz8stepu;
-				tdivz += tdivz8stepu;
-				zi += zi8stepu;
-				z = (float)0x10000 / zi;	// prescale to 16.16 fixed-point
+			sdivz += sdivz8stepu;
+			tdivz += tdivz8stepu;
+			zi += zi8stepu;
+			z = (float)0x10000 / zi;	// prescale to 16.16 fixed-point
+		} else {
+			spancount = count;
+			// calculate s/z, t/z, zi->fixed s and t at last pixel in span (so
+			// can't step off polygon), clamp, calculate s and t steps across
+			// span by division, biasing steps low so we don't run off the
+			// texture
+			spancountminus1 = (float)(spancount - 1);
+			sdivz += d_sdivzstepu * spancountminus1;
+			tdivz += d_tdivzstepu * spancountminus1;
+			zi += d_zistepu * spancountminus1;
+			z = (float)0x10000 / zi;	// prescale to 16.16 fixed-point
+		}
 
+		do
+		{
+			count_next = count - spancount;
+			static fixed16_t snext, tnext;
+			{
 				snext = (int)(sdivz * z) + sadjust;
 				if (snext > bbextents)
 					snext = bbextents;
@@ -322,53 +335,63 @@ void D_DrawSpans8 (espan_t *pspan)
 					tnext = bbextentt;
 				else if (tnext < 8)
 					tnext = 8;	// guard against round-off error on <0 steps
-
-				sstep = (snext - s) >> 3;
-				tstep = (tnext - t) >> 3;
 			}
-			else
-			{
-			// calculate s/z, t/z, zi->fixed s and t at last pixel in span (so
-			// can't step off polygon), clamp, calculate s and t steps across
-			// span by division, biasing steps low so we don't run off the
-			// texture
+
+			spancount_now = spancount;
+			// calculate s and t at the far end of the span
+			if (count_next >= 8) {
+				spancount = 8;
+				// calculate s/z, t/z, zi->fixed s and t at far end of span,
+				// calculate s and t steps across span by shifting
+				sdivz += sdivz8stepu;
+				tdivz += tdivz8stepu;
+				zi += zi8stepu;
+				z = (float)0x10000 / zi;	// prescale to 16.16 fixed-point
+			} else if (count_next > 0) {
+				spancount = count_next;
+				// calculate s/z, t/z, zi->fixed s and t at last pixel in span (so
+				// can't step off polygon), clamp, calculate s and t steps across
+				// span by division, biasing steps low so we don't run off the
+				// texture
 				spancountminus1 = (float)(spancount - 1);
 				sdivz += d_sdivzstepu * spancountminus1;
 				tdivz += d_tdivzstepu * spancountminus1;
 				zi += d_zistepu * spancountminus1;
 				z = (float)0x10000 / zi;	// prescale to 16.16 fixed-point
-				snext = (int)(sdivz * z) + sadjust;
-				if (snext > bbextents)
-					snext = bbextents;
-				else if (snext < 8)
-					snext = 8;	// prevent round-off error on <0 steps from
-								//  from causing overstepping & running off the
-								//  edge of the texture
-
-				tnext = (int)(tdivz * z) + tadjust;
-				if (tnext > bbextentt)
-					tnext = bbextentt;
-				else if (tnext < 8)
-					tnext = 8;	// guard against round-off error on <0 steps
-
-				if (spancount > 1)
-				{
-					sstep = (snext - s) / (spancount - 1);
-					tstep = (tnext - t) / (spancount - 1);
-				}
 			}
 
-			do
+			if (spancount_now == 8) {
+				sstep = (snext - s) >> 3;
+				tstep = (tnext - t) >> 3;
+
+				*pdest++ = *(pbase + (s >> 16) + (t >> 16) * pwidth); s += sstep; t += tstep;
+				*pdest++ = *(pbase + (s >> 16) + (t >> 16) * pwidth); s += sstep; t += tstep;
+				*pdest++ = *(pbase + (s >> 16) + (t >> 16) * pwidth); s += sstep; t += tstep;
+				*pdest++ = *(pbase + (s >> 16) + (t >> 16) * pwidth); s += sstep; t += tstep;
+				*pdest++ = *(pbase + (s >> 16) + (t >> 16) * pwidth); s += sstep; t += tstep;
+				*pdest++ = *(pbase + (s >> 16) + (t >> 16) * pwidth); s += sstep; t += tstep;
+				*pdest++ = *(pbase + (s >> 16) + (t >> 16) * pwidth); s += sstep; t += tstep;
+				*pdest++ = *(pbase + (s >> 16) + (t >> 16) * pwidth); s += sstep; t += tstep;
+			} else
 			{
-				*pdest++ = *(pbase + (s >> 16) + (t >> 16) * cachewidth);
-				s += sstep;
-				t += tstep;
-			} while (--spancount > 0);
+				if (spancount_now > 1)
+				{
+					sstep = (snext - s) / (spancount_now - 1);
+					tstep = (tnext - t) / (spancount_now - 1);
+				}
+
+				do
+				{
+					*pdest++ = *(pbase + (s >> 16) + (t >> 16) * pwidth);
+					s += sstep;
+					t += tstep;
+				} while (--spancount_now);
+			}
 
 			s = snext;
 			t = tnext;
-
-		} while (count > 0);
+			count = count_next;
+		} while (count != 0);
 
 	} while ((pspan = pspan->pnext) != NULL);
 }
@@ -378,13 +401,17 @@ void D_DrawSpans8 (espan_t *pspan)
 D_DrawZSpans
 =============
 */
-void D_DrawZSpans (espan_t *pspan)
+void __no_inline_not_in_flash_func(D_DrawZSpans) (espan_t *pspan)
 {
 	int				count, doublecount, izistep;
 	int				izi;
 	short			*pdest;
 	unsigned		ltemp;
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+	float			zi;
+#else
 	double			zi;
+#endif
 	float			du, dv;
 
 // FIXME: check for clamping/range problems

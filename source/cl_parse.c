@@ -132,7 +132,7 @@ void CL_ParseStartSoundPacket(void)
 	for (i=0 ; i<3 ; i++)
 		pos[i] = MSG_ReadCoord ();
  
-    S_StartSound (ent, channel, cl.sound_precache[sound_num], pos, volume/255.0, attenuation);
+    S_StartSound (ent, channel, clp.sound_precache[sound_num], pos, volume/255.0, attenuation);
 }       
 
 /*
@@ -251,7 +251,7 @@ void CL_ParseServerInfo (void)
 //
 
 // precache models
-	memset (cl.model_precache, 0, sizeof(cl.model_precache));
+	memset (clp.model_precache, 0, sizeof(clp.model_precache));
 	for (nummodels=1 ; ; nummodels++)
 	{
 		str = MSG_ReadString ();
@@ -267,7 +267,7 @@ void CL_ParseServerInfo (void)
 	}
 
 // precache sounds
-	memset (cl.sound_precache, 0, sizeof(cl.sound_precache));
+	memset (clp.sound_precache, 0, sizeof(clp.sound_precache));
 	for (numsounds=1 ; ; numsounds++)
 	{
 		str = MSG_ReadString ();
@@ -288,8 +288,8 @@ void CL_ParseServerInfo (void)
 
 	for (i=1 ; i<nummodels ; i++)
 	{
-		cl.model_precache[i] = Mod_ForName (model_precache[i], false);
-		if (cl.model_precache[i] == NULL)
+		clp.model_precache[i] = Mod_ForName (model_precache[i], false);
+		if (clp.model_precache[i] == NULL)
 		{
 			Con_Printf("Model %s not found\n", model_precache[i]);
 			return;
@@ -300,14 +300,14 @@ void CL_ParseServerInfo (void)
 	S_BeginPrecaching ();
 	for (i=1 ; i<numsounds ; i++)
 	{
-		cl.sound_precache[i] = S_PrecacheSound (sound_precache[i]);
+		clp.sound_precache[i] = S_PrecacheSound (sound_precache[i]);
 		CL_KeepaliveMessage ();
 	}
 	S_EndPrecaching ();
 
 
 // local state
-	cl_entities[0].model = cl.worldmodel = cl.model_precache[1];
+	cl_entities[0].model = cl.worldmodel = clp.model_precache[1];
 	
 	R_NewMap ();
 
@@ -377,7 +377,7 @@ if (bits&(1<<i))
 	else
 		modnum = ent->baseline.modelindex;
 		
-	model = cl.model_precache[modnum];
+	model = clp.model_precache[modnum];
 	if (model != ent->model)
 	{
 		ent->model = model;
@@ -661,7 +661,7 @@ void CL_ParseStatic (void)
 	CL_ParseBaseline (ent);
 
 // copy it to the current state
-	ent->model = cl.model_precache[ent->baseline.modelindex];
+	ent->model = clp.model_precache[ent->baseline.modelindex];
 	ent->frame = ent->baseline.frame;
 	ent->colormap = vid.colormap;
 	ent->skinnum = ent->baseline.skin;
@@ -689,7 +689,7 @@ void CL_ParseStaticSound (void)
 	vol = MSG_ReadByte ();
 	atten = MSG_ReadByte ();
 	
-	S_StaticSound (cl.sound_precache[sound_num], org, vol, atten);
+	S_StaticSound (clp.sound_precache[sound_num], org, vol, atten);
 }
 
 

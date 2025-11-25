@@ -23,22 +23,23 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define NUM_SAFE_ARGVS  7
 
-static char     *largv[MAX_NUM_ARGVS + NUM_SAFE_ARGVS + 1];
-static char     *argvdummy = " ";
+__psram_data("common") static char     *largv[MAX_NUM_ARGVS + NUM_SAFE_ARGVS + 1];
+__psram_data("common") static char     *argvdummy = " ";
 
-static char     *safeargvs[NUM_SAFE_ARGVS] =
+__psram_data("common") static char     *safeargvs[NUM_SAFE_ARGVS] =
 	{"-stdvid", "-nolan", "-nosound", "-nocdaudio", "-nojoy", "-nomouse", "-dibonly"};
 
-cvar_t  registered = {"registered","0"};
-cvar_t  cmdline = {"cmdline","0", false, true};
+__psram_data("common") cvar_t  registered = {"registered","0"};
+__psram_data("common") cvar_t  cmdline = {"cmdline","0", false, true};
 
-qboolean        com_modified;   // set true if using non-id files
+__psram_bss ("common") qboolean        com_modified;   // set true if using non-id files
 
-qboolean		proghack;
+__psram_bss ("common") qboolean		proghack;
 
-int             static_registered = 1;  // only for startup check, then set
+__psram_data("common") int             static_registered = 1;  // only for startup check, then set
 
-qboolean		msg_suppress_1 = 0;
+__psram_bss ("common") qboolean		msg_suppress_1 = 0;
+					   qboolean		quietlog;
 
 void COM_InitFilesystem (void);
 
@@ -46,17 +47,17 @@ void COM_InitFilesystem (void);
 #define PAK0_COUNT              339
 #define PAK0_CRC                32981
 
-char	com_token[1024];
-int		com_argc;
-char	**com_argv;
+__psram_bss ("common") char	com_token[1024];
+__psram_bss ("common") int		com_argc;
+__psram_bss ("common") char	**com_argv;
 
 #define CMDLINE_LENGTH	256
-char	com_cmdline[CMDLINE_LENGTH];
+__psram_bss ("common") char	com_cmdline[CMDLINE_LENGTH];
 
-qboolean		standard_quake = true, rogue, hipnotic;
+__psram_data("common") qboolean		standard_quake = true, rogue, hipnotic;
 
 // this graphic needs to be in the pak file to use registered features
-unsigned short pop[] =
+const unsigned short pop[] =
 {
  0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000
 ,0x0000,0x0000,0x6600,0x0000,0x0000,0x0000,0x6600,0x0000
@@ -431,7 +432,7 @@ float Q_atof (char *str)
 ============================================================================
 */
 
-qboolean        bigendien;
+__psram_bss ("common") qboolean        bigendien;
 
 short   (*BigShort) (short l);
 short   (*LittleShort) (short l);
@@ -594,8 +595,8 @@ void MSG_WriteAngle (sizebuf_t *sb, float f)
 //
 // reading functions
 //
-int                     msg_readcount;
-qboolean        msg_badread;
+__psram_bss ("common") int                     msg_readcount;
+__psram_bss ("common") qboolean        msg_badread;
 
 void MSG_BeginReading (void)
 {
@@ -696,7 +697,7 @@ float MSG_ReadFloat (void)
 
 char *MSG_ReadString (void)
 {
-	static char     string[2048];
+	__psram_bss ("common") static char     string[2048];
 	int             l,c;
 	
 	l = 0;
@@ -834,7 +835,7 @@ COM_FileExtension
 */
 char *COM_FileExtension (char *in)
 {
-	static char exten[8];
+	__psram_bss ("common") static char exten[8];
 	int             i;
 
 	while (*in && *in != '.')
@@ -1159,6 +1160,7 @@ void COM_Init (char *basedir)
 
 	COM_InitFilesystem ();
 	COM_CheckRegistered ();
+	if (COM_CheckParm("-quietlog")) quietlog = 1;
 }
 
 
@@ -1174,7 +1176,7 @@ FIXME: make this buffer size safe someday
 char    *va(char *format, ...)
 {
 	va_list         argptr;
-	static char string[1024];
+	__psram_bss ("common") static char string[1024];
 	
 	va_start (argptr, format);
 	vsnprintf (string, 1024, format, argptr);
@@ -1210,7 +1212,7 @@ QUAKE FILESYSTEM
 =============================================================================
 */
 
-int     com_filesize;
+__psram_bss ("common") int     com_filesize;
 
 
 //
@@ -1249,8 +1251,8 @@ typedef struct
 
 #define MAX_FILES_IN_PACK       2048
 
-char    com_cachedir[MAX_OSPATH];
-char    com_gamedir[MAX_OSPATH];
+__psram_bss ("common") char    com_cachedir[MAX_OSPATH];
+__psram_bss ("common") char    com_gamedir[MAX_OSPATH];
 
 typedef struct searchpath_s
 {
@@ -1259,7 +1261,7 @@ typedef struct searchpath_s
 	struct searchpath_s *next;
 } searchpath_t;
 
-searchpath_t    *com_searchpaths;
+__psram_bss ("common") searchpath_t    *com_searchpaths;
 
 /*
 ============
@@ -1544,9 +1546,9 @@ Filename are reletive to the quake directory.
 Allways appends a 0 byte.
 ============
 */
-cache_user_t *loadcache;
-byte    *loadbuf;
-int             loadsize;
+__psram_bss ("common") cache_user_t *loadcache;
+__psram_bss ("common") byte    *loadbuf;
+__psram_bss ("common") int             loadsize;
 byte *COM_LoadFile (char *path, int usehunk)
 {
 	int             h;

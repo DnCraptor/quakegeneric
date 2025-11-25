@@ -59,6 +59,13 @@ typedef struct
 #define	NAME_LENGTH	64
 
 
+typedef struct {
+	float total;
+	float server;
+	float r, dp, rw, db, se, de, dv;
+	int   faceclip, polycount, drawnpolycount, surf;
+} ftdemo_point_t;
+
 //
 // client_state_t should hold all pieces of the client state
 //
@@ -119,12 +126,17 @@ typedef struct
 	qboolean	demorecording;
 	qboolean	demoplayback;
 	qboolean	timedemo;
+	qboolean    frametimedemo;
 	int			forcetrack;			// -1 = use normal cd track
 	FIL			*demofile;
 	int			td_lastframe;		// to meter out one message a frame
 	int			td_startframe;		// host_framecount at start
 	float		td_starttime;		// realtime at second frame of timedemo
 
+	ftdemo_point_t *ftd_buf;
+	int         ftd_framepos;		// circular buffer position
+	int         ftd_frames_total;
+	int         ftd_frames_recorded;
 
 // connection information
 	int			signon;			// 0 to SIGNONS
@@ -200,8 +212,8 @@ typedef struct
 //
 // information that is static for the entire time connected to a server
 //
-	struct model_s		*model_precache[MAX_MODELS];
-	struct sfx_s		*sound_precache[MAX_SOUNDS];
+//	struct model_s		*model_precache[MAX_MODELS];
+//	struct sfx_s		*sound_precache[MAX_SOUNDS];
 
 	char		levelname[40];	// for display on solo scoreboard
 	int			viewentity;		// cl_entitites[cl.viewentity] = player
@@ -221,6 +233,11 @@ typedef struct
 	scoreboard_t	*scores;		// [cl.maxclients]
 } client_state_t;
 
+// slow and rarely used client state (located in PSRAM)
+typedef struct {
+	struct model_s		*model_precache[MAX_MODELS];
+	struct sfx_s		*sound_precache[MAX_SOUNDS];
+} client_state_slow_t;
 
 //
 // cvars
@@ -260,6 +277,7 @@ extern	cvar_t	m_side;
 #define	MAX_STATIC_ENTITIES	128			// torches, etc
 
 extern	client_state_t	cl;
+extern	client_state_slow_t	clp;
 
 // FIXME, allocate dynamically
 extern	efrag_t			cl_efrags[MAX_EFRAGS];
@@ -336,6 +354,8 @@ void CL_Stop_f (void);
 void CL_Record_f (void);
 void CL_PlayDemo_f (void);
 void CL_TimeDemo_f (void);
+void CL_FrameTimeDemo_f (void);
+void CL_FrameTimeDemoCloseFrame (void);
 
 //
 // cl_parse.c

@@ -122,7 +122,7 @@ D_PolysetDraw
 */
 void D_PolysetDraw (void)
 {
-	spanpackage_t	spans[DPS_MAXSPANS + 1 +
+	static spanpackage_t	spans[DPS_MAXSPANS + 1 +
 			((CACHE_SIZE - 1) / sizeof(spanpackage_t)) + 1];
 						// one extra because of cache line pretouching
 
@@ -307,7 +307,7 @@ void D_DrawNonSubdiv (void)
 D_PolysetRecursiveTriangle
 ================
 */
-void D_PolysetRecursiveTriangle (int *lp1, int *lp2, int *lp3)
+void __no_inline_not_in_flash_func(D_PolysetRecursiveTriangle) (int *lp1, int *lp2, int *lp3)
 {
 	int		*temp;
 	int		d;
@@ -410,7 +410,7 @@ void D_PolysetUpdateTables (void)
 D_PolysetScanLeftEdge
 ====================
 */
-void D_PolysetScanLeftEdge (int height)
+void __no_inline_not_in_flash_func(D_PolysetScanLeftEdge) (int height)
 {
 
 	do
@@ -476,7 +476,7 @@ void D_PolysetScanLeftEdge (int height)
 D_PolysetSetUpForLineScan
 ====================
 */
-void D_PolysetSetUpForLineScan(fixed8_t startvertu, fixed8_t startvertv,
+void __no_inline_not_in_flash_func(D_PolysetSetUpForLineScan)(fixed8_t startvertu, fixed8_t startvertv,
 		fixed8_t endvertu, fixed8_t endvertv)
 {
 	double		dm, dn;
@@ -514,7 +514,7 @@ void D_PolysetSetUpForLineScan(fixed8_t startvertu, fixed8_t startvertv,
 D_PolysetCalcGradients
 ================
 */
-void D_PolysetCalcGradients (int skinwidth)
+void __no_inline_not_in_flash_func(D_PolysetCalcGradients) (int skinwidth)
 {
 	float	xstepdenominv, ystepdenominv, t0, t1;
 	float	p01_minus_p21, p11_minus_p21, p00_minus_p20, p10_minus_p20;
@@ -524,7 +524,11 @@ void D_PolysetCalcGradients (int skinwidth)
 	p10_minus_p20 = r_p1[0] - r_p2[0];
 	p11_minus_p21 = r_p1[1] - r_p2[1];
 
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+	xstepdenominv = 1.0f / (float)d_xdenom;
+#else
 	xstepdenominv = 1.0 / (float)d_xdenom;
+#endif
 
 	ystepdenominv = -xstepdenominv;
 
@@ -586,7 +590,7 @@ void InitGel (byte *palette)
 D_PolysetDrawSpans8
 ================
 */
-void D_PolysetDrawSpans8 (spanpackage_t *pspanpackage)
+void __no_inline_not_in_flash_func(D_PolysetDrawSpans8) (spanpackage_t *pspanpackage)
 {
 	int		lcount;
 	byte	*lpdest;
@@ -692,7 +696,7 @@ void D_PolysetFillSpans8 (spanpackage_t *pspanpackage)
 D_RasterizeAliasPolySmooth
 ================
 */
-void D_RasterizeAliasPolySmooth (void)
+void __no_inline_not_in_flash_func(D_RasterizeAliasPolySmooth) (void)
 {
 	int				initialleftheight, initialrightheight;
 	int				*plefttop, *prighttop, *pleftbottom, *prightbottom;
@@ -916,7 +920,7 @@ void D_RasterizeAliasPolySmooth (void)
 D_PolysetSetEdgeTable
 ================
 */
-void D_PolysetSetEdgeTable (void)
+void __no_inline_not_in_flash_func(D_PolysetSetEdgeTable) (void)
 {
 	int			edgetableindex;
 

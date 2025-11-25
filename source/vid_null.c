@@ -29,11 +29,23 @@ viddef_t	vid;				// global video state
 #define	BASEWIDTH	320
 #define	BASEHEIGHT	240
 
+#define ZBUFFER_IN_SRAM
+
 byte	vid_buffer[BASEWIDTH*BASEHEIGHT];
+
+#ifndef ZBUFFER_IN_SRAM
 short*	zbuffer = (short*)__PSRAM_Z_BUFF;
-/// short zbuffer[BASEWIDTH*BASEHEIGHT]; // 153600 = 0x25800
+#else
+short zbuffer[BASEWIDTH*BASEHEIGHT]; // 153600 = 0x25800
+#endif
 byte	*surfcache = 0;
 size_t	surfcache_size;
+
+//#define SURFCACHE_IN_SRAM
+#ifdef  SURFCACHE_IN_SRAM
+#define SURFCACHE_SRAM_SIZE (256 * 1024)
+static byte surfcache_sram[SURFCACHE_SRAM_SIZE];
+#endif
 
 void	VID_SetPalette (unsigned char *palette)
 {
@@ -61,9 +73,14 @@ void	VID_Init (unsigned char *palette)
 	d_pzbuffer = zbuffer;
 
 	if (!surfcache) {
+#ifndef SURFCACHE_IN_SRAM
 		surfcache_size = D_SurfaceCacheForRes(BASEWIDTH, BASEHEIGHT); // 652800
 		/// TODO: may be moved to SRSAM?
 		surfcache = (byte*)alloc(surfcache_size, "surfcache");
+#else
+		surfcache_size = SURFCACHE_SRAM_SIZE;
+		surfcache = surfcache_sram;
+#endif
 	}
 	D_InitCaches (surfcache, surfcache_size);
 

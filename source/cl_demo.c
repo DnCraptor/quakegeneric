@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 
+void CL_FinishFrameTimeDemo(void);
 void CL_FinishTimeDemo (void);
 
 /*
@@ -55,6 +56,8 @@ void CL_StopPlayback (void)
 	cls.demoplayback = false;
 	cls.state = ca_disconnected;
 
+	if (cls.frametimedemo)
+		CL_FinishFrameTimeDemo();
 	if (cls.timedemo)
 		CL_FinishTimeDemo ();
 }
@@ -362,6 +365,49 @@ void CL_FinishTimeDemo (void)
 
 /*
 ====================
+CL_FrameTimeDemoAdvance
+
+====================
+*/
+void CL_FrameTimeDemoAdvance (void) 
+{
+	if (cls.ftd_frames_recorded < cls.ftd_frames_total) {
+		cls.ftd_framepos++;
+		cls.ftd_frames_recorded++;
+	}
+}
+
+/*
+====================
+CL_FinishFrameTimeDemo
+
+====================
+*/
+void CL_FinishFrameTimeDemo (void)
+{
+	int i;
+	ftdemo_point_t *p;
+
+	cls.frametimedemo = false;
+
+	Con_Printf("--------------------------\n");
+	Con_Printf("Total\tSerever\tRender\tParticles\tRenderWorld\tBEntities\tScanEdges\tEntities\tViewModel\tfaceclip\tpolycount\tdrawnpolycount\tsurfaces\n");
+	p = cls.ftd_buf;
+	for (i = 0; i < cls.ftd_frames_recorded; i++) {
+		Con_Printf("%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%d\t%d\t%d\t%d\t\n", 
+			p->total, p->server, p->r, p->dp, p->rw, p->db, p->se, p->de, p->dv, 
+			p->faceclip, p->polycount, p->drawnpolycount, p->surf
+		);
+		p++;
+	} 
+	Con_Printf("--------------------------\n");
+
+	cls.ftd_frames_recorded = 0;
+	cls.ftd_frames_total = 0;
+}
+
+/*
+====================
 CL_TimeDemo_f
 
 timedemo [demoname]
@@ -388,3 +434,55 @@ void CL_TimeDemo_f (void)
 	cls.td_lastframe = -1;		// get a new message this frame
 }
 
+// KLUDGE KLUDGE KLUDGE
+__psram_bss("cl_demo") ftdemo_point_t ftdbuf[1024];
+
+/*
+====================
+CL_FrameTimeDemo_f
+
+frametimedemo [demoname]
+====================
+*/
+void CL_FrameTimeDemo_f (void)
+{
+	if (cmd_source != src_command)
+		return;
+
+	if (Cmd_Argc() != 2)
+	{
+		Con_Printf ("frametimedemo <demoname> : plays demo\nand dumps stats for last 1024 frames\n");
+		return;
+	}
+
+	// allocate buffer for frametime statistics
+	cls.ftd_buf = ftdbuf;
+	cls.ftd_framepos = 0;
+	cls.ftd_frames_recorded = 0;
+	cls.ftd_frames_total = 1024;
+
+	CL_PlayDemo_f ();
+	
+// cls.td_starttime will be grabbed at the second frame of the demo, so
+// all the loading time doesn't get counted
+	cls.frametimedemo = true;
+	cls.timedemo = true;
+	cls.td_startframe = host_framecount;
+	cls.td_lastframe = -1;		// get a new message this frame
+}
+
+/*
+====================
+CL_FrameTimeDemo_CloseFrame
+====================
+*/
+
+void CL_FrameTimeDemoCloseFrame (void)
+{
+	if (!cls.frametimedemo) return;
+
+	if (cls.ftd_framepos < cls.ftd_frames_total - 1) {
+		cls.ftd_framepos++;
+		cls.ftd_frames_recorded++;
+	}
+}

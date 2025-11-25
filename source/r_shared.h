@@ -29,8 +29,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define MAXWORKINGVERTS	(MAXVERTS+4)	// max points in an intermediate
 										//  polygon (while processing)
 // !!! if this is changed, it must be changed in d_ifacea.h too !!!
-#define	MAXHEIGHT		1024
-#define	MAXWIDTH		1280
+#define	MAXHEIGHT		240
+#define	MAXWIDTH		320
 #define MAXDIMENSION	((MAXHEIGHT > MAXWIDTH) ? MAXHEIGHT : MAXWIDTH)
 
 #define SIN_BUFFER_SIZE	(MAXDIMENSION+CYCLE)
@@ -65,7 +65,13 @@ extern	entity_t		*currententity;
 #define	MINEDGES			NUMSTACKEDGES
 #define NUMSTACKSURFACES	800
 #define MINSURFACES			NUMSTACKSURFACES
-#define	MAXSPANS			3000
+
+// wbcbz7 note: those are allocated at stack in R_ScanEdges() and
+// periodically flushed (aka drawn) inside this function....
+// we could probably malloc it instead and get away with much smaller amount to save on SRAM
+// placing it in SRAM already gives extra 2.5 fps so it's worth it
+// upd: smaller amounts don't make rendering faster sadly
+#define	MAXSPANS			3000			// ca. 48k on SRAM heap
 
 // !!! if this is changed, it must be changed in asm_draw.h too !!!
 typedef struct espan_s
