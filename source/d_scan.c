@@ -94,7 +94,7 @@ void D_WarpScreen (void)
 D_DrawTurbulent8Span
 =============
 */
-void D_DrawTurbulent8Span (void)
+void __no_inline_not_in_flash_func(D_DrawTurbulent8Span) (void)
 {
 	int		sturb, tturb;
 
@@ -384,7 +384,11 @@ void __no_inline_not_in_flash_func(D_DrawZSpans) (espan_t *pspan)
 	int				izi;
 	short			*pdest;
 	unsigned		ltemp;
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+	float			zi;
+#else
 	double			zi;
+#endif
 	float			du, dv;
 
 // FIXME: check for clamping/range problems

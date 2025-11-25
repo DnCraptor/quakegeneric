@@ -143,8 +143,6 @@ typedef struct mnode_s
 	unsigned short		numsurfaces;
 } mnode_t;
 
-
-
 typedef struct mleaf_s
 {
 // common with node

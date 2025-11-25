@@ -453,7 +453,11 @@ void R_RecursiveWorldNode (mnode_t *node, int clipflags)
 	mplane_t	*plane;
 	msurface_t	*surf, **mark;
 	mleaf_t		*pleaf;
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+	float		d, dot;
+#else
 	double		d, dot;
+#endif
 
 	if (node->contents == CONTENTS_SOLID)
 		return;		// solid

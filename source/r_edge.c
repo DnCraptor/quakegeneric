@@ -445,7 +445,11 @@ void __not_in_flash_func(R_LeadingEdge) (edge_t *edge)
 	espan_t			*span;
 	surf_t			*surf, *surf2;
 	int				iu;
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+	float			fu, newzi, testzi, newzitop, newzibottom;
+#else
 	double			fu, newzi, testzi, newzitop, newzibottom;
+#endif
 
 	if (edge->surfs[1])
 	{
@@ -470,10 +474,17 @@ void __not_in_flash_func(R_LeadingEdge) (edge_t *edge)
 			if (surf->insubmodel && (surf->key == surf2->key))
 			{
 			// must be two bmodels in the same leaf; sort on 1/z
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+				fu = (float)(edge->u - 0xFFFFF) * (1.0f / 0x100000);
+				newzi = surf->d_ziorigin + fv*surf->d_zistepv +
+						fu*surf->d_zistepu;
+				newzibottom = newzi * 0.99f;
+#else
 				fu = (float)(edge->u - 0xFFFFF) * (1.0 / 0x100000);
 				newzi = surf->d_ziorigin + fv*surf->d_zistepv +
 						fu*surf->d_zistepu;
 				newzibottom = newzi * 0.99;
+#endif
 
 				testzi = surf2->d_ziorigin + fv*surf2->d_zistepv +
 						fu*surf2->d_zistepu;
@@ -482,8 +493,11 @@ void __not_in_flash_func(R_LeadingEdge) (edge_t *edge)
 				{
 					goto newtop;
 				}
-
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+				newzitop = newzi * 1.01f;
+#else
 				newzitop = newzi * 1.01;
+#endif
 				if (newzitop >= testzi)
 				{
 					if (surf->d_zistepu >= surf2->d_zistepu)
@@ -508,10 +522,17 @@ continue_search:
 					goto continue_search;
 
 			// must be two bmodels in the same leaf; sort on 1/z
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+				fu = (float)(edge->u - 0xFFFFF) * (1.0f / 0x100000);
+				newzi = surf->d_ziorigin + fv*surf->d_zistepv +
+						fu*surf->d_zistepu;
+				newzibottom = newzi * 0.99f;
+#else
 				fu = (float)(edge->u - 0xFFFFF) * (1.0 / 0x100000);
 				newzi = surf->d_ziorigin + fv*surf->d_zistepv +
 						fu*surf->d_zistepu;
 				newzibottom = newzi * 0.99;
+#endif
 
 				testzi = surf2->d_ziorigin + fv*surf2->d_zistepv +
 						fu*surf2->d_zistepu;
@@ -521,7 +542,11 @@ continue_search:
 					goto gotposition;
 				}
 
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+				newzitop = newzi * 1.01f;
+#else
 				newzitop = newzi * 1.01;
+#endif
 				if (newzitop >= testzi)
 				{
 					if (surf->d_zistepu >= surf2->d_zistepu)

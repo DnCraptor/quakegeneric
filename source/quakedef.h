@@ -27,6 +27,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define	GAMENAME	"id1"
 
+#define Q_ALIAS_DOUBLE_TO_FLOAT_RENDER		// w: rp2350 fpu performance hacks
+#define Q_COMPACT_PARTICLES
+
 #include <math.h>
 #include <string.h>
 #include <stdarg.h>

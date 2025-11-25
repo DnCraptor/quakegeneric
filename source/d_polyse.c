@@ -524,7 +524,11 @@ void __no_inline_not_in_flash_func(D_PolysetCalcGradients) (int skinwidth)
 	p10_minus_p20 = r_p1[0] - r_p2[0];
 	p11_minus_p21 = r_p1[1] - r_p2[1];
 
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+	xstepdenominv = 1.0f / (float)d_xdenom;
+#else
 	xstepdenominv = 1.0 / (float)d_xdenom;
+#endif
 
 	ystepdenominv = -xstepdenominv;
 
