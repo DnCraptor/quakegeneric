@@ -22,7 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 void (*vid_menudrawfn)(void);
 void (*vid_menukeyfn)(int key);
 
-enum {m_none, m_main, m_singleplayer, m_load, m_save, m_multiplayer, m_setup, m_net, m_options, m_video, m_keys, m_help, m_quit, m_serialconfig, m_modemconfig, m_lanconfig, m_gameoptions, m_search, m_slist} m_state;
+__psram_bss("menu") enum {m_none, m_main, m_singleplayer, m_load, m_save, m_multiplayer, m_setup, m_net, m_options, m_video, m_keys, m_help, m_quit, m_serialconfig, m_modemconfig, m_lanconfig, m_gameoptions, m_search, m_slist} m_state;
 
 void M_Menu_Main_f (void);
 	void M_Menu_SinglePlayer_f (void);
@@ -81,13 +81,13 @@ void M_GameOptions_Key (int key);
 void M_Search_Key (int key);
 void M_ServerList_Key (int key);
 
-qboolean	m_entersound;		// play after drawing a frame, so caching
-								// won't disrupt the sound
-qboolean	m_recursiveDraw;
+__psram_bss("menu") qboolean	m_entersound;		// play after drawing a frame, so caching
+													// won't disrupt the sound
+__psram_bss("menu") qboolean	m_recursiveDraw;
 
-int			m_return_state;
-qboolean	m_return_onerror;
-char		m_return_reason [32];
+__psram_bss("menu") int			m_return_state;
+__psram_bss("menu") qboolean	m_return_onerror;
+__psram_bss("menu") char		m_return_reason [32];
 
 #define StartingGame	(m_multiplayer_cursor == 1)
 #define JoiningGame		(m_multiplayer_cursor == 0)
@@ -140,8 +140,8 @@ void M_DrawPic (int x, int y, qpic_t *pic)
 	Draw_Pic (x + ((vid.width - 320)>>1), y, pic);
 }
 
-byte identityTable[256];
-byte translationTable[256];
+__psram_bss("menu") byte identityTable[256];
+__psram_bss("menu") byte translationTable[256];
 
 void M_BuildTranslationTable(int top, int bottom)
 {
@@ -231,7 +231,7 @@ void M_DrawTextBox (int x, int y, int width, int lines)
 
 //=============================================================================
 
-int m_save_demonum;
+__psram_bss("menu") int m_save_demonum;
 
 /*
 ================
@@ -267,7 +267,7 @@ void M_ToggleMenu_f (void)
 //=============================================================================
 /* MAIN MENU */
 
-int	m_main_cursor;
+__psram_bss("menu") int	m_main_cursor;
 #define	MAIN_ITEMS	5
 
 
@@ -355,7 +355,7 @@ void M_Main_Key (int key)
 //=============================================================================
 /* SINGLE PLAYER MENU */
 
-int	m_singleplayer_cursor;
+__psram_bss("menu") int	m_singleplayer_cursor;
 #define	SINGLEPLAYER_ITEMS	3
 
 
@@ -433,11 +433,11 @@ void M_SinglePlayer_Key (int key)
 //=============================================================================
 /* LOAD/SAVE MENU */
 
-int		load_cursor;		// 0 < load_cursor < MAX_SAVEGAMES
+__psram_bss("menu") int		load_cursor;		// 0 < load_cursor < MAX_SAVEGAMES
 
 #define	MAX_SAVEGAMES		12
-char	m_filenames[MAX_SAVEGAMES][SAVEGAME_COMMENT_LENGTH+1];
-int		loadable[MAX_SAVEGAMES];
+__psram_bss("menu") char	m_filenames[MAX_SAVEGAMES][SAVEGAME_COMMENT_LENGTH+1];
+__psram_bss("menu") int		loadable[MAX_SAVEGAMES];
 
 void M_ScanSaves (void)
 {
@@ -602,7 +602,7 @@ void M_Save_Key (int k)
 //=============================================================================
 /* MULTIPLAYER MENU */
 
-int	m_multiplayer_cursor;
+__psram_bss("menu") int	m_multiplayer_cursor;
 #define	MULTIPLAYER_ITEMS	3
 
 
@@ -678,15 +678,15 @@ void M_MultiPlayer_Key (int key)
 //=============================================================================
 /* SETUP MENU */
 
-int		setup_cursor = 4;
-int		setup_cursor_table[] = {40, 56, 80, 104, 140};
+__psram_data("menu") int		setup_cursor = 4;
+__psram_data("menu") int		setup_cursor_table[] = {40, 56, 80, 104, 140};
 
-char	setup_hostname[16];
-char	setup_myname[16];
-int		setup_oldtop;
-int		setup_oldbottom;
-int		setup_top;
-int		setup_bottom;
+__psram_bss("menu") char	setup_hostname[16];
+__psram_bss("menu") char	setup_myname[16];
+__psram_bss("menu") int		setup_oldtop;
+__psram_bss("menu") int		setup_oldbottom;
+__psram_bss("menu") int		setup_top;
+__psram_bss("menu") int		setup_bottom;
 
 #define	NUM_SETUP_CMDS	5
 
@@ -852,11 +852,11 @@ forward:
 //=============================================================================
 /* NET MENU */
 
-int	m_net_cursor;
-int m_net_items;
-int m_net_saveHeight;
+__psram_bss("menu") int	m_net_cursor;
+__psram_bss("menu") int m_net_items;
+__psram_bss("menu") int m_net_saveHeight;
 
-char *net_helpMessage [] =
+__psram_data("menu") char *net_helpMessage [] =
 {
 /* .........1.........2.... */
   "                        ",
@@ -1030,7 +1030,7 @@ again:
 
 #define	SLIDER_RANGE	10
 
-int		options_cursor;
+__psram_bss("menu") int		options_cursor;
 
 void M_Menu_Options_f (void)
 {
@@ -1263,7 +1263,7 @@ void M_Options_Key (int k)
 //=============================================================================
 /* KEYS MENU */
 
-char *bindnames[][2] =
+__psram_data("menu") char *bindnames[][2] =
 {
 {"+attack", 		"attack"},
 {"impulse 10", 		"change weapon"},
@@ -1287,8 +1287,8 @@ char *bindnames[][2] =
 
 #define	NUMCOMMANDS	(sizeof(bindnames)/sizeof(bindnames[0]))
 
-int		keys_cursor;
-int		bind_grab;
+__psram_bss("menu") int		keys_cursor;
+__psram_bss("menu") int		bind_grab;
 
 void M_Menu_Keys_f (void)
 {
@@ -1479,7 +1479,7 @@ void M_Video_Key (int key)
 //=============================================================================
 /* HELP MENU */
 
-int		help_page;
+__psram_bss("menu") int		help_page;
 #define	NUM_HELP_PAGES	6
 
 
@@ -1527,11 +1527,11 @@ void M_Help_Key (int key)
 //=============================================================================
 /* QUIT MENU */
 
-int		msgNumber;
-int		m_quit_prevstate;
-qboolean	wasInMenus;
+__psram_bss("menu") int		msgNumber;
+__psram_bss("menu") int		m_quit_prevstate;
+__psram_bss("menu") qboolean	wasInMenus;
 
-char *quitMessage [] = 
+__psram_data("menu") char *quitMessage [] = 
 {
 /* .........1.........2.... */
   "  Are you gonna quit    ",
@@ -1641,18 +1641,18 @@ void M_Quit_Draw (void)
 
 /* SERIAL CONFIG MENU */
 
-int		serialConfig_cursor;
-int		serialConfig_cursor_table[] = {48, 64, 80, 96, 112, 132};
+__psram_bss("menu") int		serialConfig_cursor;
+__psram_data("menu") int		serialConfig_cursor_table[] = {48, 64, 80, 96, 112, 132};
 #define	NUM_SERIALCONFIG_CMDS	6
 
-static int ISA_uarts[]	= {0x3f8,0x2f8,0x3e8,0x2e8};
-static int ISA_IRQs[]	= {4,3,4,3};
-int serialConfig_baudrate[] = {9600,14400,19200,28800,38400,57600};
+__psram_data("menu") static int ISA_uarts[]	= {0x3f8,0x2f8,0x3e8,0x2e8};
+__psram_data("menu") static int ISA_IRQs[]	= {4,3,4,3};
+__psram_data("menu") int serialConfig_baudrate[] = {9600,14400,19200,28800,38400,57600};
 
-int		serialConfig_comport;
-int		serialConfig_irq ;
-int		serialConfig_baud;
-char	serialConfig_phone[16];
+__psram_bss("menu") int		serialConfig_comport;
+__psram_bss("menu") int		serialConfig_irq ;
+__psram_bss("menu") int		serialConfig_baud;
+__psram_bss("menu") char	serialConfig_phone[16];
 
 void M_Menu_SerialConfig_f (void)
 {
@@ -1929,14 +1929,14 @@ forward:
 //=============================================================================
 /* MODEM CONFIG MENU */
 
-int		modemConfig_cursor;
-int		modemConfig_cursor_table [] = {40, 56, 88, 120, 156};
+__psram_bss("menu") int		modemConfig_cursor;
+__psram_data("menu") int		modemConfig_cursor_table [] = {40, 56, 88, 120, 156};
 #define NUM_MODEMCONFIG_CMDS	5
 
-char	modemConfig_dialing;
-char	modemConfig_clear [16];
-char	modemConfig_init [32];
-char	modemConfig_hangup [16];
+__psram_bss("menu") char	modemConfig_dialing;
+__psram_bss("menu") char	modemConfig_clear [16];
+__psram_bss("menu") char	modemConfig_init [32];
+__psram_bss("menu") char	modemConfig_hangup [16];
 
 void M_Menu_ModemConfig_f (void)
 {
@@ -2101,13 +2101,13 @@ void M_ModemConfig_Key (int key)
 //=============================================================================
 /* LAN CONFIG MENU */
 
-int		lanConfig_cursor = -1;
-int		lanConfig_cursor_table [] = {72, 92, 124};
+__psram_bss("menu") int		lanConfig_cursor = -1;
+__psram_data("menu") int		lanConfig_cursor_table [] = {72, 92, 124};
 #define NUM_LANCONFIG_CMDS	3
 
-int 	lanConfig_port;
-char	lanConfig_portname[6];
-char	lanConfig_joinname[22];
+__psram_bss("menu") int 	lanConfig_port;
+__psram_bss("menu") char	lanConfig_portname[6];
+__psram_bss("menu") char	lanConfig_joinname[22];
 
 void M_Menu_LanConfig_f (void)
 {
@@ -2309,7 +2309,7 @@ typedef struct
 	char	*description;
 } level_t;
 
-level_t		levels[] =
+__psram_data("menu") level_t		levels[] =
 {
 	{"start", "Entrance"},	// 0
 
@@ -2358,7 +2358,7 @@ level_t		levels[] =
 };
 
 //MED 01/06/97 added hipnotic levels
-level_t     hipnoticlevels[] =
+__psram_data("menu") level_t     hipnoticlevels[] =
 {
    {"start", "Command HQ"},  // 0
 
@@ -2387,7 +2387,7 @@ level_t     hipnoticlevels[] =
 
 //PGM 01/07/97 added rogue levels
 //PGM 03/02/97 added dmatch level
-level_t		roguelevels[] =
+__psram_data("menu") level_t		roguelevels[] =
 {
 	{"start",	"Split Decision"},
 	{"r1m1",	"Deviant's Domain"},
@@ -2415,7 +2415,7 @@ typedef struct
 	int		levels;
 } episode_t;
 
-episode_t	episodes[] =
+__psram_data("menu") episode_t	episodes[] =
 {
 	{"Welcome to Quake", 0, 1},
 	{"Doomed Dimension", 1, 8},
@@ -2427,7 +2427,7 @@ episode_t	episodes[] =
 };
 
 //MED 01/06/97  added hipnotic episodes
-episode_t   hipnoticepisodes[] =
+__psram_data("menu") episode_t   hipnoticepisodes[] =
 {
    {"Scourge of Armagon", 0, 1},
    {"Fortress of the Dead", 1, 5},
@@ -2439,7 +2439,7 @@ episode_t   hipnoticepisodes[] =
 
 //PGM 01/07/97 added rogue episodes
 //PGM 03/02/97 added dmatch episode
-episode_t	rogueepisodes[] =
+__psram_data("menu") episode_t	rogueepisodes[] =
 {
 	{"Introduction", 0, 1},
 	{"Hell's Fortress", 1, 7},
@@ -2447,11 +2447,11 @@ episode_t	rogueepisodes[] =
 	{"Deathmatch Arena", 16, 1}
 };
 
-int	startepisode;
-int	startlevel;
-int maxplayers;
-qboolean m_serverInfoMessage = false;
-double m_serverInfoMessageTime;
+__psram_bss("menu") int	startepisode;
+__psram_bss("menu") int	startlevel;
+__psram_bss("menu") int maxplayers;
+__psram_bss("menu") qboolean m_serverInfoMessage = false;
+__psram_bss("menu") double m_serverInfoMessageTime;
 
 void M_Menu_GameOptions_f (void)
 {
@@ -2465,9 +2465,9 @@ void M_Menu_GameOptions_f (void)
 }
 
 
-int gameoptions_cursor_table[] = {40, 56, 64, 72, 80, 88, 96, 112, 120};
+__psram_data("menu") int gameoptions_cursor_table[] = {40, 56, 64, 72, 80, 88, 96, 112, 120};
 #define	NUM_GAMEOPTIONS	9
-int		gameoptions_cursor;
+__psram_bss("menu") int		gameoptions_cursor;
 
 void M_GameOptions_Draw (void)
 {
@@ -2760,8 +2760,8 @@ void M_GameOptions_Key (int key)
 //=============================================================================
 /* SEARCH MENU */
 
-qboolean	searchComplete = false;
-double		searchCompleteTime;
+__psram_bss("menu") qboolean	searchComplete = false;
+__psram_bss("menu") double		searchCompleteTime;
 
 void M_Menu_Search_f (void)
 {
@@ -2820,8 +2820,8 @@ void M_Search_Key (int key)
 //=============================================================================
 /* SLIST MENU */
 
-int		slist_cursor;
-qboolean slist_sorted;
+__psram_bss("menu") int		slist_cursor;
+__psram_bss("menu") qboolean slist_sorted;
 
 void M_Menu_ServerList_f (void)
 {

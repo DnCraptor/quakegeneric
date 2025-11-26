@@ -71,12 +71,21 @@ extern cvar_t	r_reportedgeout;
 extern cvar_t	r_maxedges;
 extern cvar_t	r_numedges;
 
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+#define XCENTERING	(1.0f / 2.0f)
+#define YCENTERING	(1.0f / 2.0f)
+
+#define CLIP_EPSILON		0.001f
+
+#define BACKFACE_EPSILON	0.01f
+#else
 #define XCENTERING	(1.0 / 2.0)
 #define YCENTERING	(1.0 / 2.0)
 
 #define CLIP_EPSILON		0.001
 
 #define BACKFACE_EPSILON	0.01
+#endif
 
 //===========================================================================
 
@@ -294,6 +303,7 @@ void R_TimeGraph (void);
 void R_PrintAliasStats (void);
 void R_PrintTimes (void);
 void R_PrintDSpeeds (void);
+void R_SaveDSpeeds (void);
 void R_AnimateLight (void);
 int R_LightPoint (vec3_t p);
 void R_SetupFrame (void);

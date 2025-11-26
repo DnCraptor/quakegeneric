@@ -167,7 +167,7 @@ sentinel at the end (actually, this is the active edge table starting at
 edge_head.next).
 ==============
 */
-void R_InsertNewEdges (edge_t *edgestoadd, edge_t *edgelist)
+void __not_in_flash_func(R_InsertNewEdges) (edge_t *edgestoadd, edge_t *edgelist)
 {
 	edge_t	*next_edge;
 
@@ -203,7 +203,7 @@ addedge:
 R_RemoveEdges
 ==============
 */
-void R_RemoveEdges (edge_t *pedge)
+void __not_in_flash_func(R_RemoveEdges) (edge_t *pedge)
 {
 	do
 	{
@@ -285,7 +285,7 @@ pushback:
 R_CleanupSpan
 ==============
 */
-void R_CleanupSpan ()
+void __not_in_flash_func(R_CleanupSpan) ()
 {
 	surf_t	*surf;
 	int		iu;
@@ -399,7 +399,7 @@ gotposition:
 R_TrailingEdge
 ==============
 */
-void R_TrailingEdge (surf_t *surf, edge_t *edge)
+void __not_in_flash_func(R_TrailingEdge) (surf_t *surf, edge_t *edge)
 {
 	espan_t			*span;
 	int				iu;
@@ -440,12 +440,16 @@ void R_TrailingEdge (surf_t *surf, edge_t *edge)
 R_LeadingEdge
 ==============
 */
-void R_LeadingEdge (edge_t *edge)
+void __not_in_flash_func(R_LeadingEdge) (edge_t *edge)
 {
 	espan_t			*span;
 	surf_t			*surf, *surf2;
 	int				iu;
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+	float			fu, newzi, testzi, newzitop, newzibottom;
+#else
 	double			fu, newzi, testzi, newzitop, newzibottom;
+#endif
 
 	if (edge->surfs[1])
 	{
@@ -470,10 +474,17 @@ void R_LeadingEdge (edge_t *edge)
 			if (surf->insubmodel && (surf->key == surf2->key))
 			{
 			// must be two bmodels in the same leaf; sort on 1/z
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+				fu = (float)(edge->u - 0xFFFFF) * (1.0f / 0x100000);
+				newzi = surf->d_ziorigin + fv*surf->d_zistepv +
+						fu*surf->d_zistepu;
+				newzibottom = newzi * 0.99f;
+#else
 				fu = (float)(edge->u - 0xFFFFF) * (1.0 / 0x100000);
 				newzi = surf->d_ziorigin + fv*surf->d_zistepv +
 						fu*surf->d_zistepu;
 				newzibottom = newzi * 0.99;
+#endif
 
 				testzi = surf2->d_ziorigin + fv*surf2->d_zistepv +
 						fu*surf2->d_zistepu;
@@ -482,8 +493,11 @@ void R_LeadingEdge (edge_t *edge)
 				{
 					goto newtop;
 				}
-
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+				newzitop = newzi * 1.01f;
+#else
 				newzitop = newzi * 1.01;
+#endif
 				if (newzitop >= testzi)
 				{
 					if (surf->d_zistepu >= surf2->d_zistepu)
@@ -508,10 +522,17 @@ continue_search:
 					goto continue_search;
 
 			// must be two bmodels in the same leaf; sort on 1/z
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+				fu = (float)(edge->u - 0xFFFFF) * (1.0f / 0x100000);
+				newzi = surf->d_ziorigin + fv*surf->d_zistepv +
+						fu*surf->d_zistepu;
+				newzibottom = newzi * 0.99f;
+#else
 				fu = (float)(edge->u - 0xFFFFF) * (1.0 / 0x100000);
 				newzi = surf->d_ziorigin + fv*surf->d_zistepv +
 						fu*surf->d_zistepu;
 				newzibottom = newzi * 0.99;
+#endif
 
 				testzi = surf2->d_ziorigin + fv*surf2->d_zistepv +
 						fu*surf2->d_zistepu;
@@ -521,7 +542,11 @@ continue_search:
 					goto gotposition;
 				}
 
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+				newzitop = newzi * 1.01f;
+#else
 				newzitop = newzi * 1.01;
+#endif
 				if (newzitop >= testzi)
 				{
 					if (surf->d_zistepu >= surf2->d_zistepu)
@@ -568,7 +593,7 @@ gotposition:
 R_GenerateSpans
 ==============
 */
-void R_GenerateSpans (void)
+void __not_in_flash_func(R_GenerateSpans) (void)
 {
 	edge_t			*edge;
 	surf_t			*surf;
@@ -604,7 +629,7 @@ void R_GenerateSpans (void)
 R_GenerateSpansBackward
 ==============
 */
-void R_GenerateSpansBackward (void)
+void __not_in_flash_func(R_GenerateSpansBackward) (void)
 {
 	edge_t			*edge;
 
@@ -640,11 +665,20 @@ Output:
 Each surface has a linked list of its visible spans
 ==============
 */
-void R_ScanEdges ()
+void __no_inline_not_in_flash_func(R_ScanEdges) ()
 {
 	int		iv, bottom;
 	surf_t	*s;
+#if 0
 	byte	basespans[MAXSPANS*sizeof(espan_t)+CACHE_SIZE];
+#else
+	byte   *basespans = (byte*)malloc(MAXSPANS*sizeof(espan_t)+CACHE_SIZE);
+	if (basespans == NULL) {
+		Sys_Error("R_ScanEdges: unable to allocate basespans (wanted %d bytes)\n",
+			MAXSPANS*sizeof(espan_t)+CACHE_SIZE
+		);
+	}
+#endif
 
 	espan_t* basespan_p = (espan_t *)
 			((intptr_t)(basespans + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
@@ -709,6 +743,7 @@ void R_ScanEdges ()
 		
 			if (r_drawculledpolys)
 			{
+				// wbcbz7 note: dead code
 				R_DrawCulledPolys ();
 			}
 			else
@@ -746,10 +781,16 @@ void R_ScanEdges ()
 
 // draw whatever's left in the span list
 	if (r_drawculledpolys) {
+		// wbcbz7 note: dead code
 		R_DrawCulledPolys ();
 	} else {
 		D_DrawSurfaces ();
 	}
+
+#if 0
+#else
+	free(basespans);
+#endif
 }
 
 

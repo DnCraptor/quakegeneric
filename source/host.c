@@ -54,6 +54,12 @@ jmp_buf 	host_abortserver;
 byte		*host_basepal;
 byte		*host_colormap;
 
+#define COLORMAP_IN_SRAM
+
+#ifdef COLORMAP_IN_SRAM
+byte		colormap_sram[256*64 + 8];
+#endif
+
 cvar_t	host_framerate = {"host_framerate","0"};	// set for slow motion
 cvar_t	host_speeds = {"host_speeds","0"};			// set for running times
 
@@ -585,10 +591,14 @@ Runs all active servers
 */
 void _Host_Frame (float time)
 {
+	static double		time0 = 0;
 	static double		time1 = 0;
 	static double		time2 = 0;
 	static double		time3 = 0;
 	int			pass1, pass2, pass3;
+	ftdemo_point_t 	*p;
+
+	time0 = Sys_FloatTime();
 
 	int hm = Hunk_HighMark();
 	int lm = Hunk_LowMark();
@@ -657,7 +667,7 @@ void _Host_Frame (float time)
 	}
 
 // update video
-	if (host_speeds.value)
+	if (host_speeds.value || cls.frametimedemo)
 		time1 = Sys_FloatTime ();
 		
 	SCR_UpdateScreen ();
@@ -677,6 +687,13 @@ void _Host_Frame (float time)
 	
 	CDAudio_Update();
 
+	if (cls.frametimedemo && cls.ftd_buf != NULL) {
+		p = &cls.ftd_buf[cls.ftd_framepos];
+		p->total  = (Sys_FloatTime() - time0) * 1000;
+		p->server = (time1 - time0) * 1000;
+		CL_FrameTimeDemoCloseFrame();
+	}
+
 	if (host_speeds.value)
 	{
 		pass1 = (time1 - time3)*1000;
@@ -686,7 +703,7 @@ void _Host_Frame (float time)
 		Con_Printf ("%3i tot %3i server %3i gfx %3i snd\n",
 					pass1+pass2+pass3, pass1, pass2, pass3);
 	}
-	
+
 	host_framecount++;
 //	Sys_Printf("host_framecount: %d (%f s)\n", host_framecount, time);
 }
@@ -843,7 +860,11 @@ void Host_Init (quakeparms_t *parms)
 		host_basepal = (byte *)COM_LoadHunkFile ("gfx/palette.lmp");
 		if (!host_basepal)
 			Sys_Error ("Couldn't load gfx/palette.lmp");
-		host_colormap = (byte *)COM_LoadHunkFile ("gfx/colormap.lmp");
+#ifndef COLORMAP_IN_SRAM
+			host_colormap = (byte *)COM_LoadHunkFile ("gfx/colormap.lmp");
+#else
+			host_colormap = (byte *)COM_LoadStackFile("gfx/colormap.lmp", &colormap_sram, sizeof(colormap_sram));
+#endif
 		if (!host_colormap)
 			Sys_Error ("Couldn't load gfx/colormap.lmp");
 

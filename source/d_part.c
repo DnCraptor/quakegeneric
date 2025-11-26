@@ -49,13 +49,14 @@ void D_StartParticles (void)
 D_DrawParticle
 ==============
 */
-void D_DrawParticle (particle_t *pparticle)
+void __no_inline_not_in_flash_func(D_DrawParticle) (particle_t *pparticle)
 {
 	vec3_t	local, transformed;
 	float	zi;
 	byte	*pdest;
 	short	*pz;
 	int		i, izi, pix, count, u, v;
+	int     pcolor;
 
 // transform point
 	VectorSubtract (pparticle->org, r_origin, local);
@@ -69,9 +70,15 @@ void D_DrawParticle (particle_t *pparticle)
 
 // project the point
 // FIXME: preadjust xcenter and ycenter
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+	zi = 1.0f / transformed[2];
+	u = (int)(xcenter + zi * transformed[0] + 0.5f);
+	v = (int)(ycenter - zi * transformed[1] + 0.5f);
+#else
 	zi = 1.0 / transformed[2];
 	u = (int)(xcenter + zi * transformed[0] + 0.5);
 	v = (int)(ycenter - zi * transformed[1] + 0.5);
+#endif
 
 	if ((v > d_vrectbottom_particle) || 
 		(u > d_vrectright_particle) ||
@@ -92,6 +99,8 @@ void D_DrawParticle (particle_t *pparticle)
 	else if (pix > d_pix_max)
 		pix = d_pix_max;
 
+	pcolor = pparticle->color;
+
 	switch (pix)
 	{
 	case 1:
@@ -102,7 +111,7 @@ void D_DrawParticle (particle_t *pparticle)
 			if (pz[0] <= izi)
 			{
 				pz[0] = izi;
-				pdest[0] = pparticle->color;
+				pdest[0] = pcolor;
 			}
 		}
 		break;
@@ -115,13 +124,13 @@ void D_DrawParticle (particle_t *pparticle)
 			if (pz[0] <= izi)
 			{
 				pz[0] = izi;
-				pdest[0] = pparticle->color;
+				pdest[0] = pcolor;
 			}
 
 			if (pz[1] <= izi)
 			{
 				pz[1] = izi;
-				pdest[1] = pparticle->color;
+				pdest[1] = pcolor;
 			}
 		}
 		break;
@@ -134,19 +143,19 @@ void D_DrawParticle (particle_t *pparticle)
 			if (pz[0] <= izi)
 			{
 				pz[0] = izi;
-				pdest[0] = pparticle->color;
+				pdest[0] = pcolor;
 			}
 
 			if (pz[1] <= izi)
 			{
 				pz[1] = izi;
-				pdest[1] = pparticle->color;
+				pdest[1] = pcolor;
 			}
 
 			if (pz[2] <= izi)
 			{
 				pz[2] = izi;
-				pdest[2] = pparticle->color;
+				pdest[2] = pcolor;
 			}
 		}
 		break;
@@ -159,25 +168,25 @@ void D_DrawParticle (particle_t *pparticle)
 			if (pz[0] <= izi)
 			{
 				pz[0] = izi;
-				pdest[0] = pparticle->color;
+				pdest[0] = pcolor;
 			}
 
 			if (pz[1] <= izi)
 			{
 				pz[1] = izi;
-				pdest[1] = pparticle->color;
+				pdest[1] = pcolor;
 			}
 
 			if (pz[2] <= izi)
 			{
 				pz[2] = izi;
-				pdest[2] = pparticle->color;
+				pdest[2] = pcolor;
 			}
 
 			if (pz[3] <= izi)
 			{
 				pz[3] = izi;
-				pdest[3] = pparticle->color;
+				pdest[3] = pcolor;
 			}
 		}
 		break;
@@ -192,7 +201,7 @@ void D_DrawParticle (particle_t *pparticle)
 				if (pz[i] <= izi)
 				{
 					pz[i] = izi;
-					pdest[i] = pparticle->color;
+					pdest[i] = pcolor;
 				}
 			}
 		}

@@ -50,8 +50,9 @@ qboolean		r_leftclipped, r_rightclipped;
 static qboolean	makeleftedge, makerightedge;
 qboolean		r_nearzionly;
 
-int		sintable[SIN_BUFFER_SIZE];
-int		intsintable[SIN_BUFFER_SIZE];
+// NOTE: used for turbulence drawing only so should be safe performance-wise to be moved to PSRAM
+__psram_bss ("r_draw") int		sintable[SIN_BUFFER_SIZE];
+__psram_bss ("r_draw") int		intsintable[SIN_BUFFER_SIZE];
 
 mvertex_t	r_leftenter, r_leftexit;
 mvertex_t	r_rightenter, r_rightexit;
@@ -74,7 +75,7 @@ qboolean	r_lastvertvalid;
 R_EmitEdge
 ================
 */
-void R_EmitEdge (mvertex_t *pv0, mvertex_t *pv1)
+void  __no_inline_not_in_flash_func(R_EmitEdge) (mvertex_t *pv0, mvertex_t *pv1)
 {
 	edge_t	*edge, *pcheck;
 	int		u_check;
@@ -253,7 +254,7 @@ void R_EmitEdge (mvertex_t *pv0, mvertex_t *pv1)
 R_ClipEdge
 ================
 */
-void R_ClipEdge (mvertex_t *pv0, mvertex_t *pv1, clipplane_t *clip)
+void __no_inline_not_in_flash_func(R_ClipEdge) (mvertex_t *pv0, mvertex_t *pv1, clipplane_t *clip)
 {
 	float		d0, d1, f;
 	mvertex_t	clipvert;
@@ -377,7 +378,7 @@ void R_EmitCachedEdge (void)
 R_RenderFace
 ================
 */
-void R_RenderFace (msurface_t *fa, int clipflags)
+void __no_inline_not_in_flash_func(R_RenderFace) (msurface_t *fa, int clipflags)
 {
 	int			i, lindex;
 	unsigned	mask;

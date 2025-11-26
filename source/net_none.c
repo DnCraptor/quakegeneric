@@ -21,7 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "net_loop.h"
 
-net_driver_t net_drivers[MAX_NET_DRIVERS] =
+__psram_data("net_none") net_driver_t net_drivers[MAX_NET_DRIVERS] =
 {
 	{
 	"Loopback",
@@ -40,7 +40,7 @@ net_driver_t net_drivers[MAX_NET_DRIVERS] =
 	Loop_Shutdown
 	}
 };
-int net_numdrivers = 1;
+__psram_data("net_none") int net_numdrivers = 1;
 
-net_landriver_t	net_landrivers[MAX_NET_DRIVERS];
-int net_numlandrivers = 0;
+__psram_bss ("net_none") net_landriver_t	net_landrivers[MAX_NET_DRIVERS];
+__psram_bss ("net_none") int net_numlandrivers = 0;
