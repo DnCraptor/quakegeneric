@@ -23,13 +23,11 @@
 
 MEMORY
 {
-    /* 64k = 10000
-    FLASH(rx) : ORIGIN = 0x10000000, LENGTH = 4096k
-    */
     FLASH(rx) : ORIGIN = 0x10010000, LENGTH = (4096k-256k)
     RAM(rwx) : ORIGIN =  0x20000000, LENGTH = 512k
     SCRATCH_X(rwx) : ORIGIN = 0x20080000, LENGTH = 4k
     SCRATCH_Y(rwx) : ORIGIN = 0x20081000, LENGTH = 4k
+    PSRAM(rwx) : ORIGIN = 0x11000000, LENGTH = 8192k
 }
 
 ENTRY(_entry_point)
@@ -234,6 +232,27 @@ SECTIONS
     /* historically on GCC sbrk was growing past __HeapLimit to __StackLimit, however
        to be more compatible, we now set __HeapLimit explicitly to where the end of the heap is */
     __HeapLimit = ORIGIN(RAM) + LENGTH(RAM);
+
+    /* PSRAM sections */
+    .psram_data : {
+        __psram_data_start__ = .;
+        *(.psram_data*)
+        . = ALIGN(4);
+        __psram_data_end__ = .;
+    } > PSRAM AT> FLASH
+    __psram_data_load__ = LOADADDR(.psram_data);
+
+    .psram_bss (NOLOAD) : {
+        __psram_bss_start__ = .;
+        *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.psram_bss*)))
+        . = ALIGN(4);
+        __psram_bss_end__ = .;
+    } > PSRAM
+
+    .psram_heap (NOLOAD) : {
+        __psram_heap_start__ = .;
+        KEEP(*(.psram_heap*))
+    } > PSRAM
 
     /* Start and end symbols must be word-aligned */
     .scratch_x : {
