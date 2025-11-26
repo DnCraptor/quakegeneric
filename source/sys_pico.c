@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // sys_null.h -- null system driver to aid porting efforts
 
 #include <pico/stdlib.h>
+#include <hardware/watchdog.h>
 #include "quakedef.h"
 #include "sys.h"
 
@@ -211,12 +212,10 @@ void Sys_Printf (char *fmt, ...)
 
 void Sys_Quit (void)
 {
-	while(1) {
-        sleep_ms(33);
-        gpio_put(PICO_DEFAULT_LED_PIN, true);
-        sleep_ms(33);
-        gpio_put(PICO_DEFAULT_LED_PIN, false);
-	}
+	f_unlink(".firmware");
+    watchdog_enable(1, true);
+    while(true) ;
+    __unreachable();
 }
 
 double Sys_FloatTime (void)

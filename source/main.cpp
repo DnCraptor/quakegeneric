@@ -817,12 +817,14 @@ uint32_t __not_in_flash_func(butter_psram_size)() { return 0; }
 
 void sigbus(void) {
     Sys_Printf("SIGBUS exception caught... SP %ph (%d)\n", get_sp(), STACK_CORE0 - get_sp());
+    #if PICO_DEFAULT_LED_PIN
     while(1) {
         sleep_ms(33);
         gpio_put(PICO_DEFAULT_LED_PIN, true);
         sleep_ms(33);
         gpio_put(PICO_DEFAULT_LED_PIN, false);
     }
+    #endif
     /// TODO: reset_usb_boot(0, 0);
 }
 void __attribute__((naked, noreturn)) __printflike(1, 0) dummy_panic(__unused const char *fmt, ...) {
@@ -830,12 +832,14 @@ void __attribute__((naked, noreturn)) __printflike(1, 0) dummy_panic(__unused co
     Sys_Printf("SP %ph (%s)\n", get_sp(), STACK_CORE0 - get_sp());
     if (fmt)
         Sys_Printf((char*)fmt);
+    #if PICO_DEFAULT_LED_PIN
     while(1) {
         sleep_ms(33);
         gpio_put(PICO_DEFAULT_LED_PIN, true);
         sleep_ms(33);
         gpio_put(PICO_DEFAULT_LED_PIN, false);
     }
+    #endif
 }
 
 static void __not_in_flash_func(flash_info)() {
