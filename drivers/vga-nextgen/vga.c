@@ -34,6 +34,7 @@ const struct pio_program pio_program_VGA = {
 
 
 static uint32_t* __scratch_x("lines_pattern") lines_pattern[4];
+static uint16_t __scratch_y("pallette") pallette[256];
 static uint32_t* lines_pattern_data = NULL;
 static int _SM_VGA = -1;
 
@@ -174,7 +175,7 @@ void __time_critical_func() dma_handler_VGA() {
     if (width < 0) return; // TODO: detect a case
 
     // Индекс палитры
-    uint32_t* current_palette = &conv_color[0];
+    uint16_t* current_palette = pallette;
 
     uint8_t* output_buffer_8bit;
     switch (graphics_mode) {
@@ -224,7 +225,7 @@ void graphics_set_mode(enum graphics_mode_t mode) {
             }
 
             if (!txt_palette_fast) {
-                txt_palette_fast = (uint16_t *)calloc(256 * 4, sizeof(uint16_t));
+                txt_palette_fast = (uint16_t*)conv_color; /// calloc(256 * 4, sizeof(uint16_t));
                 for (int i = 0; i < 256; i++) {
                     const uint8_t c1 = txt_palette[i & 0xf];
                     const uint8_t c0 = txt_palette[i >> 4];
@@ -269,7 +270,7 @@ void graphics_set_mode(enum graphics_mode_t mode) {
         PIO_VGA->sm[_SM_VGA].clkdiv = div32 & 0xfffff000; //делитель для конкретной sm
         dma_channel_set_trans_count(dma_chan, line_size / 4, false);
 
-        lines_pattern_data = (uint32_t *)calloc(line_size * 4 / 4, sizeof(uint32_t));
+        lines_pattern_data = conv_color; // (uint32_t *)calloc(line_size * 4 / 4, sizeof(uint32_t));
 
         for (int i = 0; i < 4; i++) {
             lines_pattern[i] = &lines_pattern_data[i * (line_size / 4)];
@@ -355,9 +356,9 @@ void graphics_set_palette(const uint8_t i, const uint32_t color888) {
 
     const uint8_t c_hi = conv0[r] << 4 | conv0[g] << 2 | conv0[b];
     const uint8_t c_lo = conv1[r] << 4 | conv1[g] << 2 | conv1[b];
-// TODO:
-    conv_color[i] = (c_hi << 8 | c_lo) & 0x3f3f | palette16_mask;
-    conv_color[i+256] = (c_lo << 8 | c_hi) & 0x3f3f | palette16_mask;
+
+    pallette[i] = (c_hi << 8 | c_lo) & 0x3f3f | palette16_mask;
+///    conv_color[i+256] = (c_lo << 8 | c_hi) & 0x3f3f | palette16_mask;
 }
 
 extern int testPins(uint32_t pin0, uint32_t pin1);
