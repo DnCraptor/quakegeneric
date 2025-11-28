@@ -41,13 +41,13 @@ set(VGA_HDMI ON)
 set(CPU_MHZ 504)
 
 #set(PSRAM_MHZ 88)
-#set(PSRAM_MHZ 100)
-set(PSRAM_MHZ 166)
+set(PSRAM_MHZ 100)
+#set(PSRAM_MHZ 166)
 
 set (PORT_VERSION "1.09")
 
-set (MURM ON)
-#set (MURM2 ON)
+#set (MURM ON)
+set (MURM2 ON)
 #set (PICO_PC ON)
 #set (PICO_DV ON)
 #set (ZERO ON)

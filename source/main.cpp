@@ -579,13 +579,16 @@ static union dvi_hstx_pin_layout_t hstx_out_pin_layouts[] = {
     }
 };
 
+/// shared buffer
+extern "C" uint32_t conv_color[1224];
+
 // palette used by the DVI/VGA HSTX driver
-static uint32_t linebuf_pal[256];
+//static uint32_t linebuf_pal[256];
 struct linebuf_cb_info_8bpp_t {
     const uint8_t  *pic;
     const uint32_t *pal;
 };
-static linebuf_cb_info_8bpp_t cb_index8_priv = {.pic = FRAME_BUF, .pal = linebuf_pal};
+static linebuf_cb_info_8bpp_t cb_index8_priv = {.pic = FRAME_BUF, .pal = conv_color};
 
 // line buffer callback used for converting the picture
 extern "C" void linebuf_cb_index8_a(const struct dvi_linebuf_task_t *task, void *priv);
@@ -908,7 +911,7 @@ extern "C" void QG_SetPalette(unsigned char palette[768]) {
     uint8_t *p = palette;
     for (int i = 0; i < 256; i++) {
         // TODO: "prebake" the palette for the VGA HSTX driver (not required for DVI)
-        linebuf_pal[i] = (p[2] << 0) | (p[1] << 8) | (p[0] << 16); p += 3;
+        conv_color[i] = (p[2] << 0) | (p[1] << 8) | (p[0] << 16); p += 3;
     }
 }
 
@@ -994,6 +997,8 @@ static void create_argv() {
     delete f;
 }
 
+extern "C" bool SELECT_VGA;
+
 __attribute__((noreturn))
 static void finish_him(void) {
     uint32_t sp_after;
@@ -1001,14 +1006,20 @@ static void finish_him(void) {
 
     f_unlink("quake.log");
 
-    static uint8_t link_i2s_code = 0xFF;
-    if (link_i2s_code == 0xFF) {
-        if (I2S_BCK_PIO != I2S_LCK_PIO && I2S_LCK_PIO != I2S_DATA_PIO && I2S_BCK_PIO != I2S_DATA_PIO) {
-            link_i2s_code = testPins(I2S_DATA_PIO, I2S_BCK_PIO);
-            is_i2s_enabled = link_i2s_code != 0;
-        }
+    uint8_t link_i2s_code = 0xFF;
+    if (I2S_BCK_PIO != I2S_LCK_PIO && I2S_LCK_PIO != I2S_DATA_PIO && I2S_BCK_PIO != I2S_DATA_PIO) {
+        uint8_t link_i2s_code = testPins(I2S_DATA_PIO, I2S_BCK_PIO);
+        is_i2s_enabled = link_i2s_code != 0;
     }
     mixer_init();
+
+    uint8_t linkVGA01;
+    linkVGA01 = testPins(VGA_BASE_PIN, VGA_BASE_PIN + 1);
+    #if defined(ZERO) || defined(ZERO2) || defined(PICO_DV)
+        SELECT_VGA = linkVGA01 == 0x1F;
+    #else
+        SELECT_VGA = (linkVGA01 == 0) || (linkVGA01 == 0x1F);
+    #endif
 
     Sys_Printf(" Hardware info\n");
     Sys_Printf(" --------------------------------------\n");
@@ -1028,7 +1039,8 @@ static void finish_him(void) {
     } else {
         Sys_Printf(" PSRAM max freq.: %d MHz [T%p]\n", psram_mhz, qmi_hw->m[1].timing);
     }
-    Sys_Printf(" Sound          : %s\n", is_i2s_enabled ? "i2s" : "PWM");
+    Sys_Printf(" Sound          : %s [%02x]\n", is_i2s_enabled ? "i2s" : "PWM", link_i2s_code);
+    Sys_Printf(" Video          : %s [%02x]\n", SELECT_VGA ? "VGA" : "HDMI", linkVGA01);
     Sys_Printf(" SP after switch: 0x%08X\n", sp_after);
     Sys_Printf(" .psram_data size:  0x%08X\n", (&__psram_data_end__ - &__psram_data_start__));
     Sys_Printf(" .psram_bss  size:  0x%08X\n", (&__psram_bss_end__ - &__psram_bss_start__));
