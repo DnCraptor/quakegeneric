@@ -555,6 +555,8 @@ void repeat_me_for_input() {
 #endif
 }
 
+extern "C" bool SELECT_VGA;
+
 //uint8_t* FRAME_BUF = (uint8_t*)0x20000000; // temp "trash" value
 uint8_t __aligned(4) FRAME_BUF[QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y] = { 0 };
 
@@ -579,16 +581,14 @@ static union dvi_hstx_pin_layout_t hstx_out_pin_layouts[] = {
     }
 };
 
-/// shared buffer
-extern "C" uint32_t conv_color[1224];
-
 // palette used by the DVI/VGA HSTX driver
-//static uint32_t linebuf_pal[256];
+static uint32_t linebuf_pal[256];
+
 struct linebuf_cb_info_8bpp_t {
     const uint8_t  *pic;
     const uint32_t *pal;
 };
-static linebuf_cb_info_8bpp_t cb_index8_priv = {.pic = FRAME_BUF, .pal = conv_color};
+static linebuf_cb_info_8bpp_t cb_index8_priv = {.pic = FRAME_BUF, .pal = linebuf_pal};
 
 // line buffer callback used for converting the picture
 extern "C" void linebuf_cb_index8_a(const struct dvi_linebuf_task_t *task, void *priv);
@@ -597,29 +597,43 @@ extern "C" void linebuf_cb_index8_a(const struct dvi_linebuf_task_t *task, void 
 void __scratch_x("render") render_core() {
 #if DVI_HSTX
     // init hstx driver here!
-    int mode     = DVI_MODE_320x240;
-    int hstx_div = clock_get_hz(clk_sys)/(dvi_modes[mode].timings.pixelclock*5);
+    bool is_vga    = SELECT_VGA;
+    union dvi_hstx_pin_layout_t pin_cfg = hstx_out_pin_layouts[HSTX_OUT_PIN_LAYOUT_MURMULATOR2];
+    int mode       = DVI_MODE_320x240;
+    int hstx_div   = is_vga ? 1 : clock_get_hz(clk_sys)/(dvi_modes[mode].timings.pixelclock*5);
+    int phase_rept = (clock_get_hz(clk_sys) * dvi_modes[mode].pixel_rep) / dvi_modes[mode].timings.pixelclock;
+    if (is_vga) while (phase_rept >= 32) {
+        hstx_div <<= 1; phase_rept >>= 1;
+    }
 
     // configure HSTX clock divider
-    clock_configure_int_divider(clk_hstx, CLOCKS_CLK_HSTX_CTRL_AUXSRC_VALUE_CLK_SYS, 0, clock_get_hz(clk_sys), hstx_div);
+    clock_configure_int_divider(
+        clk_hstx,
+        CLOCKS_CLK_HSTX_CTRL_AUXSRC_VALUE_CLK_SYS,
+        0,
+        clock_get_hz(clk_sys),
+        hstx_div
+    );
 
     // configure timings
     struct dvi_timings_t dvi_timings;
     memcpy(&dvi_timings, &dvi_modes[mode].timings, sizeof(struct dvi_timings_t));
 
     // adjust timings
-    dvi_adjust_timings(&dvi_timings, DVI_HSTX_MODE_XRGB8888, dvi_modes[mode].pixel_rep, 0);
+    dvi_adjust_timings(&dvi_timings, DVI_HSTX_MODE_XRGB8888, dvi_modes[mode].pixel_rep, is_vga ? HSTX_TIMINGS_VGA_FIXUP : 0);
 
     // enable pins
     dvi_configure_hstx_command_expander(DVI_HSTX_MODE_XRGB8888, dvi_modes[mode].pixel_rep);
-    dvi_configure_hstx_output(hstx_out_pin_layouts[HSTX_OUT_PIN_LAYOUT_MURMULATOR2], GPIO_SLEW_RATE_FAST, GPIO_DRIVE_STRENGTH_4MA);
+    if (is_vga) {
+        vga_configure_hstx_output(pin_cfg, GPIO_SLEW_RATE_FAST, GPIO_DRIVE_STRENGTH_4MA, phase_rept);
+    } else {
+        dvi_configure_hstx_output(pin_cfg, GPIO_SLEW_RATE_FAST, GPIO_DRIVE_STRENGTH_4MA);
+    }
 
     // allocate memory for the linebuf
     uint32_t linebuf_memsize;
-    dvi_linebuf_get_memsize(&dvi_timings, &linebuf_memsize, dvi_modes[mode].pixel_rep);
+    dvi_linebuf_get_memsize(&dvi_timings, &linebuf_memsize, is_vga ? 1 : dvi_modes[mode].pixel_rep);
     uint32_t *linebuf = (uint32_t*)malloc(linebuf_memsize);
-    printf("line buffer size = %d bytes\n", linebuf_memsize);
-    printf("line buffer ptr  = %08X\n", linebuf);
 
     // allocate DMA channels
     struct dvi_resources_t dvires;
@@ -628,14 +642,18 @@ void __scratch_x("render") render_core() {
     dvires.irq_linebuf_callback = user_irq_claim_unused(true);
 
     // set timings
-    dvi_linebuf_set_timings(&dvi_timings, dvi_modes[mode].pixel_rep);
+    dvi_linebuf_set_timings(&dvi_timings, is_vga ? 1 : dvi_modes[mode].pixel_rep);
     dvi_linebuf_set_line_rep(dvi_modes[mode].line_rep);
 
     // set resources
     dvi_linebuf_set_resources(&dvires, linebuf);
 
     // fill HSTX command list
-    dvi_linebuf_fill_hstx_cmdlist();
+    if (is_vga) {
+        vga_linebuf_fill_hstx_cmdlist();
+    } else {
+        dvi_linebuf_fill_hstx_cmdlist();
+    }
 
     // initialize DMA channels and IRQ handlers
     dvi_linebuf_init_dma();
@@ -645,6 +663,8 @@ void __scratch_x("render") render_core() {
 
     // and start display output
     dvi_linebuf_start();
+
+    sem_acquire_blocking(&vga_start_semaphore);
 #else
     multicore_lockout_victim_init();
     graphics_init();
@@ -909,9 +929,14 @@ extern "C" void QG_DrawFrame(void *pixels) {
 
 extern "C" void QG_SetPalette(unsigned char palette[768]) {
     uint8_t *p = palette;
-    for (int i = 0; i < 256; i++) {
-        // TODO: "prebake" the palette for the VGA HSTX driver (not required for DVI)
-        conv_color[i] = (p[2] << 0) | (p[1] << 8) | (p[0] << 16); p += 3;
+    if (SELECT_VGA) {
+        for (int i = 0; i < 256; i++) {
+            linebuf_pal[i] = vga_pwm_xlat_color(p[0], p[1], p[2]); p += 3;
+        }
+    } else {
+        for (int i = 0; i < 256; i++) {
+            linebuf_pal[i] = (p[2] << 0) | (p[1] << 8) | (p[0] << 16); p += 3;
+        }
     }
 }
 
@@ -997,8 +1022,6 @@ static void create_argv() {
     delete f;
 }
 
-extern "C" bool SELECT_VGA;
-
 __attribute__((noreturn))
 static void finish_him(void) {
     uint32_t sp_after;
@@ -1073,6 +1096,7 @@ static void finish_him(void) {
     sem_init(&vga_start_semaphore, 0, 1);
     multicore_launch_core1(render_core);
     sem_release(&vga_start_semaphore);
+    sleep_ms(1000); // ugly kludge to fix race condition(?)
 
     create_argv();
 	QG_Create(argc, argv);

@@ -1,5 +1,7 @@
 add_library(dvi_hstx INTERFACE)
 
+option(VGA_HSTX "Enable VGA PWM driver" ON)
+
 target_sources(dvi_hstx INTERFACE
     ${CMAKE_CURRENT_LIST_DIR}/dvi.c
     ${CMAKE_CURRENT_LIST_DIR}/dvi_modes.c
@@ -15,3 +17,8 @@ target_link_libraries(dvi_hstx INTERFACE
     hardware_pll
     hardware_gpio
 )
+
+if(VGA_HSTX)
+    target_compile_definitions(dvi_hstx INTERFACE VGA_HSTX)
+endif()
+
