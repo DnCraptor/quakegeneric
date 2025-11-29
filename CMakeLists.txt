@@ -46,8 +46,8 @@ set(PSRAM_MHZ 100)
 
 set (PORT_VERSION "1.09")
 
-set (MURM ON)
-#set (MURM2 ON)
+#set (MURM ON)
+set (MURM2 ON)
 #set (PICO_PC ON)
 #set (PICO_DV ON)
 #set (ZERO ON)

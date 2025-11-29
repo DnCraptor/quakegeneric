@@ -482,7 +482,7 @@ int map_kc(uint8_t kc) {
     return 0;
 }
 
-void __not_in_flash_func(process_kbd_report)(
+void process_kbd_report(
     hid_keyboard_report_t const *report,
     hid_keyboard_report_t const *prev_report
 ) {
@@ -594,8 +594,16 @@ static linebuf_cb_info_8bpp_t cb_index8_priv = {.pic = FRAME_BUF, .pal = conv_co
 extern "C" void linebuf_cb_index8_a(const struct dvi_linebuf_task_t *task, void *priv);
 #endif
 
+extern "C" bool SELECT_VGA;
+
 void __scratch_x("render") render_core() {
+    multicore_lockout_victim_init();
 #if DVI_HSTX
+    if (SELECT_VGA) {
+    graphics_init();
+    graphics_set_buffer(FRAME_BUF, QUAKEGENERIC_RES_X, QUAKEGENERIC_RES_Y);
+    graphics_set_bgcolor(0x000000);
+    } else {
     // init hstx driver here!
     int mode     = DVI_MODE_320x240;
     int hstx_div = clock_get_hz(clk_sys)/(dvi_modes[mode].timings.pixelclock*5);
@@ -618,8 +626,8 @@ void __scratch_x("render") render_core() {
     uint32_t linebuf_memsize;
     dvi_linebuf_get_memsize(&dvi_timings, &linebuf_memsize, dvi_modes[mode].pixel_rep);
     uint32_t *linebuf = (uint32_t*)malloc(linebuf_memsize);
-    printf("line buffer size = %d bytes\n", linebuf_memsize);
-    printf("line buffer ptr  = %08X\n", linebuf);
+  //  printf("line buffer size = %d bytes\n", linebuf_memsize);
+  //  printf("line buffer ptr  = %08X\n", linebuf);
 
     // allocate DMA channels
     struct dvi_resources_t dvires;
@@ -645,13 +653,13 @@ void __scratch_x("render") render_core() {
 
     // and start display output
     dvi_linebuf_start();
+    }
 #else
-    multicore_lockout_victim_init();
     graphics_init();
     graphics_set_buffer(FRAME_BUF, QUAKEGENERIC_RES_X, QUAKEGENERIC_RES_Y);
     graphics_set_bgcolor(0x000000);
-    sem_acquire_blocking(&vga_start_semaphore);
 #endif
+    sem_acquire_blocking(&vga_start_semaphore);
     mixer_init();
     uint64_t tick = time_us_64();
     uint64_t last_cd_tick = 0;
@@ -908,6 +916,17 @@ extern "C" void QG_DrawFrame(void *pixels) {
 #if DVI_HSTX
 
 extern "C" void QG_SetPalette(unsigned char palette[768]) {
+    if (SELECT_VGA) {
+        for (int i = 0; i < 256; i++) {
+            int i3 = i * 3;
+            uint32_t pal888 = 
+                ((uint32_t)palette[i3] << 16) | // R
+                ((uint32_t)palette[i3 + 1] << 8) | // G
+                palette[i3 + 2]; // B
+            graphics_set_palette(i, pal888);
+        }
+        return;
+    }
     uint8_t *p = palette;
     for (int i = 0; i < 256; i++) {
         // TODO: "prebake" the palette for the VGA HSTX driver (not required for DVI)
@@ -996,8 +1015,6 @@ static void create_argv() {
     }
     delete f;
 }
-
-extern "C" bool SELECT_VGA;
 
 __attribute__((noreturn))
 static void finish_him(void) {
