@@ -23,8 +23,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "quakedef.h"
 
 cvar_t volume = {"volume", "0.7", true, false, 0.7};
+cvar_t ambient_level = {"ambient_level", "0.3", true, false, 0.3};
+cvar_t ambient_fade = {"ambient_fade", "100", true, false, 100.0};
+cvar_t _snd_mixahead = {"_snd_mixahead", "0.1", true, false, 0.1};
 static qboolean	snd_ambient = 1;
 int sound_started = 0;
+int				snd_blocked = 0;
 #define	MAX_SFX		512
 sfx_t		*known_sfx;		// hunk allocated [MAX_SFX]
 int			num_sfx;
@@ -39,12 +43,17 @@ int			soundtime;		// sample PAIRS
 int   		paintedtime; 	// sample PAIRS
 
 channel_t   channels[MAX_CHANNELS] __psram_bss("snd_channels");
+sfx_t		*ambient_sfx[NUM_AMBIENTS] __psram_bss("ambient_sfx");
 
+char* snd_buf = 0;
+#define SND_BUF_SIZE 44100 // to 250 ms playback (4 bytes per sample)
+size_t snd_buf_pos = 0; // current playing position
 //#undef Con_Printf
 //#define Con_Printf(...)
  
 void S_Init (void)
 {
+	if (!snd_buf) snd_buf = alloc(SND_BUF_SIZE, "snd_buf");
 	known_sfx = Hunk_AllocName (MAX_SFX*sizeof(sfx_t), "sfx_t");
 	num_sfx = 0;
 	sound_started = 1;
@@ -525,9 +534,187 @@ void S_ClearPrecache (void)
 	Con_Printf("S_ClearPrecache\n");
 }
 
-void S_Update (vec3_t origin, vec3_t v_forward, vec3_t v_right, vec3_t v_up)
+/*
+===================
+S_UpdateAmbientSounds
+===================
+*/
+void S_UpdateAmbientSounds (void)
+{
+	mleaf_t		*l;
+	float		vol;
+	int			ambient_channel;
+	channel_t	*chan;
+
+	if (!snd_ambient)
+		return;
+
+// calc ambient sound levels
+	if (!cl.worldmodel)
+		return;
+
+	l = Mod_PointInLeaf (listener_origin, cl.worldmodel);
+	if (!l || !ambient_level.value)
+	{
+		for (ambient_channel = 0 ; ambient_channel< NUM_AMBIENTS ; ambient_channel++)
+			channels[ambient_channel].sfx = NULL;
+		return;
+	}
+
+	for (ambient_channel = 0 ; ambient_channel< NUM_AMBIENTS ; ambient_channel++)
+	{
+		chan = &channels[ambient_channel];	
+		chan->sfx = ambient_sfx[ambient_channel];
+	
+		vol = ambient_level.value * l->ambient_sound_level[ambient_channel];
+		if (vol < 8)
+			vol = 0;
+
+	// don't adjust volume too fast
+		if (chan->master_vol < vol)
+		{
+			chan->master_vol += host_frametime * ambient_fade.value;
+			if (chan->master_vol > vol)
+				chan->master_vol = vol;
+		}
+		else if (chan->master_vol > vol)
+		{
+			chan->master_vol -= host_frametime * ambient_fade.value;
+			if (chan->master_vol < vol)
+				chan->master_vol = vol;
+		}
+		
+		chan->leftvol = chan->rightvol = chan->master_vol;
+	}
+}
+
+void S_PaintChannels(int endtime) {
+	/// TODO:
+}
+
+void S_Update_(void)
+{
+	unsigned        endtime;
+	int				samps;
+	
+	if (!sound_started || (snd_blocked > 0))
+		return;
+
+// Updates DMA time
+//	GetSoundtime();
+
+// check to make sure that we haven't overshot
+	if (paintedtime < soundtime)
+	{
+		//Con_Printf ("S_Update_ : overflow\n");
+		paintedtime = soundtime;
+	}
+
+// mix ahead of current position
+	endtime = soundtime + _snd_mixahead.value * shm_speed;
+	samps = SND_BUF_SIZE / 4; // shm->samples >> (shm->channels-1);
+	if (endtime - soundtime > samps)
+		endtime = soundtime + samps;
+
+	S_PaintChannels (endtime);
+
+///	SNDDMA_Submit ();
+}
+
+// вызывается со второго ядра RP2350 CPU, n == 1 (возможно, позже будет больше и вызов реже)
+qboolean __not_in_flash_func() S_GetSamples(int16_t* buf, size_t n) {
+	return 1;
+}
+
+
+void S_Update (vec3_t origin, vec3_t forward, vec3_t right, vec3_t up)
 {	
-	Con_Printf("S_Update\n");
+	int			i, j;
+	int			total;
+	channel_t	*ch;
+	channel_t	*combine;
+
+	if (!sound_started || (snd_blocked > 0))
+		return;
+
+	VectorCopy(origin, listener_origin);
+	VectorCopy(forward, listener_forward);
+	VectorCopy(right, listener_right);
+	VectorCopy(up, listener_up);
+	
+// update general area ambient sound sources
+	S_UpdateAmbientSounds ();
+
+	combine = NULL;
+
+// update spatialization for static and dynamic sounds	
+	ch = channels+NUM_AMBIENTS;
+	for (i=NUM_AMBIENTS ; i<total_channels; i++, ch++)
+	{
+		if (!ch->sfx)
+			continue;
+		SND_Spatialize(ch);         // respatialize channel
+		if (!ch->leftvol && !ch->rightvol)
+			continue;
+
+	// try to combine static sounds with a previous channel of the same
+	// sound effect so we don't mix five torches every frame
+	
+		if (i >= MAX_DYNAMIC_CHANNELS + NUM_AMBIENTS)
+		{
+		// see if it can just use the last one
+			if (combine && combine->sfx == ch->sfx)
+			{
+				combine->leftvol += ch->leftvol;
+				combine->rightvol += ch->rightvol;
+				ch->leftvol = ch->rightvol = 0;
+				continue;
+			}
+		// search for one
+			combine = channels+MAX_DYNAMIC_CHANNELS + NUM_AMBIENTS;
+			for (j=MAX_DYNAMIC_CHANNELS + NUM_AMBIENTS ; j<i; j++, combine++)
+				if (combine->sfx == ch->sfx)
+					break;
+					
+			if (j == total_channels)
+			{
+				combine = NULL;
+			}
+			else
+			{
+				if (combine != ch)
+				{
+					combine->leftvol += ch->leftvol;
+					combine->rightvol += ch->rightvol;
+					ch->leftvol = ch->rightvol = 0;
+				}
+				continue;
+			}
+		}
+		
+		
+	}
+
+//
+// debugging output
+//
+/*
+	if (snd_show.value)
+	{
+		total = 0;
+		ch = channels;
+		for (i=0 ; i<total_channels; i++, ch++)
+			if (ch->sfx && (ch->leftvol || ch->rightvol) )
+			{
+				//Con_Printf ("%3i %3i %s\n", ch->leftvol, ch->rightvol, ch->sfx->name);
+				total++;
+			}
+		
+		Con_Printf ("----(%i)----\n", total);
+	}
+*/
+// mix some sound
+	S_Update_();
 }
 
 void S_StopAllSounds (qboolean clear)

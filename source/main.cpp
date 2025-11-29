@@ -45,8 +45,6 @@
 #include "quakedef.h"
 #include "sys.h"
 
-extern "C" qboolean CDAudio_GetSamples(int16_t* buf, size_t n);
-
 #define HOME_DIR (char*)"/QUAKE"
 
 bool rp2350a = true;
@@ -683,16 +681,11 @@ void __scratch_x("render") render_core() {
     mixer_init();
     uint64_t tick = time_us_64();
     uint64_t last_cd_tick = 0;
-    int16_t samples[2];
     while (true) {
         // Sound Blaster sampling
         if (tick > last_cd_tick + (1000000 / 44100)) {
             last_cd_tick = tick;
-            if (!CDAudio_GetSamples(samples, 1)) {
-                samples[0] = 0;
-                samples[1] = 0;
-            }
-            mixer_samples(samples, 1);
+            mixer_tick();
         }
 #if TFT
         refresh_lcd();

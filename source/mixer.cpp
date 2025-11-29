@@ -6,6 +6,10 @@
 
 #include "audio.h"
 #include "mixer.h"
+#include "quakedef.h"
+
+extern "C" qboolean CDAudio_GetSamples(int16_t* buf, size_t n);
+extern "C" qboolean S_GetSamples(int16_t* buf, size_t n);
 
 static i2s_config_t i2s_config = {
 		.sample_freq = 44100, 
@@ -48,4 +52,11 @@ void __not_in_flash() mixer_samples(int16_t* samples, size_t n) {
         pwm_set_gpio_level(PWM_PIN1, (uint16_t)((int32_t)samples[0] + 0x8000L) >> 4);
         pwm_set_gpio_level(PWM_PIN0, (uint16_t)((int32_t)samples[1] + 0x8000L) >> 4);
     }
+}
+
+void __not_in_flash() mixer_tick() {
+    int16_t samples[2] = { 0, 0 };
+    CDAudio_GetSamples(samples, 1);
+    S_GetSamples(samples, 1);
+    mixer_samples(samples, 1);
 }

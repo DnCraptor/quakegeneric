@@ -94,7 +94,7 @@ qboolean CDAudio_GetPCM(unsigned char* buf, size_t len)
 #define samples_per_buffer (CD_BUF_SIZE / 4)        // 11025
 #define samples_per_half   (samples_per_buffer / 2) // 5512
 // вызывается со второго ядра RP2350 CPU, n == 1 (возможно, позже будет больше и вызов реже)
-qboolean CDAudio_GetSamples(int16_t* buf, size_t n)
+qboolean __not_in_flash_func() CDAudio_GetSamples(int16_t* buf, size_t n)
 {
     while (n--)
     {
@@ -108,8 +108,8 @@ qboolean CDAudio_GetSamples(int16_t* buf, size_t n)
         size_t b_pos = pos * 4;
         int16_t* src = (int16_t*)(cd_buf + b_pos);
 		float f = bgmvolume.value;
-        buf[0] = src[0] * f;
-        buf[1] = src[1] * f;
+        buf[0] += src[0] * f;
+        buf[1] += src[1] * f;
         buf += 2;
 
         pos++;
