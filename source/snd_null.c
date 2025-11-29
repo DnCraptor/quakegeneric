@@ -29,8 +29,19 @@ int sound_started = 0;
 sfx_t		*known_sfx;		// hunk allocated [MAX_SFX]
 int			num_sfx;
 
-#undef Con_Printf
-#define Con_Printf(...)
+int total_channels = 0;
+vec3_t		listener_origin;
+vec3_t		listener_forward;
+vec3_t		listener_right;
+vec3_t		listener_up;
+vec_t		sound_nominal_clip_dist=1000.0;
+int			soundtime;		// sample PAIRS
+int   		paintedtime; 	// sample PAIRS
+
+channel_t   channels[MAX_CHANNELS] __psram_bss("snd_channels");
+
+//#undef Con_Printf
+//#define Con_Printf(...)
  
 void S_Init (void)
 {
@@ -97,9 +108,93 @@ void S_ClearBuffer (void)
 	Con_Printf("S_ClearBuffer\n");
 }
 
+/*
+=================
+SND_Spatialize
+=================
+*/
+void SND_Spatialize(channel_t *ch)
+{
+    vec_t dot;
+    vec_t ldist, rdist, dist;
+    vec_t lscale, rscale, scale;
+    vec3_t source_vec;
+	sfx_t *snd;
+
+// anything coming from the view entity will allways be full volume
+	if (ch->entnum == cl.viewentity)
+	{
+		ch->leftvol = ch->master_vol;
+		ch->rightvol = ch->master_vol;
+		return;
+	}
+
+// calculate stereo seperation and distance attenuation
+
+	snd = ch->sfx;
+	VectorSubtract(ch->origin, listener_origin, source_vec);
+	
+	dist = VectorNormalize(source_vec) * ch->dist_mult;
+	
+	dot = DotProduct(listener_right, source_vec);
+
+//	if (shm->channels == 1)
+//	{
+//		rscale = 1.0;
+//		lscale = 1.0;
+//	}
+//	else
+	{
+		rscale = 1.0 + dot;
+		lscale = 1.0 - dot;
+	}
+
+// add in distance effect
+	scale = (1.0 - dist) * rscale;
+	ch->rightvol = (int) (ch->master_vol * scale);
+	if (ch->rightvol < 0)
+		ch->rightvol = 0;
+
+	scale = (1.0 - dist) * lscale;
+	ch->leftvol = (int) (ch->master_vol * scale);
+	if (ch->leftvol < 0)
+		ch->leftvol = 0;
+}           
+
 void S_StaticSound (sfx_t *sfx, vec3_t origin, float vol, float attenuation)
 {
-	Con_Printf("S_StaticSound %s\n", sfx->name);
+	channel_t	*ss;
+	sfxcache_t		*sc;
+
+	if (!sfx)
+		return;
+
+	if (total_channels == MAX_CHANNELS)
+	{
+		Con_Printf ("total_channels == MAX_CHANNELS\n");
+		return;
+	}
+
+	ss = &channels[total_channels];
+	total_channels++;
+
+	sc = S_LoadSound (sfx);
+	if (!sc)
+		return;
+
+	if (sc->loopstart == -1)
+	{
+		Con_Printf ("Sound %s not looped\n", sfx->name);
+		return;
+	}
+	
+	ss->sfx = sfx;
+	VectorCopy (origin, ss->origin);
+	ss->master_vol = vol;
+	ss->dist_mult = (attenuation/64) / sound_nominal_clip_dist;
+    ss->end = paintedtime + sc->length;	
+	
+	SND_Spatialize (ss);
 }
 
 void S_StartSound (int entnum, int entchannel, sfx_t *sfx, vec3_t origin, float fvol,  float attenuation)

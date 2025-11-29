@@ -19,6 +19,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 // sound.h -- client sound i/o functions
 
+#pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef __SOUND__
 #define __SOUND__
 
@@ -174,4 +179,8 @@ void SNDDMA_Submit(void);
 void S_AmbientOff (void);
 void S_AmbientOn (void);
 
+#endif
+
+#ifdef __cplusplus
+}
 #endif
