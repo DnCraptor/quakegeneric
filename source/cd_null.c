@@ -29,6 +29,7 @@ static qboolean invalidated[2] = { 0, 0 };
 
 void CDAudio_Play(byte track, qboolean looping)
 {
+	CDAudio_Init();
 	if (play_file) {
 		f_close(play_file);
 	} else {
@@ -42,6 +43,8 @@ void CDAudio_Play(byte track, qboolean looping)
 	pos = 0;
 	if (f_open(play_file, b, FA_READ) != FR_OK) {
 		play_paused = 1;
+		free (play_file);
+		play_file = 0;
 		return;
 	}
 	play_paused = !CDAudio_GetPCM(cd_buf, CD_BUF_SIZE);
@@ -49,37 +52,77 @@ void CDAudio_Play(byte track, qboolean looping)
 	invalidated[1] = 0;
 }
 
-qboolean CDAudio_GetPCM(unsigned char* buf, size_t len) {
-	if (!play_file || play_paused || (!play_looping && f_eof(play_file))) return 0;
+qboolean CDAudio_GetPCM(unsigned char* buf, size_t len)
+{
+	// Если файла нет или воспроизведение на паузе — данных не будет
+	if (!play_file || play_paused)
+		return 0;
+
 	UINT br = 0;
-	f_read(play_file, buf, len, &br);
-	if (br < len) {
-		if (play_looping) {
-			if (f_lseek(play_file, 0) != FR_OK) return 0;
+
+	// читаем данные, даже если мы на EOF — FatFS все равно отдаст, сколько сможет
+	FRESULT fr = f_read(play_file, buf, len, &br);
+	if (fr != FR_OK)
+		return 0;
+
+	// Если прочитано меньше чем нужно
+	if (br < len)
+	{
+		// Лупящийся трек: дочитываем остаток с начала файла
+		if (play_looping)
+		{
+			if (f_lseek(play_file, 0) != FR_OK)
+				return 0;
+
+			// дочитываем оставшуюся часть (рекурсивно)
 			return CDAudio_GetPCM(buf + br, len - br);
-		} else {
-			memset(buf + br, 0, len - br);
-			CDAudio_Stop();
 		}
+
+		// Нелупящийся трек: дополняем тишиной и останавливаем
+		memset(buf + br, 0, len - br);
+
+		// ВАЖНО: после Stop() файл уничтожен → возврат должен быть 0
+		CDAudio_Stop();
+		return 0;
 	}
+
 	return 1;
 }
 
-qboolean CDAudio_GetSamples(int16_t* buf, size_t n) {
-	while (n > 0) {
-		if (!play_file || play_paused) return 0;
-		size_t b_pos = pos << 2;
-		if ((b_pos < CD_BUF_SIZE / 2 && invalidated[0]) || (b_pos >= CD_BUF_SIZE / 2 && invalidated[1])) return 0;
-		int16_t* src = (int16_t*)(cd_buf + b_pos);
-		buf[0] = src[0];
-		buf[1] = src[1];
-		++pos;
-		if (pos == CD_BUF_SIZE / 8) invalidated[0] = 1;
-		else if (pos >= CD_BUF_SIZE / 4) { pos = 0; invalidated[1] = 1; }
-		buf += 2;
-		--n;
-	}
-	return 1;
+#define samples_per_buffer (CD_BUF_SIZE / 4)        // 11025
+#define samples_per_half   (samples_per_buffer / 2) // 5512
+
+// вызывается со второго ядра RP2350 CPU, n == 1 (возможно, позже будет больше и вызов реже)
+qboolean CDAudio_GetSamples(int16_t* buf, size_t n)
+{
+    while (n--)
+    {
+        if (!play_file || play_paused)
+            return 0;
+
+        size_t half = (pos < samples_per_half) ? 0 : 1;
+        if (invalidated[half])
+            return 0;
+
+        size_t b_pos = pos * 4;
+        int16_t* src = (int16_t*)(cd_buf + b_pos);
+
+        buf[0] = src[0];
+        buf[1] = src[1];
+        buf += 2;
+
+        pos++;
+
+        if (pos == samples_per_half)
+            invalidated[0] = 1;
+        else if (pos == samples_per_buffer)
+        {
+            invalidated[1] = 1;
+            pos = 0;
+        }
+    }
+
+    return 1;
 }
 
 void CDAudio_Stop(void)
