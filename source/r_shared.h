@@ -89,18 +89,16 @@ typedef struct surf_s
 	struct espan_s	*spans;			// pointer to linked list of spans to draw
 	int			key;				// sorting key (BSP order)
 	int			last_u;				// set during tracing
-	int			spanstate;			// 0 = not in span
+	signed char	spanstate;			// 0 = not in span
 									// 1 = in span
 									// -1 = in inverted span (end before
 									//  start)
-	int			flags;				// currentface flags
+	byte		flags : 7;				// currentface flags
+	byte	    insubmodel : 1;
 	void		*data;				// associated data like msurface_t
 	entity_t	*entity;
 	float		nearzi;				// nearest 1/z on surface, for mipmapping
-	qboolean	insubmodel;
 	float		d_ziorigin, d_zistepu, d_zistepv;
-
-	int			pad[2];				// to 64 bytes
 } surf_t;
 
 extern	surf_t	*surfaces, *surface_p, *surf_max;
