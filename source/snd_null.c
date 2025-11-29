@@ -22,6 +22,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 
+#define shm_speed 1.0
+#define	MAX_SFX		512
+#define SND_BUF_SIZE 44100 // to 250 ms playback (4 bytes per sample)
+#define PAINTBUFFER_SIZE (SND_BUF_SIZE/4)
+
 cvar_t volume = {"volume", "0.7", true, false, 0.7};
 cvar_t ambient_level = {"ambient_level", "0.3", true, false, 0.3};
 cvar_t ambient_fade = {"ambient_fade", "100", true, false, 100.0};
@@ -29,7 +34,6 @@ cvar_t _snd_mixahead = {"_snd_mixahead", "0.1", true, false, 0.1};
 static qboolean	snd_ambient = 1;
 int sound_started = 0;
 int				snd_blocked = 0;
-#define	MAX_SFX		512
 sfx_t		*known_sfx;		// hunk allocated [MAX_SFX]
 int			num_sfx;
 
@@ -39,25 +43,62 @@ vec3_t		listener_forward;
 vec3_t		listener_right;
 vec3_t		listener_up;
 vec_t		sound_nominal_clip_dist=1000.0;
-int			soundtime;		// sample PAIRS
+volatile int soundtime;		// sample PAIRS
 int   		paintedtime; 	// sample PAIRS
 
 channel_t   channels[MAX_CHANNELS] __psram_bss("snd_channels");
 sfx_t		*ambient_sfx[NUM_AMBIENTS] __psram_bss("ambient_sfx");
 
 char* snd_buf = 0;
-#define SND_BUF_SIZE 44100 // to 250 ms playback (4 bytes per sample)
 size_t snd_buf_pos = 0; // current playing position
-//#undef Con_Printf
-//#define Con_Printf(...)
+int		snd_scaletable[32][256]  __psram_bss("snd_scaletable");
+
+void SND_InitScaletable (void)
+{
+	int		i, j;
+	
+	for (i=0 ; i<32 ; i++)
+		for (j=0 ; j<256 ; j++)
+			snd_scaletable[i][j] = ((signed char)j) * i * 8;
+}
  
 void S_Init (void)
 {
-	if (!snd_buf) snd_buf = alloc(SND_BUF_SIZE, "snd_buf");
+	if (COM_CheckParm("-nosound"))
+		return;
+
+//	Cmd_AddCommand("play", S_Play);
+//	Cmd_AddCommand("playvol", S_PlayVol);
+//	Cmd_AddCommand("stopsound", S_StopAllSoundsC);
+//	Cmd_AddCommand("soundlist", S_SoundList);
+//	Cmd_AddCommand("soundinfo", S_SoundInfo_f);
+
+//	Cvar_RegisterVariable(&nosound);
+	Cvar_RegisterVariable(&volume);
+//	Cvar_RegisterVariable(&precache);
+//	Cvar_RegisterVariable(&loadas8bit);
+	Cvar_RegisterVariable(&bgmvolume);
+//	Cvar_RegisterVariable(&bgmbuffer);
+	Cvar_RegisterVariable(&ambient_level);
+	Cvar_RegisterVariable(&ambient_fade);
+//	Cvar_RegisterVariable(&snd_noextraupdate);
+//	Cvar_RegisterVariable(&snd_show);
+	Cvar_RegisterVariable(&_snd_mixahead);
+
+	sound_started = 1;
+
+	SND_InitScaletable ();
+
+	if (!snd_buf) {
+		snd_buf = alloc(SND_BUF_SIZE, "snd_buf");
+		///snd_buf = (char*)(((uintptr_t)snd_buf + 3) & ~3);
+	}
 	known_sfx = Hunk_AllocName (MAX_SFX*sizeof(sfx_t), "sfx_t");
 	num_sfx = 0;
-	sound_started = 1;
-///	Cmd_AddCommand("stopsound", S_StopAllSoundsC);
+
+//	ambient_sfx[AMBIENT_WATER] = S_PrecacheSound ("ambience/water1.wav");
+//	ambient_sfx[AMBIENT_SKY] = S_PrecacheSound ("ambience/wind2.wav");
+
 	S_StopAllSounds(true);
 }
 
@@ -116,7 +157,8 @@ void S_TouchSound (char *sample)
 
 void S_ClearBuffer (void)
 {
-	Con_Printf("S_ClearBuffer\n");
+	if (snd_buf)
+		Q_memset(snd_buf, 0, SND_BUF_SIZE);
 }
 
 /*
@@ -180,6 +222,8 @@ void S_StaticSound (sfx_t *sfx, vec3_t origin, float vol, float attenuation)
 	if (!sfx)
 		return;
 
+	Con_Printf ("S_StaticSound %s\n", sfx->name);
+
 	if (total_channels == MAX_CHANNELS)
 	{
 		Con_Printf ("total_channels == MAX_CHANNELS\n");
@@ -208,14 +252,127 @@ void S_StaticSound (sfx_t *sfx, vec3_t origin, float vol, float attenuation)
 	SND_Spatialize (ss);
 }
 
+/*
+=================
+SND_PickChannel
+=================
+*/
+channel_t *SND_PickChannel(int entnum, int entchannel)
+{
+    int ch_idx;
+    int first_to_die;
+    int life_left;
+
+// Check for replacement sound, or find the best one to replace
+    first_to_die = -1;
+    life_left = 0x7fffffff;
+    for (ch_idx=NUM_AMBIENTS ; ch_idx < NUM_AMBIENTS + MAX_DYNAMIC_CHANNELS ; ch_idx++)
+    {
+		if (entchannel != 0		// channel 0 never overrides
+		&& channels[ch_idx].entnum == entnum
+		&& (channels[ch_idx].entchannel == entchannel || entchannel == -1) )
+		{	// allways override sound from same entity
+			first_to_die = ch_idx;
+			break;
+		}
+
+		// don't let monster sounds override player sounds
+		if (channels[ch_idx].entnum == cl.viewentity && entnum != cl.viewentity && channels[ch_idx].sfx)
+			continue;
+
+		if (channels[ch_idx].end - paintedtime < life_left)
+		{
+			life_left = channels[ch_idx].end - paintedtime;
+			first_to_die = ch_idx;
+		}
+   }
+
+	if (first_to_die == -1)
+		return NULL;
+
+	if (channels[first_to_die].sfx)
+		channels[first_to_die].sfx = NULL;
+
+    return &channels[first_to_die];    
+}       
+
 void S_StartSound (int entnum, int entchannel, sfx_t *sfx, vec3_t origin, float fvol,  float attenuation)
 {
-	Con_Printf("S_StartSound [%d:%d] %s\n", entnum, entchannel, sfx->name);
+	channel_t *target_chan, *check;
+	sfxcache_t	*sc;
+	int		vol;
+	int		ch_idx;
+	int		skip;
+
+	if (!sound_started)
+		return;
+
+	if (!sfx)
+		return;
+
+	vol = fvol*255;
+
+// pick a channel to play on
+	target_chan = SND_PickChannel(entnum, entchannel);
+	if (!target_chan)
+		return;
+		
+// spatialize
+	memset (target_chan, 0, sizeof(*target_chan));
+	VectorCopy(origin, target_chan->origin);
+	target_chan->dist_mult = attenuation / sound_nominal_clip_dist;
+	target_chan->master_vol = vol;
+	target_chan->entnum = entnum;
+	target_chan->entchannel = entchannel;
+	SND_Spatialize(target_chan);
+
+	if (!target_chan->leftvol && !target_chan->rightvol)
+		return;		// not audible at all
+
+// new channel
+	sc = S_LoadSound (sfx);
+	if (!sc)
+	{
+		target_chan->sfx = NULL;
+		return;		// couldn't load the sound's data
+	}
+
+	target_chan->sfx = sfx;
+	target_chan->pos = 0.0;
+    target_chan->end = paintedtime + sc->length;	
+
+// if an identical sound has also been started this frame, offset the pos
+// a bit to keep it from just making the first one louder
+	check = &channels[NUM_AMBIENTS];
+    for (ch_idx=NUM_AMBIENTS ; ch_idx < NUM_AMBIENTS + MAX_DYNAMIC_CHANNELS ; ch_idx++, check++)
+    {
+		if (check == target_chan)
+			continue;
+		if (check->sfx == sfx && !check->pos)
+		{
+			skip = rand () % (int)(0.1*shm_speed);
+			if (skip >= target_chan->end)
+				skip = target_chan->end - 1;
+			target_chan->pos += skip;
+			target_chan->end -= skip;
+			break;
+		}
+		
+	}
 }
 
 void S_StopSound (int entnum, int entchannel)
 {
-	Con_Printf("S_StopSound [%d:%d]\n", entnum, entchannel);
+	for (int i = 0 ; i < MAX_DYNAMIC_CHANNELS ; i++)
+	{
+		if (channels[i].entnum == entnum
+			&& channels[i].entchannel == entchannel)
+		{
+			channels[i].end = 0;
+			channels[i].sfx = NULL;
+			return;
+		}
+	}
 }
 
 byte	*data_p;
@@ -393,7 +550,6 @@ wavinfo_t GetWavinfo (char *name, byte *wav, int wavlength)
 	return info;
 }
 
-#define shm_speed 1.0
 /*
 ================
 ResampleSfx
@@ -470,6 +626,8 @@ sfxcache_t *S_LoadSound (sfx_t *s)
 	sfxcache_t	*sc;
 	byte	stackbuf[1*1024];		// avoid dirtying the cache heap
 
+	Con_Printf ("S_LoadSound %s\n", s->name);
+
 // see if still in memory
 	sc = Cache_Check (&s->cache);
 	if (sc)
@@ -522,6 +680,9 @@ sfx_t* S_PrecacheSound (char *sample)
 	sfx_t	*sfx;
 	if (!sound_started)
 		return NULL;
+
+	Con_Printf ("S_PrecacheSound %s\n", sample);
+
 	sfx = S_FindName (sample);
 
 // cache it in
@@ -590,8 +751,126 @@ void S_UpdateAmbientSounds (void)
 	}
 }
 
-void S_PaintChannels(int endtime) {
-	/// TODO:
+void SND_PaintChannelFrom8 (channel_t *ch, sfxcache_t *sc, int count)
+{
+	int 	data;
+	int		*lscale, *rscale;
+	unsigned char *sfx;
+	int		i;
+
+	if (ch->leftvol > 255)
+		ch->leftvol = 255;
+	if (ch->rightvol > 255)
+		ch->rightvol = 255;
+		
+	lscale = snd_scaletable[ch->leftvol >> 3];
+	rscale = snd_scaletable[ch->rightvol >> 3];
+	sfx = (signed char *)sc->data + ch->pos;
+
+	for (i=0 ; i<count ; i++)
+	{
+		data = sfx[i];
+		*(int16_t*)&snd_buf[i*4] += lscale[data];
+		*(int16_t*)&snd_buf[i*4+2] += rscale[data];
+	}
+	
+	ch->pos += count;
+}
+
+void SND_PaintChannelFrom16 (channel_t *ch, sfxcache_t *sc, int count)
+{
+	int data;
+	int left, right;
+	int leftvol, rightvol;
+	signed short *sfx;
+	int	i;
+
+	leftvol = ch->leftvol;
+	rightvol = ch->rightvol;
+	sfx = (signed short *)sc->data + ch->pos;
+
+	for (i=0 ; i<count ; i++)
+	{
+		data = sfx[i];
+		left = (data * leftvol) >> 8;
+		right = (data * rightvol) >> 8;
+		*(int16_t*)&snd_buf[i*4] += left;
+		*(int16_t*)&snd_buf[i*4+2] += right;
+	}
+
+	ch->pos += count;
+}
+void S_PaintChannels(int endtime)
+{
+	int 	i;
+	int 	end;
+	channel_t *ch;
+	sfxcache_t	*sc;
+	int		ltime, count;
+
+	while (paintedtime < endtime)
+	{
+	// if paintbuffer is smaller than DMA buffer
+		end = endtime;
+		if (endtime - paintedtime > PAINTBUFFER_SIZE)
+			end = paintedtime + PAINTBUFFER_SIZE;
+
+	// clear the paint buffer
+		Q_memset(snd_buf, 0, (end - paintedtime) * 4);
+
+	// paint in the channels.
+		ch = channels;
+		for (i=0; i<total_channels ; i++, ch++)
+		{
+			if (!ch->sfx)
+				continue;
+			if (!ch->leftvol && !ch->rightvol)
+				continue;
+			sc = S_LoadSound (ch->sfx);
+			if (!sc)
+				continue;
+
+			ltime = paintedtime;
+
+			while (ltime < end)
+			{	// paint up to end
+				if (ch->end < end)
+					count = ch->end - ltime;
+				else
+					count = end - ltime;
+
+				if (count > 0)
+				{	
+					if (sc->width == 1)
+						SND_PaintChannelFrom8(ch, sc, count);
+					else
+						SND_PaintChannelFrom16(ch, sc, count);
+	
+					ltime += count;
+				}
+
+			// if at end of loop, restart
+				if (ltime >= ch->end)
+				{
+					if (sc->loopstart >= 0)
+					{
+						ch->pos = sc->loopstart;
+						ch->end = ltime + sc->length - ch->pos;
+					}
+					else				
+					{	// channel just stopped
+						ch->sfx = NULL;
+						break;
+					}
+				}
+			}
+															  
+		}
+
+	// transfer out according to DMA format
+	///	S_TransferPaintBuffer(end);
+		paintedtime = end;
+	}
 }
 
 void S_Update_(void)
@@ -625,6 +904,21 @@ void S_Update_(void)
 
 // вызывается со второго ядра RP2350 CPU, n == 1 (возможно, позже будет больше и вызов реже)
 qboolean __not_in_flash_func() S_GetSamples(int16_t* buf, size_t n) {
+	if (!sound_started || (snd_blocked > 0))
+		return 0;
+	int16_t* src = (int16_t*)(snd_buf + snd_buf_pos);
+	while(n--) {
+		float f = volume.value;
+        buf[0] += src[0] * f;
+        buf[1] += src[1] * f;
+        buf += 2;
+		src += 2;
+		++soundtime;
+		snd_buf_pos += 4;
+		if (snd_buf_pos >= SND_BUF_SIZE) {
+			snd_buf_pos = 0;
+		}
+	}
 	return 1;
 }
 
