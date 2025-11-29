@@ -57,6 +57,8 @@ void S_Init (void)
 	known_sfx = Hunk_AllocName (MAX_SFX*sizeof(sfx_t), "sfx_t");
 	num_sfx = 0;
 	sound_started = 1;
+///	Cmd_AddCommand("stopsound", S_StopAllSoundsC);
+	S_StopAllSounds(true);
 }
 
 void S_AmbientOff (void)
@@ -719,7 +721,18 @@ void S_Update (vec3_t origin, vec3_t forward, vec3_t right, vec3_t up)
 
 void S_StopAllSounds (qboolean clear)
 {
-	Con_Printf("S_StopAllSounds %d\n", clear);
+	if (!sound_started)
+		return;
+	total_channels = MAX_DYNAMIC_CHANNELS + NUM_AMBIENTS;	// no statics
+
+	for (int i=0 ; i < MAX_CHANNELS ; i++)
+		if (channels[i].sfx)
+			channels[i].sfx = NULL;
+
+	Q_memset(channels, 0, MAX_CHANNELS * sizeof(channel_t));
+
+	if (clear)
+		S_ClearBuffer ();
 }
 
 void S_BeginPrecaching (void)
@@ -734,7 +747,7 @@ void S_EndPrecaching (void)
 
 void S_ExtraUpdate (void)
 {
-	Con_Printf("S_ExtraUpdate\n");
+	S_Update_();
 }
 
 void S_LocalSound (char *s)
