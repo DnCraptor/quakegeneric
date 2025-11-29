@@ -1032,9 +1032,8 @@ static void finish_him(void) {
     uint8_t link_i2s_code = 0xFF;
     if (I2S_BCK_PIO != I2S_LCK_PIO && I2S_LCK_PIO != I2S_DATA_PIO && I2S_BCK_PIO != I2S_DATA_PIO) {
         uint8_t link_i2s_code = testPins(I2S_DATA_PIO, I2S_BCK_PIO);
-        is_i2s_enabled = link_i2s_code != 0;
+        is_i2s_enabled = 0; ///link_i2s_code != 0;
     }
-    mixer_init();
 
     uint8_t linkVGA01;
     linkVGA01 = testPins(VGA_BASE_PIN, VGA_BASE_PIN + 1);
