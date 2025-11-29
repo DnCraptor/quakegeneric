@@ -164,28 +164,33 @@ void Sys_Error (char *error, ...) {
 	Sys_Quit();
 }
 
-int Sys_Fscanf(FIL* f, char *fmt, ...)
+int Sys_Fscanf(FIL *f, char *fmt, ...)
 {
-    UINT rb;
-    FRESULT fr;
-    int scanned = 0;
+    char line[256];
+    UINT rb = 0;
+    TCHAR* fr;
 
-    DWORD start_pos = f_tell(f); // текущее положение файла
+    DWORD start = f_tell(f);
 
-    va_list argptr;
-    va_start(argptr, fmt);
-
-    fr = f_read(f, buf, sizeof(buf) - 1, &rb);
-    if (fr != FR_OK || rb == 0) {
-        va_end(argptr);
-        return EOF;  // как стандартный fscanf
+    /* читаем строго одну строку */
+    fr = f_gets(line, sizeof(line), f);
+    if (fr && line[0] == '\0') {
+        return EOF;
     }
 
-    buf[rb] = '\0';  // нуль-терминатор для sscanf
+    /* подготовить va_list */
+    va_list ap;
+    va_start(ap, fmt);
 
-    scanned = vsscanf(buf, fmt, argptr);  // распарсить значения
-/// TODO: reimplemet it
-    va_end(argptr);
+    int scanned = vsscanf(line, fmt, ap);   /* парсинг */
+    va_end(ap);
+
+    /* если вообще ничего не подошло — откатить позицию файла */
+    if (scanned <= 0) {
+        f_lseek(f, start);
+        return scanned;
+    }
+
     return scanned;
 }
 
