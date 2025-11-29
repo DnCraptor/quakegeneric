@@ -60,6 +60,8 @@ int flash_mhz = 88;
 int psram_mhz = MAX_PSRAM_FREQ_MHZ;
 static uint new_flash_timings = 0;
 static uint new_psram_timings = 0;
+static uint8_t override_video = 0xFF;
+static uint8_t override_audio = 0xFF;
 
 extern "C" bool is_i2s_enabled;
 extern "C" int testPins(uint32_t pin0, uint32_t pin1);
@@ -1035,19 +1037,20 @@ static void finish_him(void) {
 
     f_unlink("quake.log");
 
-    uint8_t link_i2s_code = 0xFF;
-    if (I2S_BCK_PIO != I2S_LCK_PIO && I2S_LCK_PIO != I2S_DATA_PIO && I2S_BCK_PIO != I2S_DATA_PIO) {
-        uint8_t link_i2s_code = testPins(I2S_DATA_PIO, I2S_BCK_PIO);
-        is_i2s_enabled = 0; ///link_i2s_code != 0;
-    }
+    uint8_t link_i2s_code = testPins(I2S_DATA_PIO, I2S_BCK_PIO);
+    is_i2s_enabled = override_audio != 0xFF ? override_audio : link_i2s_code != 0;
 
     uint8_t linkVGA01;
     linkVGA01 = testPins(VGA_BASE_PIN, VGA_BASE_PIN + 1);
+    if (override_video != 0xFF) {
+        SELECT_VGA = override_video;
+    } else {
     #if defined(ZERO) || defined(ZERO2) || defined(PICO_DV)
         SELECT_VGA = linkVGA01 == 0x1F;
     #else
         SELECT_VGA = (linkVGA01 == 0) || (linkVGA01 == 0x1F);
     #endif
+    }
 
     Sys_Printf(" Hardware info\n");
     Sys_Printf(" --------------------------------------\n");
@@ -1067,8 +1070,8 @@ static void finish_him(void) {
     } else {
         Sys_Printf(" PSRAM max freq.: %d MHz [T%p]\n", psram_mhz, qmi_hw->m[1].timing);
     }
-    Sys_Printf(" Sound          : %s [%02x]\n", is_i2s_enabled ? "i2s" : "PWM", link_i2s_code);
-    Sys_Printf(" Video          : %s [%02x]\n", SELECT_VGA ? "VGA" : "HDMI", linkVGA01);
+    Sys_Printf(" Sound          : %s [%02x] %s\n", is_i2s_enabled ? "i2s" : "PWM", link_i2s_code, override_audio == 0xFF ? "" : "overriden");
+    Sys_Printf(" Video          : %s [%02x] %s\n", SELECT_VGA ? "VGA" : "HDMI", linkVGA01, override_video == 0xFF ? "" : "overriden");
     Sys_Printf(" SP after switch: 0x%08X\n", sp_after);
     Sys_Printf(" .psram_data size:  0x%08X\n", (&__psram_data_end__ - &__psram_data_start__));
     Sys_Printf(" .psram_bss  size:  0x%08X\n", (&__psram_bss_end__ - &__psram_bss_start__));
@@ -1223,6 +1226,20 @@ static void load_config() {
                     if (set_sys_clock_hz(new_cpu_mhz * MHZ, 0) ) {
                         cpu_mhz = new_cpu_mhz;
                     }
+                }
+            } else if (strcmp(t, "VIDEO") == 0) {
+                t = next_token(t);
+                if (strcmp("HDMI", t) == 0) {
+                    override_video = 0;
+                } else if (strcmp("VGA", t) == 0) {
+                    override_video = 1;
+                }
+            } else if (strcmp(t, "AUDIO") == 0) {
+                t = next_token(t);
+                if (strcmp("i2s", t) == 0) {
+                    override_audio = 1;
+                } else if (strcmp("PWM", t) == 0) {
+                    override_audio = 0;
                 }
             } else if (strcmp(t, "VREG") == 0) {
                 t = next_token(t);
