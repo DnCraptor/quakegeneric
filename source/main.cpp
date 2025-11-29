@@ -666,8 +666,6 @@ void __noinline hstx_init() {
 #endif
 
 void __scratch_x("render") render_core() {
-    gpio_put(PICO_DEFAULT_LED_PIN, 1);
-
     // init graphics driver
     multicore_lockout_victim_init();
 #if DVI_HSTX
@@ -1103,7 +1101,6 @@ static void finish_him(void) {
     sem_init(&vga_start_semaphore, 0, 1);
     multicore_launch_core1(render_core);
     sem_release(&vga_start_semaphore);
-    sleep_ms(1000); // ugly kludge to fix race condition(?)
 
     create_argv();
 	QG_Create(argc, argv);
