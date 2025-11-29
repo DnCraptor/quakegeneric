@@ -592,10 +592,8 @@ static linebuf_cb_info_8bpp_t cb_index8_priv = {.pic = FRAME_BUF, .pal = linebuf
 
 // line buffer callback used for converting the picture
 extern "C" void linebuf_cb_index8_a(const struct dvi_linebuf_task_t *task, void *priv);
-#endif
 
-void __scratch_x("render") render_core() {
-#if DVI_HSTX
+void __noinline hstx_init() {
     // init hstx driver here!
     bool is_vga    = SELECT_VGA;
     union dvi_hstx_pin_layout_t pin_cfg = hstx_out_pin_layouts[HSTX_OUT_PIN_LAYOUT_MURMULATOR2];
@@ -663,15 +661,25 @@ void __scratch_x("render") render_core() {
 
     // and start display output
     dvi_linebuf_start();
+}
 
-    sem_acquire_blocking(&vga_start_semaphore);
+#endif
+
+void __scratch_x("render") render_core() {
+    gpio_put(PICO_DEFAULT_LED_PIN, 1);
+
+    // init graphics driver
+    multicore_lockout_victim_init();
+#if DVI_HSTX
+    hstx_init();
 #else
     multicore_lockout_victim_init();
     graphics_init();
     graphics_set_buffer(FRAME_BUF, QUAKEGENERIC_RES_X, QUAKEGENERIC_RES_Y);
     graphics_set_bgcolor(0x000000);
-    sem_acquire_blocking(&vga_start_semaphore);
 #endif
+    sem_acquire_blocking(&vga_start_semaphore);
+    
     mixer_init();
     uint64_t tick = time_us_64();
     uint64_t last_cd_tick = 0;
