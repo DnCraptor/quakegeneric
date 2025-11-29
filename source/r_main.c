@@ -141,6 +141,9 @@ extern cvar_t	scr_fov;
 void CreatePassages (void);
 void SetVisibilityByPassages (void);
 
+// edge buffer "swap"
+edge_t *edgebuf, *edgebuf_swap;
+
 /*
 ==================
 R_InitTextures
@@ -846,17 +849,19 @@ R_EdgeDrawing
 */
 static void R_EdgeDrawing ()
 {
-	edge_t ledges[NUMSTACKEDGES + ((CACHE_SIZE - 1) / sizeof(edge_t)) + 1];
+	edge_t ledges[NUMSTACKEDGES + 4 + 1 + ((CACHE_SIZE - 1) / sizeof(edge_t)) + 1];
 	surf_t lsurfs[NUMSTACKSURFACES + ((CACHE_SIZE - 1) / sizeof(surf_t)) + 1];
 
 	if (auxedges)
 	{
-		r_edges = auxedges;
+		edgebuf_swap = auxedges;
 	}
 	else
 	{
-		r_edges =  (edge_t *)(((intptr_t)ledges + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
+		edgebuf_swap = (edge_t *)(((intptr_t)ledges + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
 	}
+	edgebuf = edgebuf_swap;			// TODO that alloc
+	r_edges = edgebuf_swap + 4 + 1;
 
 	if (r_surfsonstack)
 	{
