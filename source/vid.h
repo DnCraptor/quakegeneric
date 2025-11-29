@@ -81,3 +81,7 @@ int VID_SetMode (int modenum, unsigned char *palette);
 void VID_HandlePause (qboolean pause);
 // called only on Win32, when pause happens, so the mouse can be released
 
+// evil z-buffer allocator, used for overoptimizing certain things ;)
+void ZBA_Reset();
+void *ZBA_Alloc(int bytes);
+int ZBA_GetZBufferMaxRow();

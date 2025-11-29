@@ -47,6 +47,27 @@ size_t	surfcache_size;
 static byte surfcache_sram[SURFCACHE_SRAM_SIZE];
 #endif
 
+// evil z-buffer allocator, used for overoptimizing certain things ;)
+uint8_t *zba_rover;
+void ZBA_Reset() {
+	zba_rover = (uint8_t*)&zbuffer[BASEWIDTH*BASEHEIGHT];
+}
+
+void *ZBA_Alloc(int bytes) {
+	if ((uintptr_t)(zba_rover - bytes) <= (uintptr_t)zbuffer) {
+		Sys_Error("ZBA_Alloc(): tried to allocate %d bytes but ran out of Z-buffer memory\n", bytes);
+		return NULL;
+	}
+	zba_rover -= bytes;
+	//Sys_Printf("ZBA_Alloc(): %d bytes -> 0x%08X", bytes, (uintptr_t)zba_rover);
+	return (void*)zba_rover;
+}
+
+int ZBA_GetZBufferMaxRow() {
+	int rtn = (zba_rover - (uint8_t*)&zbuffer[BASEWIDTH-1]) / (sizeof(short)*BASEWIDTH);
+	return rtn < 0 ? 0 : rtn;
+}
+
 void	VID_SetPalette (unsigned char *palette)
 {
 	// quake generic
@@ -86,6 +107,9 @@ void	VID_Init (unsigned char *palette)
 
 	// quake generic
 	QG_Init();
+
+	// reset Z-buffer allocator
+	ZBA_Reset();
 }
 
 void	VID_Shutdown (void)
