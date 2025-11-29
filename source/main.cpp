@@ -484,7 +484,7 @@ int map_kc(uint8_t kc) {
     return 0;
 }
 
-void __not_in_flash_func(process_kbd_report)(
+void process_kbd_report(
     hid_keyboard_report_t const *report,
     hid_keyboard_report_t const *prev_report
 ) {
