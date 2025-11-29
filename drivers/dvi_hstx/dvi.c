@@ -45,9 +45,14 @@ static struct dvi_sm_state_t dvi_sm;
 #define LINE_BUFFER_COUNT 3
 static uint32_t *dvi_linebuf[LINE_BUFFER_COUNT];       // preallocated
 
-// tmds sync words
+// TMDS sync words
 static const uint32_t tmds_sync_word[4] = {
     TMDS_SYNC_V1_H1, TMDS_SYNC_V1_H0, TMDS_SYNC_V0_H1, TMDS_SYNC_V0_H0
+};
+
+// VGA sync words
+static const uint32_t vga_sync_word[4] = {
+    VGA_HSTX_SYNC_V1_H1, VGA_HSTX_SYNC_V1_H0, VGA_HSTX_SYNC_V0_H1, VGA_HSTX_SYNC_V0_H0
 };
 
 // --------------------------
@@ -77,6 +82,35 @@ void dvi_configure_hstx_output(union dvi_hstx_pin_layout_t layout, uint32_t slew
 
     hstx_ctrl_hw->bit[layout.lane2_n] = ((2*10 + 0) << HSTX_CTRL_BIT0_SEL_P_LSB) | ((2*10 + 1) << HSTX_CTRL_BIT0_SEL_N_LSB) | HSTX_CTRL_BIT0_INV_BITS;
     hstx_ctrl_hw->bit[layout.lane2_p] = ((2*10 + 0) << HSTX_CTRL_BIT0_SEL_P_LSB) | ((2*10 + 1) << HSTX_CTRL_BIT0_SEL_N_LSB);
+
+    // set pin function to HSTX
+    for (int i = 12; i <= 19; ++i) {
+        gpio_set_function(i, GPIO_FUNC_HSTX); // HSTX
+        gpio_set_slew_rate(i, slew_rate);
+        gpio_set_drive_strength(i, drive_strength);
+    }
+}
+
+// configure HSTX output pins
+void vga_configure_hstx_output(union dvi_hstx_pin_layout_t layout, uint32_t slew_rate, uint32_t drive_strength, uint32_t phase_repeats) {
+    // Serial output config: clock period of 4 cycles, pop from command expander every 4 cycles
+    hstx_ctrl_hw->csr = 0;
+    hstx_ctrl_hw->csr =
+        HSTX_CTRL_CSR_EXPAND_EN_BITS |
+        4u << HSTX_CTRL_CSR_CLKDIV_LSB |
+        phase_repeats << HSTX_CTRL_CSR_N_SHIFTS_LSB |
+        16u << HSTX_CTRL_CSR_SHIFT_LSB |
+        HSTX_CTRL_CSR_EN_BITS;
+
+    // assign pins
+    hstx_ctrl_hw->bit[layout.vga_vs] = (7 << HSTX_CTRL_BIT0_SEL_P_LSB) | ((7+8) << HSTX_CTRL_BIT0_SEL_N_LSB); // vsync
+    hstx_ctrl_hw->bit[layout.vga_hs] = (6 << HSTX_CTRL_BIT0_SEL_P_LSB) | ((6+8) << HSTX_CTRL_BIT0_SEL_N_LSB); // hsync
+    hstx_ctrl_hw->bit[layout.vga_r1] = (5 << HSTX_CTRL_BIT0_SEL_P_LSB) | ((5+8) << HSTX_CTRL_BIT0_SEL_N_LSB); // R
+    hstx_ctrl_hw->bit[layout.vga_r0] = (4 << HSTX_CTRL_BIT0_SEL_P_LSB) | ((4+8) << HSTX_CTRL_BIT0_SEL_N_LSB); // r
+    hstx_ctrl_hw->bit[layout.vga_g1] = (3 << HSTX_CTRL_BIT0_SEL_P_LSB) | ((3+8) << HSTX_CTRL_BIT0_SEL_N_LSB); // G
+    hstx_ctrl_hw->bit[layout.vga_g0] = (2 << HSTX_CTRL_BIT0_SEL_P_LSB) | ((2+8) << HSTX_CTRL_BIT0_SEL_N_LSB); // g
+    hstx_ctrl_hw->bit[layout.vga_b1] = (1 << HSTX_CTRL_BIT0_SEL_P_LSB) | ((1+8) << HSTX_CTRL_BIT0_SEL_N_LSB); // B
+    hstx_ctrl_hw->bit[layout.vga_b0] = (0 << HSTX_CTRL_BIT0_SEL_P_LSB) | ((0+8) << HSTX_CTRL_BIT0_SEL_N_LSB); // b
 
     // set pin function to HSTX
     for (int i = 12; i <= 19; ++i) {
@@ -128,6 +162,13 @@ static struct dvi_mode_props_t dvi_mode_props[DVI_HSTX_MODE_COUNT] = {
         .bits_per_pixels = 32,
         .flags = DVI_MODE_FLAGS_PIXEL_REP
     },
+    // VGA_HSTX_MODE_PWM32
+    {
+        .hstx_expand = 0,           // don't care as raw pins mode is used
+        .pixels_per_word = 1,
+        .bits_per_pixels = 32,
+        .flags = DVI_MODE_FLAGS_PIXEL_REP
+    },
 };
 
 // set command expander mode
@@ -163,6 +204,16 @@ int dvi_adjust_timings(struct dvi_timings_t *timings, uint32_t hstx_mode, int pi
     if (pixel_rep_rem != 0) {
         printf("h_active+border_left+border_right not divisible by pixel_rep!\n");
         return 1;
+    }
+
+    if (flags & HSTX_TIMINGS_VGA_FIXUP) {
+        // divide __all__ horizontal timing values by pixel_rep
+        timings->h.border_right /= pixel_rep;
+        timings->h.back_porch   /= pixel_rep;
+        timings->h.sync         /= pixel_rep;
+        timings->h.front_porch  /= pixel_rep;
+        timings->h.border_left  /= pixel_rep;
+        timings->h.active       /= pixel_rep;
     }
 
     // remove horizontal borders from the 1bpp mono modes because we need them to be aligned
@@ -411,7 +462,7 @@ int dvi_linebuf_set_timings(const struct dvi_timings_t *timings, int pix_rep) {
     if (timings == NULL) return 1;
     dvi_sm.timings = *timings;
 
-    // apply pixel reprtition
+    // apply pixel repetition
     dvi_sm.timings.pixelrep.active       = dvi_sm.timings.h.active       / pix_rep;
     dvi_sm.timings.pixelrep.border_left  = dvi_sm.timings.h.border_left  / pix_rep;
     dvi_sm.timings.pixelrep.border_right = dvi_sm.timings.h.border_right / pix_rep;
@@ -434,6 +485,10 @@ int dvi_linebuf_set_timings(const struct dvi_timings_t *timings, int pix_rep) {
     }
 
     return 0;
+}
+
+int vga_linebuf_set_timings(const struct dvi_timings_t *timings) {
+    return dvi_linebuf_set_timings(timings, 1);     // pix_rep already accounted for
 }
 
 // set resources
@@ -520,6 +575,79 @@ int dvi_linebuf_fill_hstx_cmdlist() {
             *ctrl_word_cur++ = 0;
         }
         *ctrl_word_cur++ = HSTX_CMD_TMDS | (t->h.active);
+        dvi_sm.ctrl_len.v_active = ctrl_word_cur - dvi_hstx_ctrl_v_active;
+    }
+}
+
+// fill HSTX command list
+int vga_linebuf_fill_hstx_cmdlist() {
+    struct dvi_timings_t *t = &dvi_sm.timings;
+    bool v_border = t->v.border_top  || t->v.border_bottom;
+    bool h_border = t->pixelrep.border_left || t->pixelrep.border_right;
+
+    // cook control words
+    {
+        uint32_t* ctrl_word_cur;
+        uint32_t syncflags =  t->flags & DVI_TIMINGS_SYNC_POLARITY_MASK;
+        
+        // nop =)
+        dvi_hstx_ctrl_nop[0] = HSTX_CMD_NOP;
+
+        // vsync
+        ctrl_word_cur = dvi_hstx_ctrl_vsync_on;
+        *ctrl_word_cur++ = HSTX_CMD_RAW_REPEAT | (t->h.border_right + t->h.front_porch);
+        *ctrl_word_cur++ = vga_sync_word[syncflags ^ DVI_TIMINGS_H_NEG];
+        *ctrl_word_cur++ = HSTX_CMD_RAW_REPEAT | (t->h.sync);
+        *ctrl_word_cur++ = vga_sync_word[syncflags];
+        *ctrl_word_cur++ = HSTX_CMD_RAW_REPEAT | (t->h.back_porch + t->h.border_left + t->h.active);
+        *ctrl_word_cur++ = vga_sync_word[syncflags ^ DVI_TIMINGS_H_NEG];
+        *ctrl_word_cur++ = HSTX_CMD_NOP;
+        dvi_sm.ctrl_len.vsync_on = ctrl_word_cur - dvi_hstx_ctrl_vsync_on;
+
+        // vblank
+        ctrl_word_cur = dvi_hstx_ctrl_vsync_off;
+        *ctrl_word_cur++ = HSTX_CMD_RAW_REPEAT | (t->h.border_right + t->h.front_porch);
+        *ctrl_word_cur++ = vga_sync_word[syncflags ^ DVI_TIMINGS_H_NEG ^ DVI_TIMINGS_V_NEG];
+        *ctrl_word_cur++ = HSTX_CMD_RAW_REPEAT | (t->h.sync);
+        *ctrl_word_cur++ = vga_sync_word[syncflags ^ DVI_TIMINGS_V_NEG];
+        *ctrl_word_cur++ = HSTX_CMD_RAW_REPEAT | (t->h.back_porch + t->h.border_left + t->h.active);
+        *ctrl_word_cur++ = vga_sync_word[syncflags ^ DVI_TIMINGS_H_NEG ^ DVI_TIMINGS_V_NEG];
+        *ctrl_word_cur++ = HSTX_CMD_NOP;
+        dvi_sm.ctrl_len.vsync_off = ctrl_word_cur - dvi_hstx_ctrl_vsync_off;
+
+        // vertical border
+        ctrl_word_cur = dvi_hstx_ctrl_v_border;
+        if (t->h.border_right) {
+            *ctrl_word_cur++ = HSTX_CMD_RAW_REPEAT | (t->h.border_right);
+            *ctrl_word_cur++ = vga_sync_word[syncflags ^ DVI_TIMINGS_H_NEG ^ DVI_TIMINGS_V_NEG]; // blank here, maintain sync pulses
+        }
+        *ctrl_word_cur++ = HSTX_CMD_RAW_REPEAT | (t->h.front_porch);
+        *ctrl_word_cur++ = vga_sync_word[syncflags ^ DVI_TIMINGS_H_NEG ^ DVI_TIMINGS_V_NEG];
+        *ctrl_word_cur++ = HSTX_CMD_RAW_REPEAT | (t->h.sync);
+        *ctrl_word_cur++ = vga_sync_word[syncflags ^ DVI_TIMINGS_V_NEG];
+        *ctrl_word_cur++ = HSTX_CMD_RAW_REPEAT | (t->h.back_porch);
+        *ctrl_word_cur++ = vga_sync_word[syncflags ^ DVI_TIMINGS_H_NEG ^ DVI_TIMINGS_V_NEG];
+        *ctrl_word_cur++ = HSTX_CMD_RAW_REPEAT | (t->h.border_left + t->h.active);
+        *ctrl_word_cur++ = vga_sync_word[syncflags ^ DVI_TIMINGS_H_NEG ^ DVI_TIMINGS_V_NEG]; // blank here, maintain sync pulses
+        dvi_sm.ctrl_len.v_border = ctrl_word_cur - dvi_hstx_ctrl_v_border;
+
+        // active
+        ctrl_word_cur = dvi_hstx_ctrl_v_active;
+        if (t->h.border_right) {
+            *ctrl_word_cur++ = HSTX_CMD_RAW_REPEAT | (t->h.border_right);
+            *ctrl_word_cur++ = vga_sync_word[syncflags ^ DVI_TIMINGS_H_NEG ^ DVI_TIMINGS_V_NEG]; // blank here, maintain sync pulses
+        }
+        *ctrl_word_cur++ = HSTX_CMD_RAW_REPEAT  | (t->h.front_porch);
+        *ctrl_word_cur++ = vga_sync_word[syncflags ^ DVI_TIMINGS_H_NEG ^ DVI_TIMINGS_V_NEG];
+        *ctrl_word_cur++ = HSTX_CMD_RAW_REPEAT  | (t->h.sync);
+        *ctrl_word_cur++ = vga_sync_word[syncflags ^ DVI_TIMINGS_V_NEG];
+        *ctrl_word_cur++ = HSTX_CMD_RAW_REPEAT  | (t->h.back_porch);
+        *ctrl_word_cur++ = vga_sync_word[syncflags ^ DVI_TIMINGS_H_NEG ^ DVI_TIMINGS_V_NEG];
+        if (t->h.border_left) {
+            *ctrl_word_cur++ = HSTX_CMD_RAW_REPEAT | (t->h.border_left);
+            *ctrl_word_cur++ = vga_sync_word[syncflags ^ DVI_TIMINGS_H_NEG ^ DVI_TIMINGS_V_NEG]; // blank here, maintain sync pulses
+        }
+        *ctrl_word_cur++ = HSTX_CMD_RAW | (t->h.active);
         dvi_sm.ctrl_len.v_active = ctrl_word_cur - dvi_hstx_ctrl_v_active;
     }
 }
@@ -667,3 +795,53 @@ volatile int dvi_linebuf_get_state() {
 int dvi_linebuf_get_frame_count() {
     return dvi_sm.frame;
 }
+
+#if VGA_HSTX
+// 4bpp to PWM index translation table
+#define VGA_HSTX_PHASE(p3, p2, p1, p0) (p3 << 24) | (p2 << 16) | (p1 << 8) | (p0 << 0)
+
+static uint32_t __not_in_flash("vga_hstx_pwm.data") vga_pwm_xlat_table[16] = {
+    VGA_HSTX_PHASE(0, 0, 0, 0),         //  0 ->  0
+    VGA_HSTX_PHASE(0, 0, 0, 1),         //  1 ->  1
+    VGA_HSTX_PHASE(0, 1, 0, 1),         //  2 ->  2
+    VGA_HSTX_PHASE(0, 1, 0, 1),         //  3 ->  2
+    VGA_HSTX_PHASE(0, 1, 1, 1),         //  4 ->  3
+    VGA_HSTX_PHASE(1, 1, 1, 1),         //  5 ->  4
+    VGA_HSTX_PHASE(1, 1, 1, 2),         //  6 ->  5
+    VGA_HSTX_PHASE(1, 2, 1, 2),         //  7 ->  6
+    VGA_HSTX_PHASE(1, 2, 1, 2),         //  8 ->  6
+    VGA_HSTX_PHASE(1, 2, 2, 2),         //  9 ->  7
+    VGA_HSTX_PHASE(2, 2, 2, 2),         // 10 ->  8
+    VGA_HSTX_PHASE(2, 2, 2, 3),         // 11 ->  9
+    VGA_HSTX_PHASE(2, 3, 2, 3),         // 12 -> 10
+    VGA_HSTX_PHASE(2, 3, 2, 3),         // 13 -> 10
+    VGA_HSTX_PHASE(2, 3, 3, 3),         // 14 -> 11
+    VGA_HSTX_PHASE(3, 3, 3, 3),         // 15 -> 12
+};
+
+uint32_t __not_in_flash("vga_hstx_pwm.text") vga_pwm_get_pixel_sync_mask() {
+    return vga_sync_word[(dvi_sm.timings.flags & DVI_TIMINGS_SYNC_POLARITY_MASK) ^ DVI_TIMINGS_H_NEG ^ DVI_TIMINGS_V_NEG];
+}
+
+uint32_t __not_in_flash("vga_hstx_pwm.text") vga_pwm_xlat_color(uint8_t r, uint8_t g, uint8_t b) {
+    uint32_t rtn = vga_pwm_get_pixel_sync_mask();
+    rtn |= (vga_pwm_xlat_table[b >> 4] << 0);
+    rtn |= (vga_pwm_xlat_table[g >> 4] << 2);
+    rtn |= (vga_pwm_xlat_table[r >> 4] << 4);
+    return rtn;
+}
+
+uint32_t __not_in_flash("vga_hstx_pwm.text") vga_pwm_xlat_color32(uint32_t idx) {
+    return vga_pwm_xlat_color((idx >> 16) & 0xFF, (idx >> 8) & 0xFF, (idx >> 0) & 0xFF);
+}
+void __not_in_flash("vga_hstx_pwm.text") vga_pwm_xlat_palette(uint32_t *dst, uint8_t *src, uint32_t colors, uint32_t src_pitch) {
+    uint32_t syncmask = vga_pwm_get_pixel_sync_mask();
+    if (colors != 0) do {
+        uint32_t rtn = syncmask;
+        rtn |= (vga_pwm_xlat_table[src[0] >> 4] << 0);
+        rtn |= (vga_pwm_xlat_table[src[1] >> 4] << 2);
+        rtn |= (vga_pwm_xlat_table[src[2] >> 4] << 4);
+        *dst++ = rtn; src += src_pitch;
+    } while (--colors);
+}
+#endif

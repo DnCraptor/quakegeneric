@@ -240,6 +240,7 @@ void Sys_Sleep (void)
 
 void Sys_SendKeyEvents (void)
 {
+	IN_Commands();
 }
 
 void Sys_HighFPPrecision (void)

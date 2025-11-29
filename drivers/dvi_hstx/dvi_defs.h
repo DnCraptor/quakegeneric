@@ -46,6 +46,16 @@ union dvi_hstx_pin_layout_t {
         uint32_t lane2_n : 4;
         uint32_t lane2_p : 4;
     };
+    struct {
+        uint32_t vga_b0  : 4;
+        uint32_t vga_b1  : 4;
+        uint32_t vga_g0  : 4;
+        uint32_t vga_g1  : 4;
+        uint32_t vga_r0  : 4;
+        uint32_t vga_r1  : 4;
+        uint32_t vga_hs  : 4;
+        uint32_t vga_vs  : 4;
+    };
     uint32_t raw;
 };
 
@@ -97,8 +107,9 @@ enum {
 };
 
 enum {
-    DVI_SET_TIMINGS_REFRESH_VBLANK = (0 << 0),  // stretch vblank to change refresh rate
-    DVI_SET_TIMINGS_REFRESH_HBLANK = (1 << 0),  // stretch hblank instead (more compatible with HDMI->VGA?)
+    HSTX_TIMINGS_REFRESH_VBLANK = (0 << 0),  // stretch vblank to change refresh rate
+    HSTX_TIMINGS_REFRESH_HBLANK = (1 << 0),  // stretch hblank instead (more compatible with HDMI->VGA?)
+    HSTX_TIMINGS_VGA_FIXUP      = (1 << 1),  // treat mode as VGA (divide all values by pixel_rep)
 };
 
 // ----------------------------------------------------------------------------
@@ -119,6 +130,17 @@ enum {
 #define HSTX_CMD_TMDS        (0x2u << 12)
 #define HSTX_CMD_TMDS_REPEAT (0x3u << 12)
 #define HSTX_CMD_NOP         (0xfu << 12)
+
+#define VGA_HSTX_VSYNC       0x80808080
+#define VGA_HSTX_HSYNC       0x40404040
+
+#define VGA_HSTX_SYNC_V0_H0     (0)
+#define VGA_HSTX_SYNC_V0_H1     (VGA_HSTX_HSYNC)
+#define VGA_HSTX_SYNC_V1_H0     (VGA_HSTX_VSYNC)
+#define VGA_HSTX_SYNC_V1_H1     (VGA_HSTX_VSYNC|VGA_HSTX_HSYNC)
+
+#define VGA_HSTX_RGB222 (r, g, b)    (((r) << 4)  | ((g) << 2) | ((b) << 0))
+#define VGA_HSTX_RGB222P(r, g, b, p) ((((r) << 4) | ((g) << 2) | ((b) << 0)) << (p*8))
 
 // DMA channel used
 enum {
@@ -142,6 +164,7 @@ struct dvi_dma_cmd_list {
 enum {
     DVI_HSTX_MODE_MONO1_LSB,        // 1bpp monochrome, LSB first
     DVI_HSTX_MODE_XRGB8888,         // XRGB8888
+    VGA_HSTX_MODE_PWM32,            // VGA PWM mode
 
     DVI_HSTX_MODE_COUNT
 };
@@ -274,6 +297,9 @@ int dvi_adjust_timings(struct dvi_timings_t *timings, uint32_t hstx_mode, int pi
 
 // configure HSTX output pins
 void dvi_configure_hstx_output(union dvi_hstx_pin_layout_t layout, uint32_t slew_rate, uint32_t drive_strength); 
+#if VGA_HSTX
+void vga_configure_hstx_output(union dvi_hstx_pin_layout_t layout, uint32_t slew_rate, uint32_t drive_strength, uint32_t phase_repeats);
+#endif
 
 // set command expander mode (pixel mode is always XRGB8888)
 int dvi_configure_hstx_command_expander(int hstx_mode, int pix_rep);
@@ -289,12 +315,16 @@ void dvi_linebuf_get_memsize(struct dvi_timings_t *timings, uint32_t *linebuf_me
 
 // set timings
 int dvi_linebuf_set_timings(const struct dvi_timings_t *timings, int pix_rep);
+int vga_linebuf_set_timings(const struct dvi_timings_t *timings);
 
 // set resources
 int dvi_linebuf_set_resources(struct dvi_resources_t *resources, uint32_t *linebuf);
 
 // fill HSTX command list
 int dvi_linebuf_fill_hstx_cmdlist();
+#if VGA_HSTX
+int vga_linebuf_fill_hstx_cmdlist();
+#endif
 
 // initialize DMA channels and IRQ handlers
 int dvi_linebuf_init_dma();
@@ -316,6 +346,18 @@ int dvi_linebuf_done();
 
 // -------
 // getters
+
+#if VGA_HSTX
+uint32_t vga_pwm_get_pixel_sync_mask();
+
+// translate palette index (VGA PWM mode only)
+// must be run after mode init!
+uint32_t vga_pwm_xlat_color(uint8_t r, uint8_t g, uint8_t b);
+uint32_t vga_pwm_xlat_color32(uint32_t idx);
+
+// translate whole palette, components are assumed in b->g->r order
+void     vga_pwm_xlat_palette(uint32_t *dst, uint8_t *src, uint32_t colors, uint32_t src_pitch);
+#endif
 
 // get current state
 volatile int dvi_linebuf_get_state();
