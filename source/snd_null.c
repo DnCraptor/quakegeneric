@@ -22,9 +22,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 
-#define shm_speed 1.0
+#define shm_speed 44100
 #define	MAX_SFX		512
-#define SND_BUF_SIZE 44100 // to 250 ms playback (4 bytes per sample)
+#define SND_BUF_SIZE 44100 // to 250 ms playback (4 bytes per 2 x samples)
 #define PAINTBUFFER_SIZE (SND_BUF_SIZE/4)
 
 cvar_t volume = {"volume", "0.7", true, false, 0.7};
@@ -49,9 +49,15 @@ int   		paintedtime; 	// sample PAIRS
 channel_t   channels[MAX_CHANNELS] __psram_bss("snd_channels");
 sfx_t		*ambient_sfx[NUM_AMBIENTS] __psram_bss("ambient_sfx");
 
-byte snd_buf[SND_BUF_SIZE] __psram_bss("snd_buf") __aligned(4);
-size_t snd_buf_pos = 0; // current playing position
-int		snd_scaletable[32][256]  __psram_bss("snd_scaletable");
+typedef struct stereo_sample_16_s {
+	int16_t left;
+	int16_t right;
+} stereo_sample_16_t;
+
+stereo_sample_16_t paintbuffer[PAINTBUFFER_SIZE] __psram_bss("paintbuffer") __aligned(4);
+stereo_sample_16_t outputbuffer[PAINTBUFFER_SIZE] __psram_bss("outputbuffer") __aligned(4);
+volatile size_t snd_buf_pos = 0; // current playing position
+int	snd_scaletable[32][256]  __psram_bss("snd_scaletable");
 
 void SND_InitScaletable (void)
 {
@@ -157,8 +163,7 @@ void S_TouchSound (char *sample)
 void S_ClearBuffer (void)
 {
 	Con_Printf ("S_ClearBuffer\n");
-	if (snd_buf)
-		Q_memset(snd_buf, 0, SND_BUF_SIZE);
+	Q_memset(paintbuffer, 0, SND_BUF_SIZE);
 }
 
 /*
@@ -818,8 +823,8 @@ void SND_PaintChannelFrom8 (channel_t *ch, sfxcache_t *sc, int count)
 	for (i=0 ; i<count ; i++)
 	{
 		data = sfx[i];
-		*(int16_t*)&snd_buf[i*4] += lscale[data];
-		*(int16_t*)&snd_buf[i*4+2] += rscale[data];
+		paintbuffer[i].left += lscale[data];
+		paintbuffer[i].right += rscale[data];
 	}
 	
 	ch->pos += count;
@@ -843,12 +848,13 @@ void SND_PaintChannelFrom16 (channel_t *ch, sfxcache_t *sc, int count)
 		data = sfx[i];
 		left = (data * leftvol) >> 8;
 		right = (data * rightvol) >> 8;
-		*(int16_t*)&snd_buf[i*4] += left;
-		*(int16_t*)&snd_buf[i*4+2] += right;
+		paintbuffer[i].left += left;
+		paintbuffer[i].right += right;
 	}
 
 	ch->pos += count;
 }
+
 void S_PaintChannels(int endtime)
 {
 	int 	i;
@@ -866,7 +872,7 @@ void S_PaintChannels(int endtime)
 			end = paintedtime + PAINTBUFFER_SIZE;
 
 	// clear the paint buffer
-		Q_memset(snd_buf, 0, (end - paintedtime) * 4);
+		Q_memset(paintbuffer, 0, (end - paintedtime) * 4);
 
 	// paint in the channels.
 		ch = channels;
@@ -924,6 +930,17 @@ void S_PaintChannels(int endtime)
 //	Con_Printf ("S_PaintChannels done\n");
 }
 
+void SNDDMA_Submit(void)
+{
+	paintedtime = paintedtime % PAINTBUFFER_SIZE;
+    for (size_t i = 0; i < paintedtime; ++i) {
+		size_t idx = snd_buf_pos + i;
+		if (idx >= PAINTBUFFER_SIZE) idx -= PAINTBUFFER_SIZE;
+        outputbuffer[idx] = paintbuffer[i];
+	}
+    paintedtime = 0;
+}
+
 void S_Update_(void)
 {
 	unsigned        endtime;
@@ -937,17 +954,19 @@ void S_Update_(void)
 // check to make sure that we haven't overshot
 	if (paintedtime < soundtime)
 	{
-		Con_Printf ("S_Update_ : overflow\n");
+		// Con_Printf ("S_Update_ : overflow\n");
 		paintedtime = soundtime;
 	}
 
 // mix ahead of current position
 	endtime = soundtime + _snd_mixahead.value * shm_speed;
-	samps = SND_BUF_SIZE / 4; // shm->samples >> (shm->channels-1);
+	samps = PAINTBUFFER_SIZE; // shm->samples >> (shm->channels-1);
 	if (endtime - soundtime > samps)
 		endtime = soundtime + samps;
 
 	S_PaintChannels (endtime);
+
+	SNDDMA_Submit();
 //	Con_Printf ("S_Update_ done\n");
 }
 
@@ -955,16 +974,18 @@ void S_Update_(void)
 qboolean __not_in_flash_func() S_GetSamples(int16_t* buf, size_t n) {
 	if (!sound_started || (snd_blocked > 0))
 		return 0;
-	int16_t* src = (int16_t*)(snd_buf + snd_buf_pos);
+	stereo_sample_16_t* src = outputbuffer + snd_buf_pos;
 	while(n--) {
 		float f = volume.value;
-        buf[0] += src[0] * f;
-        buf[1] += src[1] * f;
+		float tl = buf[0] + src->left * f;
+		float tr = buf[1] + src->right * f;
+        buf[0] = tl > 32767 ? 32767 : ( tl < -32768 ? -32768 : tl );
+        buf[1] = tr > 32767 ? 32767 : ( tr < -32768 ? -32768 : tr );
         buf += 2;
-		src += 2;
+		++src;
 		++soundtime;
-		snd_buf_pos += 4;
-		if (snd_buf_pos >= SND_BUF_SIZE) {
+		++snd_buf_pos;
+		if (snd_buf_pos >= PAINTBUFFER_SIZE) {
 			snd_buf_pos = 0;
 		}
 	}
