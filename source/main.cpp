@@ -484,7 +484,7 @@ int map_kc(uint8_t kc) {
     return 0;
 }
 
-void __not_in_flash_func(process_kbd_report)(
+void process_kbd_report(
     hid_keyboard_report_t const *report,
     hid_keyboard_report_t const *prev_report
 ) {
@@ -1305,19 +1305,6 @@ int main() {
     keyboard_init();
 #endif
 
-    #ifdef PICO_DEFAULT_LED_PIN
-    gpio_init(PICO_DEFAULT_LED_PIN);
-    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
-    for (int i = 0; i < 6; i++) {
-        sleep_ms(33);
-        gpio_put(PICO_DEFAULT_LED_PIN, true);
-        sleep_ms(33);
-        gpio_put(PICO_DEFAULT_LED_PIN, false);
-    }
-    #endif
-
-    f_mount(&fs, "", 1);
-
 #if PICO_RP2350
     rp2350a = (*((io_ro_32*)(SYSINFO_BASE + SYSINFO_PACKAGE_SEL_OFFSET)) & 1);
     #ifdef BUTTER_PSRAM_GPIO
@@ -1331,6 +1318,19 @@ int main() {
 #endif
 
     psram_sections_init();      // init psram_data/psram_bss sections 
+
+    #ifdef PICO_DEFAULT_LED_PIN
+    gpio_init(PICO_DEFAULT_LED_PIN);
+    gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+    for (int i = 0; i < 6; i++) {
+        sleep_ms(33);
+        gpio_put(PICO_DEFAULT_LED_PIN, true);
+        sleep_ms(33);
+        gpio_put(PICO_DEFAULT_LED_PIN, false);
+    }
+    #endif
+
+    f_mount(&fs, "", 1);
     load_config();
 
     switch_stack(STACK_CORE0, finish_him);
