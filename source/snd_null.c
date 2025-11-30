@@ -932,8 +932,8 @@ void S_PaintChannels(int endtime)
 
 void SNDDMA_Submit(void)
 {
-	paintedtime = paintedtime % PAINTBUFFER_SIZE;
-    for (size_t i = 0; i < paintedtime; ++i) {
+	int protected_paintedtime = paintedtime % PAINTBUFFER_SIZE;
+    for (size_t i = 0; i < protected_paintedtime; ++i) {
 		size_t idx = snd_buf_pos + i;
 		if (idx >= PAINTBUFFER_SIZE) idx -= PAINTBUFFER_SIZE;
         outputbuffer[idx] = paintbuffer[i];
