@@ -22,10 +22,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 
-#define shm_speed 44100
+#define shm_speed 22050
 #define	MAX_SFX		512
-#define SND_BUF_SIZE 44100 // to 250 ms playback (4 bytes per 2 x samples)
-#define PAINTBUFFER_SIZE (SND_BUF_SIZE/4)
+#define PAINTBUFFER_SIZE 32768
 
 cvar_t volume = {"volume", "0.7", true, false, 0.7};
 cvar_t ambient_level = {"ambient_level", "0.3", true, false, 0.3};
@@ -67,7 +66,13 @@ void SND_InitScaletable (void)
 		for (j=0 ; j<256 ; j++)
 			snd_scaletable[i][j] = ((signed char)j) * i * 8;
 }
- 
+
+
+void S_StopAllSoundsC (void)
+{
+	S_StopAllSounds (true);
+}
+
 void S_Init (void)
 {
 	if (COM_CheckParm("-nosound"))
@@ -75,7 +80,7 @@ void S_Init (void)
 
 //	Cmd_AddCommand("play", S_Play);
 //	Cmd_AddCommand("playvol", S_PlayVol);
-//	Cmd_AddCommand("stopsound", S_StopAllSoundsC);
+	Cmd_AddCommand("stopsound", S_StopAllSoundsC);
 //	Cmd_AddCommand("soundlist", S_SoundList);
 //	Cmd_AddCommand("soundinfo", S_SoundInfo_f);
 
@@ -163,8 +168,8 @@ void S_TouchSound (char *sample)
 void S_ClearBuffer (void)
 {
 	Con_Printf ("S_ClearBuffer\n");
-	Q_memset(paintbuffer, 0, SND_BUF_SIZE);
-	Q_memset(outputbuffer, 0, SND_BUF_SIZE);
+	Q_memset(paintbuffer, 0, PAINTBUFFER_SIZE*4);
+	Q_memset(outputbuffer, 0, PAINTBUFFER_SIZE*4);
 	snd_buf_pos = 0;
 }
 
@@ -974,6 +979,7 @@ void S_Update_(void)
 
 // вызывается со второго ядра RP2350 CPU, n == 1 (возможно, позже будет больше и вызов реже)
 qboolean __not_in_flash_func() S_GetSamples(int16_t* buf, size_t n) {
+	static uint32_t it = 0;
 	if (!sound_started || (snd_blocked > 0))
 		return 0;
 	stereo_sample_16_t* src = outputbuffer + snd_buf_pos;
@@ -983,15 +989,17 @@ qboolean __not_in_flash_func() S_GetSamples(int16_t* buf, size_t n) {
 		float tr = buf[1] + src->right * f;
 		src->left = 0;
 		src->right = 0;
-		++src;
-		++soundtime;
-		++snd_buf_pos;
+		if (it++ & 1) { // resampling from 22050 to 44100
+			++src;
+			++soundtime;
+			++snd_buf_pos;
+			if (snd_buf_pos >= PAINTBUFFER_SIZE) {
+				snd_buf_pos = 0;
+			}
+		}
         buf[0] = tl > 32767 ? 32767 : ( tl < -32768 ? -32768 : tl );
         buf[1] = tr > 32767 ? 32767 : ( tr < -32768 ? -32768 : tr );
         buf += 2;
-		if (snd_buf_pos >= PAINTBUFFER_SIZE) {
-			snd_buf_pos = 0;
-		}
 	}
 	return 1;
 }
@@ -1105,12 +1113,10 @@ void S_StopAllSounds (qboolean clear)
 
 void S_BeginPrecaching (void)
 {
-	Con_Printf("S_BeginPrecaching\n");
 }
 
 void S_EndPrecaching (void)
 {
-	Con_Printf("S_EndPrecaching\n");
 }
 
 void S_ExtraUpdate (void)
@@ -1120,6 +1126,17 @@ void S_ExtraUpdate (void)
 
 void S_LocalSound (char *s)
 {
-	Con_Printf("S_LocalSound %s\n", s);
+	sfx_t	*sfx;
+///	if (nosound.value)
+//		return;
+	if (!sound_started)
+		return;
+		
+	sfx = S_PrecacheSound (s);
+	if (!sfx)
+	{
+		Con_Printf ("S_LocalSound: can't cache %s\n", s);
+		return;
+	}
+	S_StartSound (cl.viewentity, -1, sfx, vec3_origin, 1, 1);
 }
-
