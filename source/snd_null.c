@@ -174,12 +174,13 @@ void SND_Spatialize(channel_t *ch)
     vec3_t source_vec;
 	sfx_t *snd;
 
-//	Con_Printf ("SND_Spatialize [%p]\n", ch);
+	//Con_Printf ("SND_Spatialize [%p]\n", ch);
 // anything coming from the view entity will allways be full volume
 	if (ch->entnum == cl.viewentity)
 	{
 		ch->leftvol = ch->master_vol;
 		ch->rightvol = ch->master_vol;
+		//Con_Printf ("SND_Spatialize [%p] own\n", ch);
 		return;
 	}
 // calculate stereo seperation and distance attenuation
@@ -191,16 +192,8 @@ void SND_Spatialize(channel_t *ch)
 	
 	dot = DotProduct(listener_right, source_vec);
 
-//	if (shm->channels == 1)
-//	{
-//		rscale = 1.0;
-//		lscale = 1.0;
-//	}
-//	else
-	{
-		rscale = 1.0 + dot;
-		lscale = 1.0 - dot;
-	}
+	rscale = 1.0 + dot;
+	lscale = 1.0 - dot;
 
 // add in distance effect
 	scale = (1.0 - dist) * rscale;
@@ -212,6 +205,7 @@ void SND_Spatialize(channel_t *ch)
 	ch->leftvol = (int) (ch->master_vol * scale);
 	if (ch->leftvol < 0)
 		ch->leftvol = 0;
+	//Con_Printf ("SND_Spatialize [%p] done\n", ch);
 }           
 
 void S_StaticSound (sfx_t *sfx, vec3_t origin, float vol, float attenuation)
@@ -222,7 +216,7 @@ void S_StaticSound (sfx_t *sfx, vec3_t origin, float vol, float attenuation)
 	if (!sfx)
 		return;
 
-	Con_Printf ("S_StaticSound %s\n", sfx->name);
+	//Con_Printf ("S_StaticSound %s\n", sfx->name);
 
 	if (total_channels == MAX_CHANNELS)
 	{
@@ -239,7 +233,7 @@ void S_StaticSound (sfx_t *sfx, vec3_t origin, float vol, float attenuation)
 
 	if (sc->loopstart == -1)
 	{
-		Con_Printf ("Sound %s not looped\n", sfx->name);
+		//Con_Printf ("Sound %s not looped\n", sfx->name);
 		return;
 	}
 	
@@ -298,76 +292,111 @@ channel_t *SND_PickChannel(int entnum, int entchannel)
     return &channels[first_to_die];    
 }       
 
-void S_StartSound (int entnum, int entchannel, sfx_t *sfx, vec3_t origin, float fvol,  float attenuation)
+void S_StartSound (int entnum, int entchannel, sfx_t *sfx,
+                   vec3_t origin, float fvol, float attenuation)
 {
-	channel_t *target_chan, *check;
-	sfxcache_t	*sc;
-	int		vol;
-	int		ch_idx;
-	int		skip;
+    channel_t *target_chan, *check;
+    sfxcache_t *sc;
+    int vol, ch_idx, skip;
 
-	if (!sound_started)
-		return;
+    if (!sound_started || !sfx)
+        return;
 
-	if (!sfx)
-		return;
+    vol = fvol * 255;
 
-//	Con_Printf ("S_StartSound [%d:%d %p]\n", entnum, entchannel, sfx);
-	vol = fvol*255;
+    // выбираем канал
+    target_chan = SND_PickChannel(entnum, entchannel);
+    if (!target_chan)
+        return;
 
-// pick a channel to play on
-	target_chan = SND_PickChannel(entnum, entchannel);
-	if (!target_chan) {
-		Con_Printf ("S_StartSound [%d:%d %p] no chan\n", entnum, entchannel, sfx);
-		return;
-	}
-		
-// spatialize
-	memset (target_chan, 0, sizeof(*target_chan));
-	VectorCopy(origin, target_chan->origin);
-	target_chan->dist_mult = attenuation / sound_nominal_clip_dist;
-	target_chan->master_vol = vol;
-	target_chan->entnum = entnum;
-	target_chan->entchannel = entchannel;
-	SND_Spatialize(target_chan);
+    //
+    // *** ПЕРВЫЙ этап: подготовка канала ***
+    //
 
-	if (!target_chan->leftvol && !target_chan->rightvol) {
-		Con_Printf ("S_StartSound [%d:%d %p] not audible\n", entnum, entchannel, sfx);
-		return;		// not audible at all
-	}
+    //
+    // Не затираем всю структуру целиком (memset), потому что там могут храниться
+    // служебные/состояния, которые должны сохраняться между вызовами.
+    // Обнулим только поля, относящиеся к текущему воспроизведению звука.
+    //
+    target_chan->sfx = NULL;
+    target_chan->leftvol = 0;
+    target_chan->rightvol = 0;
+    target_chan->pos = 0;
+    target_chan->end = 0;
+    /* origin будет перезаписан ниже */
+    /* dist_mult/master_vol/entnum/entchannel заполним явно далее */
 
-// new channel
-	sc = S_LoadSound (sfx);
-	if (!sc)
-	{
-		target_chan->sfx = NULL;
-		Con_Printf ("S_StartSound [%d:%d %p] no data\n", entnum, entchannel, sfx);
-		return;		// couldn't load the sound's data
-	}
+    VectorCopy(origin, target_chan->origin);
+    target_chan->dist_mult   = attenuation / sound_nominal_clip_dist;
+    target_chan->master_vol  = vol;
+    target_chan->entnum      = entnum;
+    target_chan->entchannel  = entchannel;
 
-	target_chan->sfx = sfx;
-	target_chan->pos = 0.0;
-    target_chan->end = paintedtime + sc->length;	
+    // расчёт стерео и дистанции
+    SND_Spatialize(target_chan);
 
-// if an identical sound has also been started this frame, offset the pos
-// a bit to keep it from just making the first one louder
-	check = &channels[NUM_AMBIENTS];
-    for (ch_idx=NUM_AMBIENTS ; ch_idx < NUM_AMBIENTS + MAX_DYNAMIC_CHANNELS ; ch_idx++, check++)
+    // если не слышно — не продолжаем
+    if (!target_chan->leftvol && !target_chan->rightvol)
+        return;
+
+    //
+    // *** ВТОРОЙ этап: загрузка звука ***
+    //
+    sc = S_LoadSound(sfx);
+    if (!sc) {
+        target_chan->sfx = NULL;
+        return;
+    }
+
+    target_chan->sfx = sfx;
+    target_chan->pos = 0;
+    target_chan->end = paintedtime + sc->length;
+
+	/// TODO: разобраться, почему смещение роняет сервер
+#if 0
+    //
+    // *** ТРЕТИЙ этап: смещение одинаковых звуков ***
+    // (safe: все нужные поля уже инициализированы)
+    //
+    check = &channels[NUM_AMBIENTS];
+	for (ch_idx = NUM_AMBIENTS; ch_idx < NUM_AMBIENTS + MAX_DYNAMIC_CHANNELS; ch_idx++, check++)
     {
-		if (check == target_chan)
-			continue;
-		if (check->sfx == sfx && !check->pos)
+		// пропустить сам канал, который создаём
+        if (check == target_chan)
+            continue;
+
+    	// пропустить неинициализированный (или мусорный) канал
+    	if (!check->sfx)
+        	continue;			
+		
+		// совпадение звука?
+		if (check->sfx == sfx && check->pos == 0)
 		{
-			skip = rand () % (int)(0.1*shm_speed);
-			if (skip >= target_chan->end)
-				skip = target_chan->end - 1;
+			int maxskip = target_chan->end;
+
+			// запрещаем отрицательные или нулевые end
+			if (maxskip <= 1)
+				break;
+
+			int skip = rand() % (int)(0.1f * shm_speed);
+
+			if (skip >= maxskip)
+				skip = maxskip - 1;
+
+			if (skip < 0)   // подстраховка
+				skip = 0;
+
 			target_chan->pos += skip;
 			target_chan->end -= skip;
+
+			// запрещаем "перевернутые" границы
+			if (target_chan->end <= target_chan->pos)
+				target_chan->end = target_chan->pos + 1;
+
 			break;
 		}
-		
 	}
-//	Con_Printf ("S_StartSound [%d:%d %p] done\n", entnum, entchannel, sfx);
+#endif
 }
 
 void S_StopSound (int entnum, int entchannel)
@@ -732,7 +761,7 @@ void S_UpdateAmbientSounds (void)
 // calc ambient sound levels
 	if (!cl.worldmodel)
 		return;
-	Con_Printf ("S_UpdateAmbientSounds\n");
+	//Con_Printf ("S_UpdateAmbientSounds\n");
 
 	l = Mod_PointInLeaf (listener_origin, cl.worldmodel);
 	if (!l || !ambient_level.value)
@@ -952,7 +981,7 @@ void S_Update (vec3_t origin, vec3_t forward, vec3_t right, vec3_t up)
 
 	if (!sound_started || (snd_blocked > 0))
 		return;
-/*
+
 	VectorCopy(origin, listener_origin);
 	VectorCopy(forward, listener_forward);
 	VectorCopy(right, listener_right);
@@ -975,7 +1004,7 @@ void S_Update (vec3_t origin, vec3_t forward, vec3_t right, vec3_t up)
 
 	// try to combine static sounds with a previous channel of the same
 	// sound effect so we don't mix five torches every frame
-	
+
 		if (i >= MAX_DYNAMIC_CHANNELS + NUM_AMBIENTS)
 		{
 		// see if it can just use the last one
@@ -1010,7 +1039,7 @@ void S_Update (vec3_t origin, vec3_t forward, vec3_t right, vec3_t up)
 		
 		
 	}
-*/
+
 //
 // debugging output
 //
@@ -1030,7 +1059,7 @@ void S_Update (vec3_t origin, vec3_t forward, vec3_t right, vec3_t up)
 	}
 */
 // mix some sound
-//	S_Update_();
+	S_Update_();
 }
 
 void S_StopAllSounds (qboolean clear)
@@ -1061,7 +1090,7 @@ void S_EndPrecaching (void)
 
 void S_ExtraUpdate (void)
 {
-	//S_Update_();
+	S_Update_();
 }
 
 void S_LocalSound (char *s)

@@ -28,7 +28,7 @@ static uint8_t cd_buf[CD_BUF_SIZE] __psram_bss("cd_buf");
 static size_t pos = 0;
 static qboolean invalidated[2] = { 0, 0 };
 
-cvar_t bgmvolume = {"bgmvolume", "0.7", true, false, 0.7};
+cvar_t bgmvolume = {"bgmvolume", "0.3", true, false, 0.3};
 
 void CDAudio_Play(byte track, qboolean looping)
 {
