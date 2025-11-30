@@ -281,9 +281,8 @@ extern	client_state_slow_t	clp;
 
 // FIXME, allocate dynamically
 extern	efrag_t			cl_efrags[MAX_EFRAGS];
-///extern	entity_t		cl_entities[MAX_EDICTS];
-///extern	entity_t		cl_static_entities[MAX_STATIC_ENTITIES];
-extern	entity_t*		cl_entities;
+extern	entity_t		cl_entities[MAX_EDICTS];
+extern	entity_t		cl_static_entities[MAX_STATIC_ENTITIES];
 extern	lightstyle_t	cl_lightstyle[MAX_LIGHTSTYLES];
 extern	dlight_t		cl_dlights[MAX_DLIGHTS];
 extern	entity_t		cl_temp_entities[MAX_TEMP_ENTITIES];

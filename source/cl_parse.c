@@ -653,8 +653,6 @@ void CL_ParseStatic (void)
 	i = cl.num_statics;
 	if (i >= MAX_STATIC_ENTITIES)
 		Host_Error ("Too many static entities");
-	
-	entity_t cl_static_entities[MAX_STATIC_ENTITIES];
 
 	ent = &cl_static_entities[i];
 	cl.num_statics++;
