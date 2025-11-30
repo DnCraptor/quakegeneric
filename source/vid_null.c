@@ -52,6 +52,17 @@ uint8_t *zba_rover;
 void ZBA_Reset() {
 	zba_rover = (uint8_t*)&zbuffer[BASEWIDTH*BASEHEIGHT];
 }
+uint8_t* ZBA_GetRover() {
+	return zba_rover;
+}
+void ZBA_FreeToRover(uint8_t *rover) {
+	if (((uintptr_t)rover <= (uintptr_t)zbuffer) || ((uintptr_t)rover > (uintptr_t)&zbuffer[BASEWIDTH*BASEHEIGHT])) {
+		Sys_Error("ZBA_FreeToRover(): attempt to reset rover outside of Z-buffer memory (%08X != [%08X..%08X])\n",
+			(uintptr_t)rover, (uintptr_t)zbuffer, (uintptr_t)&zbuffer[BASEWIDTH*BASEHEIGHT]
+		);
+	}
+	zba_rover = rover;
+}
 
 void *ZBA_Alloc(int bytes) {
 	if ((uintptr_t)(zba_rover - bytes) <= (uintptr_t)zbuffer) {

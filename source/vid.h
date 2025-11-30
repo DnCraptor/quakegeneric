@@ -83,5 +83,7 @@ void VID_HandlePause (qboolean pause);
 
 // evil z-buffer allocator, used for overoptimizing certain things ;)
 void ZBA_Reset();
+uint8_t* ZBA_GetRover();
+void ZBA_FreeToRover(uint8_t *rover);
 void *ZBA_Alloc(int bytes);
 int ZBA_GetZBufferMaxRow();
