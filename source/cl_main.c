@@ -46,8 +46,8 @@ __psram_bss ("cl_main") client_static_t	cls;
 __psram_bss ("cl_main") client_state_slow_t	clp;
 // FIXME: put these on hunk?
 __psram_bss ("cl_main") efrag_t			cl_efrags[MAX_EFRAGS];
-///entity_t		cl_entities[MAX_EDICTS];
- 						entity_t*		cl_entities;
+__psram_bss ("cl_main") entity_t		cl_entities[MAX_EDICTS];
+__psram_bss ("cl_main") entity_t		cl_static_entities[MAX_STATIC_ENTITIES];
 __psram_bss ("cl_main") lightstyle_t	cl_lightstyle[MAX_LIGHTSTYLES];
 __psram_bss ("cl_main") dlight_t		cl_dlights[MAX_DLIGHTS];
 
@@ -74,9 +74,6 @@ void CL_ClearState (void)
 
 // clear other arrays	
 	memset (cl_efrags, 0, sizeof(cl_efrags));
-	if (!cl_entities) {
-		cl_entities = (entity_t*)alloc(MAX_EDICTS * sizeof(entity_t), "cl_entities");
-	}
 	memset (cl_entities, 0, MAX_EDICTS * sizeof(entity_t));
 	memset (cl_dlights, 0, sizeof(cl_dlights));
 	memset (cl_lightstyle, 0, sizeof(cl_lightstyle));
