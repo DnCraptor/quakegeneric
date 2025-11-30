@@ -148,11 +148,27 @@ typedef struct edge_s
 {
 	fixed16_t		u;
 	fixed16_t		u_step;
-	struct edge_s	*prev, *next;
+	short			prev, next;
+	//struct edge_s	*prev, *next;
 	unsigned short	surfs[2];
-	struct edge_s	*nextremove;
+	short	        nextremove;
+	//struct edge_s	*nextremove;
 	float			nearzi;
 	medge_t			*owner;
 } edge_t;
+
+extern edge_t *edgebuf;
+
+// dirty hack
+#define edge_null_idx		0
+#define edge_head_idx   	1
+#define edge_tail_idx   	2
+#define edge_aftertail_idx  3
+#define edge_sentinel_idx   4
+
+#define edge_head 		(edgebuf[edge_head_idx])
+#define edge_tail 		(edgebuf[edge_tail_idx])
+#define edge_aftertail 	(edgebuf[edge_aftertail_idx])
+#define edge_sentinel 	(edgebuf[edge_sentinel_idx])
 
 #endif	// _R_SHARED_H_

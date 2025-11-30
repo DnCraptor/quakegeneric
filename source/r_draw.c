@@ -77,7 +77,7 @@ R_EmitEdge
 */
 void  __no_inline_not_in_flash_func(R_EmitEdge) (mvertex_t *pv0, mvertex_t *pv1)
 {
-	edge_t	*edge, *pcheck;
+	edge_t	*edge, *pcheck, *ebuf=edgebuf;
 	int		u_check;
 	float	u, u_step;
 	vec3_t	local, transformed;
@@ -230,22 +230,22 @@ void  __no_inline_not_in_flash_func(R_EmitEdge) (mvertex_t *pv0, mvertex_t *pv1)
 	if (edge->surfs[0])
 		u_check++;	// sort trailers after leaders
 
-	if (!newedges[v] || newedges[v]->u >= u_check)
+		if (!newedges[v] || (ebuf+newedges[v])->u >= u_check)
 	{
 		edge->next = newedges[v];
-		newedges[v] = edge;
+		newedges[v] = edge-ebuf;
 	}
 	else
 	{
-		pcheck = newedges[v];
-		while (pcheck->next && pcheck->next->u < u_check)
-			pcheck = pcheck->next;
+		pcheck = ebuf+newedges[v];
+		while (pcheck->next && (ebuf+pcheck->next)->u < u_check)
+			pcheck = ebuf+pcheck->next;
 		edge->next = pcheck->next;
-		pcheck->next = edge;
+		pcheck->next = edge-ebuf;
 	}
 
 	edge->nextremove = removeedges[v2];
-	removeedges[v2] = edge;
+	removeedges[v2] = edge-ebuf;
 }
 
 

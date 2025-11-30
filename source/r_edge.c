@@ -43,8 +43,8 @@ surf_t	*surfaces, *surface_p, *surf_max;
 // pointer is greater than another one, it should be drawn in front
 // surfaces[1] is the background, and is used as the active surface stack
 
-edge_t	*newedges[MAXHEIGHT];
-edge_t	*removeedges[MAXHEIGHT];
+short newedges[MAXHEIGHT];
+short removeedges[MAXHEIGHT];
 
 espan_t	*span_p, *max_span_p;
 
@@ -57,11 +57,6 @@ int	current_iv;
 int	edge_head_u_shift20, edge_tail_u_shift20;
 
 static void (*pdrawfunc)(void);
-
-edge_t	edge_head;
-edge_t	edge_tail;
-edge_t	edge_aftertail;
-edge_t	edge_sentinel;
 
 float	fv;
 
@@ -153,7 +148,7 @@ void R_BeginEdgeFrame (void)
 // FIXME: set with memset
 	for (v=r_refdef.vrect.y ; v<r_refdef.vrectbottom ; v++)
 	{
-		newedges[v] = removeedges[v] = NULL;
+		newedges[v] = removeedges[v] = 0;
 	}
 }
 
@@ -169,33 +164,35 @@ edge_head.next).
 */
 void __not_in_flash_func(R_InsertNewEdges) (edge_t *edgestoadd, edge_t *edgelist)
 {
-	edge_t	*next_edge;
-
+	short    next_edge_idx;
+	edge_t   *ebuf=edgebuf;
 	do
 	{
-		next_edge = edgestoadd->next;
+		next_edge_idx = edgestoadd->next;
 edgesearch:
 		if (edgelist->u >= edgestoadd->u)
 			goto addedge;
-		edgelist=edgelist->next;
+		edgelist=ebuf+edgelist->next;
 		if (edgelist->u >= edgestoadd->u)
 			goto addedge;
-		edgelist=edgelist->next;
+		edgelist=ebuf+edgelist->next;
 		if (edgelist->u >= edgestoadd->u)
 			goto addedge;
-		edgelist=edgelist->next;
+		edgelist=ebuf+edgelist->next;
 		if (edgelist->u >= edgestoadd->u)
 			goto addedge;
-		edgelist=edgelist->next;
+		edgelist=ebuf+edgelist->next;
 		goto edgesearch;
 
 	// insert edgestoadd before edgelist
 addedge:
-		edgestoadd->next = edgelist;
+		edgestoadd->next = edgelist-ebuf;
 		edgestoadd->prev = edgelist->prev;
-		edgelist->prev->next = edgestoadd;
-		edgelist->prev = edgestoadd;
-	} while ((edgestoadd = next_edge) != NULL);
+		(ebuf+edgelist->prev)->next = edgestoadd-ebuf;
+		edgelist->prev = edgestoadd-ebuf;
+		if (next_edge_idx == NULL) break;
+		edgestoadd = ebuf+ next_edge_idx;
+	} while (true);
 }
 
 /*
@@ -205,14 +202,14 @@ R_RemoveEdges
 */
 void __not_in_flash_func(R_RemoveEdges) (edge_t *pedge)
 {
+	edge_t   *ebuf=edgebuf;
 	do
 	{
-		if (pedge->next >= 0x20000000 + 520*1024) {
-			Sys_Printf("pedge: %ph; pedge->next: %ph; pedge->prev: %ph\n", pedge, pedge->next, pedge->prev);
-		}
-		pedge->next->prev = pedge->prev;
-		pedge->prev->next = pedge->next;
-	} while ((pedge = pedge->nextremove) != NULL);
+		(ebuf+pedge->next)->prev = pedge->prev;
+		(ebuf+pedge->prev)->next = pedge->next;
+		if (pedge->nextremove == 0) break;
+		pedge = ebuf+pedge->nextremove;
+	} while (true);
 }
 
 /*
@@ -223,29 +220,30 @@ R_StepActiveU
 void R_StepActiveU (edge_t *pedge)
 {
 	edge_t		*pnext_edge, *pwedge;
+	edge_t   *ebuf=edgebuf;
 
 	while (1)
 	{
 nextedge:
 		pedge->u += pedge->u_step;
-		if (pedge->u < pedge->prev->u)
+		if (pedge->u < (ebuf+pedge->prev)->u)
 			goto pushback;
-		pedge = pedge->next;
+		pedge = ebuf+pedge->next;
 			
 		pedge->u += pedge->u_step;
-		if (pedge->u < pedge->prev->u)
+		if (pedge->u < (ebuf+pedge->prev)->u)
 			goto pushback;
-		pedge = pedge->next;
+		pedge = ebuf+pedge->next;
 			
 		pedge->u += pedge->u_step;
-		if (pedge->u < pedge->prev->u)
+		if (pedge->u < (ebuf+pedge->prev)->u)
 			goto pushback;
-		pedge = pedge->next;
+		pedge = ebuf+pedge->next;
 			
 		pedge->u += pedge->u_step;
-		if (pedge->u < pedge->prev->u)
+		if (pedge->u < (ebuf+pedge->prev)->u)
 			goto pushback;
-		pedge = pedge->next;
+		pedge = ebuf+pedge->next;
 			
 		goto nextedge;		
 		
@@ -254,25 +252,25 @@ pushback:
 			return;
 			
 	// push it back to keep it sorted		
-		pnext_edge = pedge->next;
+		pnext_edge = ebuf+pedge->next;
 
 	// pull the edge out of the edge list
-		pedge->next->prev = pedge->prev;
-		pedge->prev->next = pedge->next;
+		(ebuf+pedge->next)->prev = pedge->prev;
+		(ebuf+pedge->prev)->next = pedge->next;
 
 	// find out where the edge goes in the edge list
-		pwedge = pedge->prev->prev;
+		pwedge = ebuf+(ebuf+pedge->prev)->prev;
 
 		while (pwedge->u > pedge->u)
 		{
-			pwedge = pwedge->prev;
+			pwedge = ebuf+pwedge->prev;
 		}
 
 	// put the edge back into the edge list
 		pedge->next = pwedge->next;
-		pedge->prev = pwedge;
-		pedge->next->prev = pedge;
-		pwedge->next = pedge;
+		pedge->prev = pwedge-ebuf;
+		(ebuf+pedge->next)->prev = pedge-ebuf;
+		pwedge->next = pedge-ebuf;
 
 		pedge = pnext_edge;
 		if (pedge == &edge_tail)
@@ -595,8 +593,10 @@ R_GenerateSpans
 */
 void __not_in_flash_func(R_GenerateSpans) (void)
 {
+	short			edgeidx;
 	edge_t			*edge;
 	surf_t			*surf;
+	edge_t			*ebuf = edgebuf;
 
 	r_bmodelactive = 0;
 
@@ -605,8 +605,9 @@ void __not_in_flash_func(R_GenerateSpans) (void)
 	surfaces[1].last_u = edge_head_u_shift20;
 
 // generate spans
-	for (edge=edge_head.next ; edge != &edge_tail; edge=edge->next)
+	for (edgeidx=edge_head.next ; edgeidx != edge_tail_idx/*&edge_tail*/; edgeidx=edge->next)
 	{			
+		edge = ebuf+edgeidx;
 		if (edge->surfs[0])
 		{
 		// it has a left surface, so a surface is going away for this span
@@ -631,6 +632,7 @@ R_GenerateSpansBackward
 */
 void __not_in_flash_func(R_GenerateSpansBackward) (void)
 {
+	short			edgeidx;
 	edge_t			*edge;
 
 	r_bmodelactive = 0;
@@ -640,8 +642,10 @@ void __not_in_flash_func(R_GenerateSpansBackward) (void)
 	surfaces[1].last_u = edge_head_u_shift20;
 
 // generate spans
-	for (edge=edge_head.next ; edge != &edge_tail; edge=edge->next)
-	{			
+	for (edgeidx=edge_head.next ; edgeidx != edge_tail_idx/*&edge_tail*/; edgeidx=edge->next)
+	{		
+		edge = edgebuf+edgeidx;
+
 		if (edge->surfs[0])
 			R_TrailingEdge (&surfaces[edge->surfs[0]], edge);
 
@@ -691,27 +695,29 @@ void __no_inline_not_in_flash_func(R_ScanEdges) ()
 	edge_head.u = r_refdef.vrect.x << 20;
 	edge_head_u_shift20 = edge_head.u >> 20;
 	edge_head.u_step = 0;
-	edge_head.prev = NULL;
-	edge_head.next = &edge_tail;
+	edge_head.prev = 0;
+	edge_head.next = edge_tail_idx;
 	edge_head.surfs[0] = 0;
 	edge_head.surfs[1] = 1;
 	
 	edge_tail.u = (r_refdef.vrectright << 20) + 0xFFFFF;
 	edge_tail_u_shift20 = edge_tail.u >> 20;
 	edge_tail.u_step = 0;
-	edge_tail.prev = &edge_head;
-	edge_tail.next = &edge_aftertail;
+	edge_tail.prev = edge_head_idx;
+	edge_tail.next = edge_aftertail_idx;
 	edge_tail.surfs[0] = 1;
 	edge_tail.surfs[1] = 0;
 	
 	edge_aftertail.u = -1;		// force a move
 	edge_aftertail.u_step = 0;
-	edge_aftertail.next = &edge_sentinel;
-	edge_aftertail.prev = &edge_tail;
+	edge_aftertail.next = edge_sentinel_idx;
+	edge_aftertail.prev = edge_tail_idx;
 
 // FIXME: do we need this now that we clamp x in r_draw.c?
 	edge_sentinel.u = 2000 << 24;		// make sure nothing sorts past this
-	edge_sentinel.prev = &edge_aftertail;
+	edge_sentinel.prev = edge_aftertail_idx;
+
+	edge_t			*ebuf = edgebuf;		//
 
 //	
 // process all scan lines
@@ -728,7 +734,7 @@ void __no_inline_not_in_flash_func(R_ScanEdges) ()
 
 		if (newedges[iv])
 		{
-			R_InsertNewEdges (newedges[iv], edge_head.next);
+			R_InsertNewEdges (ebuf+newedges[iv], ebuf+edge_head.next);
 		}
 
 		(*pdrawfunc) ();
@@ -759,10 +765,10 @@ void __no_inline_not_in_flash_func(R_ScanEdges) ()
 		}
 
 		if (removeedges[iv])
-			R_RemoveEdges (removeedges[iv]);
+			R_RemoveEdges (ebuf+removeedges[iv]);
 
-		if (edge_head.next != &edge_tail)
-			R_StepActiveU (edge_head.next);
+		if (ebuf+edge_head.next != edge_tail_idx)
+			R_StepActiveU (ebuf+edge_head.next);
 	}
 
 // do the last scan (no need to step or sort or remove on the last scan)
@@ -774,7 +780,7 @@ void __no_inline_not_in_flash_func(R_ScanEdges) ()
 	surfaces[1].spanstate = 1;
 
 	if (newedges[iv]) {
-		R_InsertNewEdges (newedges[iv], edge_head.next);
+		R_InsertNewEdges (ebuf+newedges[iv], ebuf+edge_head.next);
 	}
 
 	(*pdrawfunc) ();
