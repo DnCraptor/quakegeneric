@@ -34,7 +34,7 @@ cvar_t _snd_mixahead = {"_snd_mixahead", "0.1", true, false, 0.1};
 static qboolean	snd_ambient = 1;
 static volatile int sound_started = 0;
 static volatile int	snd_blocked = 0;
-sfx_t		*known_sfx;		// hunk allocated [MAX_SFX]
+sfx_t known_sfx[MAX_SFX] __psram_bss("known_sfx");
 int			num_sfx;
 
 int total_channels = 0;
@@ -49,7 +49,7 @@ int   		paintedtime; 	// sample PAIRS
 channel_t   channels[MAX_CHANNELS] __psram_bss("snd_channels");
 sfx_t		*ambient_sfx[NUM_AMBIENTS] __psram_bss("ambient_sfx");
 
-char* snd_buf = 0;
+byte snd_buf[SND_BUF_SIZE] __psram_bss("snd_buf") __aligned(4);
 size_t snd_buf_pos = 0; // current playing position
 int		snd_scaletable[32][256]  __psram_bss("snd_scaletable");
 
@@ -89,15 +89,10 @@ void S_Init (void)
 
 	SND_InitScaletable ();
 
-	if (!snd_buf) {
-		snd_buf = alloc(SND_BUF_SIZE, "snd_buf");
-		///snd_buf = (char*)(((uintptr_t)snd_buf + 3) & ~3);
-	}
-	known_sfx = Hunk_AllocName (MAX_SFX*sizeof(sfx_t), "sfx_t");
 	num_sfx = 0;
 
-//	ambient_sfx[AMBIENT_WATER] = S_PrecacheSound ("ambience/water1.wav");
-//	ambient_sfx[AMBIENT_SKY] = S_PrecacheSound ("ambience/wind2.wav");
+	ambient_sfx[AMBIENT_WATER] = S_PrecacheSound ("ambience/water1.wav");
+	ambient_sfx[AMBIENT_SKY] = S_PrecacheSound ("ambience/wind2.wav");
 
 	S_StopAllSounds(true);
 }
@@ -317,13 +312,15 @@ void S_StartSound (int entnum, int entchannel, sfx_t *sfx, vec3_t origin, float 
 	if (!sfx)
 		return;
 
-	Con_Printf ("S_StartSound [%d:%d %p]\n", entnum, entchannel, sfx);
+//	Con_Printf ("S_StartSound [%d:%d %p]\n", entnum, entchannel, sfx);
 	vol = fvol*255;
 
 // pick a channel to play on
 	target_chan = SND_PickChannel(entnum, entchannel);
-	if (!target_chan)
+	if (!target_chan) {
+		Con_Printf ("S_StartSound [%d:%d %p] no chan\n", entnum, entchannel, sfx);
 		return;
+	}
 		
 // spatialize
 	memset (target_chan, 0, sizeof(*target_chan));
@@ -334,14 +331,17 @@ void S_StartSound (int entnum, int entchannel, sfx_t *sfx, vec3_t origin, float 
 	target_chan->entchannel = entchannel;
 	SND_Spatialize(target_chan);
 
-	if (!target_chan->leftvol && !target_chan->rightvol)
+	if (!target_chan->leftvol && !target_chan->rightvol) {
+		Con_Printf ("S_StartSound [%d:%d %p] not audible\n", entnum, entchannel, sfx);
 		return;		// not audible at all
+	}
 
 // new channel
 	sc = S_LoadSound (sfx);
 	if (!sc)
 	{
 		target_chan->sfx = NULL;
+		Con_Printf ("S_StartSound [%d:%d %p] no data\n", entnum, entchannel, sfx);
 		return;		// couldn't load the sound's data
 	}
 
@@ -367,6 +367,7 @@ void S_StartSound (int entnum, int entchannel, sfx_t *sfx, vec3_t origin, float 
 		}
 		
 	}
+//	Con_Printf ("S_StartSound [%d:%d %p] done\n", entnum, entchannel, sfx);
 }
 
 void S_StopSound (int entnum, int entchannel)
@@ -951,7 +952,7 @@ void S_Update (vec3_t origin, vec3_t forward, vec3_t right, vec3_t up)
 
 	if (!sound_started || (snd_blocked > 0))
 		return;
-
+/*
 	VectorCopy(origin, listener_origin);
 	VectorCopy(forward, listener_forward);
 	VectorCopy(right, listener_right);
@@ -1009,7 +1010,7 @@ void S_Update (vec3_t origin, vec3_t forward, vec3_t right, vec3_t up)
 		
 		
 	}
-
+*/
 //
 // debugging output
 //
@@ -1029,7 +1030,7 @@ void S_Update (vec3_t origin, vec3_t forward, vec3_t right, vec3_t up)
 	}
 */
 // mix some sound
-	S_Update_();
+//	S_Update_();
 }
 
 void S_StopAllSounds (qboolean clear)
@@ -1060,7 +1061,7 @@ void S_EndPrecaching (void)
 
 void S_ExtraUpdate (void)
 {
-	S_Update_();
+	//S_Update_();
 }
 
 void S_LocalSound (char *s)

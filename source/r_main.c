@@ -918,16 +918,10 @@ R_RenderView
 r_refdef must be set before the first call
 ================
 */
+static byte warpbuffer[WARP_WIDTH * WARP_HEIGHT] __psram_bss("warpbuffer");
+
 void R_RenderView_ (void)
 {
-	static byte* warpbuffer = 0;
-	if (!warpbuffer) {
-		warpbuffer = (byte*)alloc(
-			WARP_WIDTH * WARP_HEIGHT,
-			"warpbuffer"
-		);
-	}
-
 	r_warpbuffer = warpbuffer;
 
 	if (r_timegraph.value || r_speeds.value || (r_dspeeds.value || cls.frametimedemo))

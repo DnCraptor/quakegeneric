@@ -38,7 +38,7 @@ void* alloc_base(const char* for_what);
 void* alloc_base_sz(unsigned int sz, const char* for_what);
 void* free_base(void);
 // just shift base down
-void* alloc(unsigned int sz, const char* for_what);
+//void* alloc(unsigned int sz, const char* for_what);
 
 static inline unsigned int get_sp(void) {
     unsigned int sp;

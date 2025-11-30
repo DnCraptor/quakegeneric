@@ -19,12 +19,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "quakedef.h"
 
+#define CD_BUF_SIZE 44100
+
 static FIL* play_file = 0;
 static qboolean play_looping = 0;
 static volatile qboolean play_paused = 0;
-static uint8_t* cd_buf = 0;
+static uint8_t cd_buf[CD_BUF_SIZE] __psram_bss("cd_buf");
 static size_t pos = 0;
-#define CD_BUF_SIZE 44100
 static qboolean invalidated[2] = { 0, 0 };
 
 cvar_t bgmvolume = {"bgmvolume", "0.7", true, false, 0.7};
@@ -168,7 +169,6 @@ void CDAudio_Update(void)
 
 int CDAudio_Init(void)
 {
-	if (!cd_buf) cd_buf = alloc(CD_BUF_SIZE, "cd_buf");
 	return 0;
 }
 

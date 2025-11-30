@@ -38,8 +38,8 @@ short*	zbuffer = (short*)__PSRAM_Z_BUFF;
 #else
 short zbuffer[BASEWIDTH*BASEHEIGHT]; // 153600 = 0x25800
 #endif
-byte	*surfcache = 0;
-size_t	surfcache_size;
+byte	surfcache[652800] __psram_bss("surfcache");
+size_t	surfcache_size = 652800;
 
 //#define SURFCACHE_IN_SRAM
 #ifdef  SURFCACHE_IN_SRAM
@@ -72,11 +72,12 @@ void	VID_Init (unsigned char *palette)
 	
 	d_pzbuffer = zbuffer;
 
+	surfcache_size = 652800; // D_SurfaceCacheForRes(BASEWIDTH, BASEHEIGHT); // 652800
 	if (!surfcache) {
 #ifndef SURFCACHE_IN_SRAM
-		surfcache_size = D_SurfaceCacheForRes(BASEWIDTH, BASEHEIGHT); // 652800
+		//surfcache_size = 652800; // D_SurfaceCacheForRes(BASEWIDTH, BASEHEIGHT); // 652800
 		/// TODO: may be moved to SRSAM?
-		surfcache = (byte*)alloc(surfcache_size, "surfcache");
+		//surfcache = (byte*)alloc(surfcache_size, "surfcache");
 #else
 		surfcache_size = SURFCACHE_SRAM_SIZE;
 		surfcache = surfcache_sram;
