@@ -164,6 +164,8 @@ void S_ClearBuffer (void)
 {
 	Con_Printf ("S_ClearBuffer\n");
 	Q_memset(paintbuffer, 0, SND_BUF_SIZE);
+	Q_memset(outputbuffer, 0, SND_BUF_SIZE);
+	snd_buf_pos = 0;
 }
 
 /*
@@ -358,7 +360,7 @@ void S_StartSound (int entnum, int entchannel, sfx_t *sfx,
     target_chan->end = paintedtime + sc->length;
 
 	/// TODO: разобраться, почему смещение роняет сервер
-#if 0
+#if 1
     //
     // *** ТРЕТИЙ этап: смещение одинаковых звуков ***
     // (safe: все нужные поля уже инициализированы)
@@ -979,12 +981,14 @@ qboolean __not_in_flash_func() S_GetSamples(int16_t* buf, size_t n) {
 		float f = volume.value;
 		float tl = buf[0] + src->left * f;
 		float tr = buf[1] + src->right * f;
-        buf[0] = tl > 32767 ? 32767 : ( tl < -32768 ? -32768 : tl );
-        buf[1] = tr > 32767 ? 32767 : ( tr < -32768 ? -32768 : tr );
-        buf += 2;
+		src->left = 0;
+		src->right = 0;
 		++src;
 		++soundtime;
 		++snd_buf_pos;
+        buf[0] = tl > 32767 ? 32767 : ( tl < -32768 ? -32768 : tl );
+        buf[1] = tr > 32767 ? 32767 : ( tr < -32768 ? -32768 : tr );
+        buf += 2;
 		if (snd_buf_pos >= PAINTBUFFER_SIZE) {
 			snd_buf_pos = 0;
 		}
