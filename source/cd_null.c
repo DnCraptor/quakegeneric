@@ -27,7 +27,7 @@ static size_t pos = 0;
 #define CD_BUF_SIZE 44100
 static qboolean invalidated[2] = { 0, 0 };
 
-cvar_t bgmvolume = {"bgmvolume", "1", true, false, 1.0};
+cvar_t bgmvolume = {"bgmvolume", "0.7", true, false, 0.7};
 
 void CDAudio_Play(byte track, qboolean looping)
 {

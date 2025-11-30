@@ -166,8 +166,6 @@ extern	cvar_t volume;
 
 extern qboolean	snd_initialized;
 
-extern int		snd_blocked;
-
 void S_LocalSound (char *s);
 sfxcache_t *S_LoadSound (sfx_t *s);
 

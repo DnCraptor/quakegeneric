@@ -32,8 +32,8 @@ cvar_t ambient_level = {"ambient_level", "0.3", true, false, 0.3};
 cvar_t ambient_fade = {"ambient_fade", "100", true, false, 100.0};
 cvar_t _snd_mixahead = {"_snd_mixahead", "0.1", true, false, 0.1};
 static qboolean	snd_ambient = 1;
-int sound_started = 0;
-int				snd_blocked = 0;
+static volatile int sound_started = 0;
+static volatile int	snd_blocked = 0;
 sfx_t		*known_sfx;		// hunk allocated [MAX_SFX]
 int			num_sfx;
 
@@ -104,16 +104,19 @@ void S_Init (void)
 
 void S_AmbientOff (void)
 {
+	Con_Printf ("S_AmbientOff\n");
 	snd_ambient = 0;
 }
 
 void S_AmbientOn (void)
 {
+	Con_Printf ("S_AmbientOn\n");
 	snd_ambient = 1;
 }
 
 void S_Shutdown (void)
 {
+	Con_Printf ("S_Shutdown\n");
 	sound_started = 0;
 }
 
@@ -151,12 +154,14 @@ void S_TouchSound (char *sample)
 	sfx_t	*sfx;
 	if (!sound_started)
 		return;
+	Con_Printf ("S_TouchSound %s\n", sample);
 	sfx = S_FindName (sample);
 	Cache_Check (&sfx->cache);
 }
 
 void S_ClearBuffer (void)
 {
+	Con_Printf ("S_ClearBuffer\n");
 	if (snd_buf)
 		Q_memset(snd_buf, 0, SND_BUF_SIZE);
 }
@@ -174,6 +179,7 @@ void SND_Spatialize(channel_t *ch)
     vec3_t source_vec;
 	sfx_t *snd;
 
+//	Con_Printf ("SND_Spatialize [%p]\n", ch);
 // anything coming from the view entity will allways be full volume
 	if (ch->entnum == cl.viewentity)
 	{
@@ -181,7 +187,6 @@ void SND_Spatialize(channel_t *ch)
 		ch->rightvol = ch->master_vol;
 		return;
 	}
-
 // calculate stereo seperation and distance attenuation
 
 	snd = ch->sfx;
@@ -263,6 +268,8 @@ channel_t *SND_PickChannel(int entnum, int entchannel)
     int first_to_die;
     int life_left;
 
+//	Con_Printf ("SND_PickChannel [%d:%d]\n", entnum, entchannel);
+
 // Check for replacement sound, or find the best one to replace
     first_to_die = -1;
     life_left = 0x7fffffff;
@@ -310,6 +317,7 @@ void S_StartSound (int entnum, int entchannel, sfx_t *sfx, vec3_t origin, float 
 	if (!sfx)
 		return;
 
+	Con_Printf ("S_StartSound [%d:%d %p]\n", entnum, entchannel, sfx);
 	vol = fvol*255;
 
 // pick a channel to play on
@@ -363,6 +371,7 @@ void S_StartSound (int entnum, int entchannel, sfx_t *sfx, vec3_t origin, float 
 
 void S_StopSound (int entnum, int entchannel)
 {
+	Con_Printf ("S_StopSound [%d:%d]\n", entnum, entchannel);
 	for (int i = 0 ; i < MAX_DYNAMIC_CHANNELS ; i++)
 	{
 		if (channels[i].entnum == entnum
@@ -568,6 +577,7 @@ void ResampleSfx (sfx_t *sfx, int inrate, int inwidth, byte *data)
 	if (!sc)
 		return;
 
+//	Con_Printf ("ResampleSfx [%p]\n", sfx);
 	stepscale = (float)inrate / shm_speed;	// this is usually 0.5, 1, or 2
 
 	outcount = sc->length / stepscale;
@@ -626,12 +636,14 @@ sfxcache_t *S_LoadSound (sfx_t *s)
 	sfxcache_t	*sc;
 	byte	stackbuf[1*1024];		// avoid dirtying the cache heap
 
-	Con_Printf ("S_LoadSound %s\n", s->name);
+//	Con_Printf ("S_LoadSound %s\n", s->name);
 
 // see if still in memory
 	sc = Cache_Check (&s->cache);
-	if (sc)
+	if (sc) {
+//		Con_Printf ("S_LoadSound %s (cached: %p)\n", s->name, sc);
 		return sc;
+	}
 
 //Con_Printf ("S_LoadSound: %x\n", (int)stackbuf);
 // load it in
@@ -661,8 +673,10 @@ sfxcache_t *S_LoadSound (sfx_t *s)
 	len = len * info.width * info.channels;
 
 	sc = Cache_Alloc ( &s->cache, len + sizeof(sfxcache_t), s->name);
-	if (!sc)
+	if (!sc) {
+//		Con_Printf ("S_LoadSound %s (Cache_Alloc failed)\n", s->name);
 		return NULL;
+	}
 	
 	sc->length = info.samples;
 	sc->loopstart = info.loopstart;
@@ -670,8 +684,10 @@ sfxcache_t *S_LoadSound (sfx_t *s)
 	sc->width = info.width;
 	sc->stereo = info.channels;
 
+//	Con_Printf ("S_LoadSound %s (resample)\n", s->name);
 	ResampleSfx (s, sc->speed, sc->width, data + info.dataofs);
 
+//	Con_Printf ("S_LoadSound %s (done: %p)\n", s->name, sc);
 	return sc;
 }
 
@@ -681,7 +697,7 @@ sfx_t* S_PrecacheSound (char *sample)
 	if (!sound_started)
 		return NULL;
 
-	Con_Printf ("S_PrecacheSound %s\n", sample);
+//	Con_Printf ("S_PrecacheSound %s\n", sample);
 
 	sfx = S_FindName (sample);
 
@@ -715,6 +731,7 @@ void S_UpdateAmbientSounds (void)
 // calc ambient sound levels
 	if (!cl.worldmodel)
 		return;
+	Con_Printf ("S_UpdateAmbientSounds\n");
 
 	l = Mod_PointInLeaf (listener_origin, cl.worldmodel);
 	if (!l || !ambient_level.value)
@@ -758,6 +775,7 @@ void SND_PaintChannelFrom8 (channel_t *ch, sfxcache_t *sc, int count)
 	unsigned char *sfx;
 	int		i;
 
+//	Con_Printf ("SND_PaintChannelFrom8\n");
 	if (ch->leftvol > 255)
 		ch->leftvol = 255;
 	if (ch->rightvol > 255)
@@ -785,6 +803,7 @@ void SND_PaintChannelFrom16 (channel_t *ch, sfxcache_t *sc, int count)
 	signed short *sfx;
 	int	i;
 
+//	Con_Printf ("SND_PaintChannelFrom16\n");
 	leftvol = ch->leftvol;
 	rightvol = ch->rightvol;
 	sfx = (signed short *)sc->data + ch->pos;
@@ -808,6 +827,7 @@ void S_PaintChannels(int endtime)
 	sfxcache_t	*sc;
 	int		ltime, count;
 
+//	Con_Printf ("S_PaintChannels\n");
 	while (paintedtime < endtime)
 	{
 	// if paintbuffer is smaller than DMA buffer
@@ -871,6 +891,7 @@ void S_PaintChannels(int endtime)
 	///	S_TransferPaintBuffer(end);
 		paintedtime = end;
 	}
+//	Con_Printf ("S_PaintChannels done\n");
 }
 
 void S_Update_(void)
@@ -881,13 +902,12 @@ void S_Update_(void)
 	if (!sound_started || (snd_blocked > 0))
 		return;
 
-// Updates DMA time
-//	GetSoundtime();
+//	Con_Printf ("S_Update_\n");
 
 // check to make sure that we haven't overshot
 	if (paintedtime < soundtime)
 	{
-		//Con_Printf ("S_Update_ : overflow\n");
+		Con_Printf ("S_Update_ : overflow\n");
 		paintedtime = soundtime;
 	}
 
@@ -898,8 +918,7 @@ void S_Update_(void)
 		endtime = soundtime + samps;
 
 	S_PaintChannels (endtime);
-
-///	SNDDMA_Submit ();
+//	Con_Printf ("S_Update_ done\n");
 }
 
 // вызывается со второго ядра RP2350 CPU, n == 1 (возможно, позже будет больше и вызов реже)
