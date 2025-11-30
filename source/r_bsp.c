@@ -654,9 +654,9 @@ void R_RenderWorld (void)
 {
 	int			i;
 	model_t		*clmodel;
-	btofpoly_t	btofpolys[MAX_BTOFPOLYS];
 
-	pbtofpolys = btofpolys;
+	uint8_t 	*zba_rover = ZBA_GetRover();
+	pbtofpolys = ZBA_Alloc(sizeof(btofpoly_t) * MAX_BTOFPOLYS);
 
 	currententity = &cl_entities[0];
 	VectorCopy (r_origin, modelorg);
@@ -671,9 +671,12 @@ void R_RenderWorld (void)
 	{
 		for (i=numbtofpolys-1 ; i>=0 ; i--)
 		{
-			R_RenderPoly (btofpolys[i].psurf, btofpolys[i].clipflags);
+			R_RenderPoly (pbtofpolys[i].psurf, pbtofpolys[i].clipflags);
 		}
 	}
+
+	ZBA_FreeToRover(zba_rover);
+
 }
 
 
