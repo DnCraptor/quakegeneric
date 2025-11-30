@@ -42,8 +42,7 @@ void mixer_init() {
 
 void __not_in_flash() mixer_samples(int16_t* samples, size_t n) {
     if (is_i2s_enabled) {
-        i2s_config.dma_trans_count = n;
-        i2s_dma_write(&i2s_config, samples);
+        i2s_write(&i2s_config, samples, n);
     }
     for (int i = 0; i < n; ++i, samples += 2) {
         pwm_set_gpio_level(PWM_PIN1, (uint16_t)((int32_t)samples[0] + 0x8000L) >> 4);
