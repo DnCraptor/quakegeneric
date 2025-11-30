@@ -558,7 +558,11 @@ void __no_inline_not_in_flash_func(R_RenderFace) (msurface_t *fa, int clipflags)
 // FIXME: cache this?
 	TransformVector (pplane->normal, p_normal);
 // FIXME: cache this?
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+	distinv = 1.0f / (pplane->dist - DotProduct (modelorg, pplane->normal));
+#else
 	distinv = 1.0 / (pplane->dist - DotProduct (modelorg, pplane->normal));
+#endif
 
 	surface_p->d_zistepu = p_normal[0] * xscaleinv * distinv;
 	surface_p->d_zistepv = -p_normal[1] * yscaleinv * distinv;

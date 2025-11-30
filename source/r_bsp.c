@@ -333,8 +333,12 @@ void R_DrawSolidClippedSubmodelPolygons (model_t *pmodel)
 	msurface_t	*psurf;
 	int			numsurfaces;
 	mplane_t	*pplane;
-	mvertex_t	bverts[MAX_BMODEL_VERTS];
-	bedge_t		bedges[MAX_BMODEL_EDGES], *pbedge;
+
+	uint8_t 	*zba_rover = ZBA_GetRover();
+	mvertex_t	*bverts = ZBA_Alloc(sizeof(mvertex_t) * MAX_BMODEL_VERTS);
+	bedge_t	    *bedges = ZBA_Alloc(sizeof(bedge_t)   * MAX_BMODEL_EDGES);
+	bedge_t		*pbedge;
+
 	medge_t		*pedge, *pedges;
 
 // FIXME: use bounding-box-based frustum clipping info?
@@ -400,6 +404,8 @@ void R_DrawSolidClippedSubmodelPolygons (model_t *pmodel)
 			}
 		}
 	}
+
+	ZBA_FreeToRover(zba_rover);
 }
 
 
