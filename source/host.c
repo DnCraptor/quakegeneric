@@ -495,6 +495,7 @@ void Host_ClearMemory (void)
 	cls.signon = 0;
 	memset (&sv, 0, sizeof(sv));
 	memset (&cl, 0, sizeof(cl));
+	memset (&clp, 0, sizeof(clp));
 }
 
 
