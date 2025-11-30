@@ -76,7 +76,7 @@ extern	entity_t		*currententity;
 // !!! if this is changed, it must be changed in asm_draw.h too !!!
 typedef struct espan_s
 {
-	int				u, v, count;
+	short			u, v, count;
 	struct espan_s	*pnext;
 } espan_t;
 
