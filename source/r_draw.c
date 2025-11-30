@@ -104,7 +104,7 @@ void  __no_inline_not_in_flash_func(R_EmitEdge) (mvertex_t *pv0, mvertex_t *pv1)
 		if (transformed[2] < NEAR_CLIP)
 			transformed[2] = NEAR_CLIP;
 	
-		lzi0 = 1.0 / transformed[2];
+		lzi0 = 1.0f / transformed[2];
 	
 	// FIXME: build x/yscale into transform?
 		scale = xscale * lzi0;
@@ -121,7 +121,7 @@ void  __no_inline_not_in_flash_func(R_EmitEdge) (mvertex_t *pv0, mvertex_t *pv1)
 		if (v0 > r_refdef.fvrectbottom_adj)
 			v0 = r_refdef.fvrectbottom_adj;
 	
-		ceilv0 = (int) ceil(v0);
+		ceilv0 = (int) ceilf(v0);
 	}
 
 	world = &pv1->position[0];
@@ -133,7 +133,7 @@ void  __no_inline_not_in_flash_func(R_EmitEdge) (mvertex_t *pv0, mvertex_t *pv1)
 	if (transformed[2] < NEAR_CLIP)
 		transformed[2] = NEAR_CLIP;
 
-	r_lzi1 = 1.0 / transformed[2];
+	r_lzi1 = 1.0f / transformed[2];
 
 	scale = xscale * r_lzi1;
 	r_u1 = (xcenter + scale*transformed[0]);
@@ -161,7 +161,7 @@ void  __no_inline_not_in_flash_func(R_EmitEdge) (mvertex_t *pv0, mvertex_t *pv1)
 
 	r_emitted = 1;
 
-	r_ceilv1 = (int) ceil(r_v1);
+	r_ceilv1 = (int) ceilf(r_v1);
 
 
 // create the edge
