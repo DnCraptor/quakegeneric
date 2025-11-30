@@ -80,7 +80,7 @@ void Host_Status_f (void)
 		print ("tcp/ip:  %s\n", my_tcpip_address);
 	if (ipxAvailable)
 		print ("ipx:     %s\n", my_ipx_address);
-	print ("map:     %s\n", sv.name);
+	print ("map:     %s\n", svp.name);
 	print ("players: %i active (%i max)\n\n", net_activeconnections, svs.maxclients);
 	for (j=0, client = svs.clients ; j<svs.maxclients ; j++, client++)
 	{
@@ -339,7 +339,7 @@ void Host_Restart_f (void)
 
 	if (cmd_source != src_command)
 		return;
-	strcpy (mapname, sv.name);	// must copy out, because it gets cleared
+	strcpy (mapname, svp.name);	// must copy out, because it gets cleared
 								// in sv_spawnserver
 	SV_SpawnServer (mapname);
 }
@@ -488,15 +488,15 @@ void Host_Savegame_f (void)
 	for (i=0 ; i<NUM_SPAWN_PARMS ; i++)
 		Sys_Fprintf (f, "%f\n", svs.clients->spawn_parms[i]);
 	Sys_Fprintf (f, "%d\n", current_skill);
-	Sys_Fprintf (f, "%s\n", sv.name);
+	Sys_Fprintf (f, "%s\n", svp.name);
 	Sys_Fprintf (f, "%f\n",sv.time);
 
 // write the light styles
 
 	for (i=0 ; i<MAX_LIGHTSTYLES ; i++)
 	{
-		if (sv.lightstyles[i])
-			Sys_Fprintf (f, "%s\n", sv.lightstyles[i]);
+		if (svp.lightstyles[i])
+			Sys_Fprintf (f, "%s\n", svp.lightstyles[i]);
 		else
 			Sys_Fprintf (f,"m\n");
 	}
@@ -595,8 +595,8 @@ void Host_Loadgame_f (void)
 	for (i=0 ; i<MAX_LIGHTSTYLES ; i++)
 	{
 		Sys_Fscanf (f, "%s\n", str);
-		sv.lightstyles[i] = Hunk_Alloc (strlen(str)+1);
-		strcpy (sv.lightstyles[i], str);
+		svp.lightstyles[i] = Hunk_Alloc (strlen(str)+1);
+		strcpy (svp.lightstyles[i], str);
 	}
 
 // load the edicts out of the savegame file
@@ -1113,7 +1113,7 @@ void Host_Spawn_f (void)
 	{
 		MSG_WriteByte (&host_client->message, svc_lightstyle);
 		MSG_WriteByte (&host_client->message, (char)i);
-		MSG_WriteString (&host_client->message, sv.lightstyles[i]);
+		MSG_WriteString (&host_client->message, svp.lightstyles[i]);
 	}
 
 //

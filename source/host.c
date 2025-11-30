@@ -472,6 +472,7 @@ void Host_ShutdownServer(qboolean crash)
 // clear structures
 //
 	memset (&sv, 0, sizeof(sv));
+	memset (&svp, 0, sizeof(svp));
 	memset (svs.clients, 0, svs.maxclientslimit*sizeof(client_t));
 }
 
@@ -494,6 +495,7 @@ void Host_ClearMemory (void)
 
 	cls.signon = 0;
 	memset (&sv, 0, sizeof(sv));
+	memset (&svp, 0, sizeof(svp));
 	memset (&cl, 0, sizeof(cl));
 	memset (&clp, 0, sizeof(clp));
 }
