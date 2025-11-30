@@ -294,7 +294,8 @@ void R_DrawSurface (void)
 
 		pbasesource = basetptr + soffset;
 
-		(*pblockdrawer)();
+		//(*pblockdrawer)();
+		R_DrawSurfaceBlock8();
 
 		soffset = soffset + blocksize;
 		if (soffset >= smax)
@@ -305,6 +306,72 @@ void R_DrawSurface (void)
 }
 
 //=============================================================================
+
+void __no_inline_not_in_flash_func(R_DrawSurfaceBlock8)(void) {
+	int v, i, lightstep, lighttemp, light;
+	uint8_t pix, *psource, *prowdest, *pcmap;
+
+	int lightleft, lightright, lightleftstep, lightrightstep;
+	int sourcetstep_loc = sourcetstep, surfrowbytes_loc = surfrowbytes;
+
+	int stepshift = (4 - r_drawsurf.surfmip);
+	int blocksize = 1 << stepshift;
+
+	psource  = pbasesource;
+	prowdest = prowdestbase;
+	pcmap    = (uint8_t*)vid.colormap;
+
+	for (v=0 ; v<r_numvblocks ; v++)
+	{
+	// FIXME: make these locals?
+	// FIXME: use delta rather than both right and left, like ASM?
+		lightleft = r_lightptr[0];
+		lightright = r_lightptr[1];
+		r_lightptr += r_lightwidth;
+		lightleftstep = (r_lightptr[0] - lightleft)   >> stepshift;
+		lightrightstep = (r_lightptr[1] - lightright) >> stepshift;
+
+		for (i=0 ; i<blocksize ; i++)
+		{
+			lighttemp = lightleft - lightright;
+			lightstep = lighttemp >> stepshift;
+
+			light = lightright;
+			switch (stepshift) {
+				case 4:
+					pix = psource[15]; prowdest[15] = pcmap[(light & 0xFF00) + pix]; light += lightstep;
+					pix = psource[14]; prowdest[14] = pcmap[(light & 0xFF00) + pix]; light += lightstep;
+					pix = psource[13]; prowdest[13] = pcmap[(light & 0xFF00) + pix]; light += lightstep;
+					pix = psource[12]; prowdest[12] = pcmap[(light & 0xFF00) + pix]; light += lightstep;
+					pix = psource[11]; prowdest[11] = pcmap[(light & 0xFF00) + pix]; light += lightstep;
+					pix = psource[10]; prowdest[10] = pcmap[(light & 0xFF00) + pix]; light += lightstep;
+					pix = psource[ 9]; prowdest[ 9] = pcmap[(light & 0xFF00) + pix]; light += lightstep;
+					pix = psource[ 8]; prowdest[ 8] = pcmap[(light & 0xFF00) + pix]; light += lightstep;
+				case 3:
+					pix = psource[ 7]; prowdest[ 7] = pcmap[(light & 0xFF00) + pix]; light += lightstep;
+					pix = psource[ 6]; prowdest[ 6] = pcmap[(light & 0xFF00) + pix]; light += lightstep;
+					pix = psource[ 5]; prowdest[ 5] = pcmap[(light & 0xFF00) + pix]; light += lightstep;
+					pix = psource[ 4]; prowdest[ 4] = pcmap[(light & 0xFF00) + pix]; light += lightstep;
+				case 2:
+					pix = psource[ 3]; prowdest[ 3] = pcmap[(light & 0xFF00) + pix]; light += lightstep;
+					pix = psource[ 2]; prowdest[ 2] = pcmap[(light & 0xFF00) + pix]; light += lightstep;
+				case 1:
+					pix = psource[ 1]; prowdest[ 1] = pcmap[(light & 0xFF00) + pix]; light += lightstep;
+					pix = psource[ 0]; prowdest[ 0] = pcmap[(light & 0xFF00) + pix]; light += lightstep;
+				default:
+					break;
+			}
+
+			psource    += sourcetstep_loc;
+			prowdest   += surfrowbytes_loc;
+			lightright += lightrightstep;
+			lightleft  += lightleftstep;
+		}
+
+		if (psource >= r_sourcemax)
+			psource -= r_stepback;
+	}
+}
 
 /*
 ================
@@ -336,6 +403,7 @@ void R_DrawSurfaceBlock8_mip0 (void)
 
 			light = lightright;
 
+			#pragma GCC unroll 16
 			for (b=15; b>=0; b--)
 			{
 				pix = psource[b];
