@@ -718,6 +718,7 @@ void __no_inline_not_in_flash_func(R_ScanEdges) ()
 	edge_sentinel.prev = edge_aftertail_idx;
 
 	edge_t			*ebuf = edgebuf;		//
+	int 			zbuf_limit = ZBA_GetZBufferMaxRow();
 
 //	
 // process all scan lines
@@ -740,9 +741,21 @@ void __no_inline_not_in_flash_func(R_ScanEdges) ()
 		(*pdrawfunc) ();
 
 	// flush the span list if we can't be sure we have enough spans left for
-	// the next scan
-		if (span_p >= max_span_p)
+	// the next scan, and on the z-buffer allocatior watermark so we could defer the flush-to-PSRAM as late as possible
+		if ((span_p >= max_span_p) || ((edgebuf_swap != auxedges) && (iv == zbuf_limit)))
 		{
+			if (iv > zbuf_limit && edgebuf_swap != auxedges) {
+				// UH OH! we are about to overwrite the Z-buffer
+				// relocate edge list to the auxedges
+				memcpy(auxedges, edgebuf_swap, sizeof(edge_t)*(NUMSTACKEDGES+4+1));
+				r_edges  	+= (auxedges - edgebuf_swap);
+				edge_p   	+= (auxedges - edgebuf_swap);
+				edge_max    += (auxedges - edgebuf_swap);
+				edgebuf_swap = auxedges;
+				ebuf      	 = edgebuf_swap;
+				edgebuf      = edgebuf_swap;
+			}
+
 			VID_UnlockBuffer ();
 			S_ExtraUpdate ();	// don't let sound get messed up if going slow
 			VID_LockBuffer ();
