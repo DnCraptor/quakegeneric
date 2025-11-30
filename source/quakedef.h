@@ -56,7 +56,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define	MINIMUM_MEMORY			0x550000 // 5.3 MB
 #define	MINIMUM_MEMORY_LEVELPAK	(MINIMUM_MEMORY + 0x100000) // 6.3 MB
 
-#define __PSRAM_HUNK_SIZE MINIMUM_MEMORY_LEVELPAK
+#define __PSRAM_HUNK_SIZE (MINIMUM_MEMORY_LEVELPAK)
 
 #define __PSRAM_BASE (&__psram_heap_start__)
 #define __PSRAM_Z_BUFF (__PSRAM_BASE + __PSRAM_HUNK_SIZE)

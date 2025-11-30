@@ -19,6 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "quakedef.h"
 
+#if 0
 static FIL* play_file = 0;
 static qboolean play_looping = 0;
 static volatile qboolean play_paused = 0;
@@ -176,3 +177,60 @@ void CDAudio_Shutdown(void)
 {
 	CDAudio_Stop();
 }
+#else
+
+static FIL* play_file = 0;
+static qboolean play_looping = 0;
+static volatile qboolean play_paused = 0;
+static uint8_t* cd_buf = 0;
+static size_t pos = 0;
+#define CD_BUF_SIZE 44100
+static qboolean invalidated[2] = { 0, 0 };
+
+void CDAudio_Play(byte track, qboolean looping)
+{
+}
+
+qboolean CDAudio_GetPCM(unsigned char* buf, size_t len)
+{
+	return 1;
+}
+
+
+// вызывается со второго ядра RP2350 CPU, n == 1 (возможно, позже будет больше и вызов реже)
+qboolean CDAudio_GetSamples(int16_t* buf, size_t n)
+{
+	return 1;
+}
+
+void CDAudio_Stop(void)
+{
+}
+
+
+void CDAudio_Pause(void)
+{
+}
+
+
+void CDAudio_Resume(void)
+{
+}
+
+
+void CDAudio_Update(void)
+{
+}
+
+
+int CDAudio_Init(void)
+{
+	return 0;
+}
+
+
+void CDAudio_Shutdown(void)
+{
+}
+
+#endif
