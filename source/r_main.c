@@ -280,11 +280,13 @@ void R_NewMap (void)
 	if (r_numallocatededges < MINEDGES)
 		r_numallocatededges = MINEDGES;
 
+#if 0
 	if (r_numallocatededges <= NUMSTACKEDGES)
 	{
 		auxedges = NULL;
 	}
 	else
+#endif
 	{
 		auxedges = Hunk_AllocName (r_numallocatededges * sizeof(edge_t),
 								   "edges");
@@ -849,7 +851,6 @@ R_EdgeDrawing
 */
 static void R_EdgeDrawing ()
 {
-	edge_t ledges[NUMSTACKEDGES + 4 + 1 + ((CACHE_SIZE - 1) / sizeof(edge_t)) + 1];
 	surf_t lsurfs[NUMSTACKSURFACES + ((CACHE_SIZE - 1) / sizeof(surf_t)) + 1];
 
 	if (auxedges)
@@ -858,7 +859,7 @@ static void R_EdgeDrawing ()
 	}
 	else
 	{
-		edgebuf_swap = (edge_t *)(((intptr_t)ledges + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
+		Sys_Error("R_EdgeDrawing(): no auxedges!\n");
 	}
 	edgebuf = edgebuf_swap;			// TODO that alloc
 	r_edges = edgebuf_swap + 4 + 1;
