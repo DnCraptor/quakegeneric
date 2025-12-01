@@ -61,6 +61,9 @@ SECTIONS
          * FLASH ... we will include any thing excluded here in .data below by default */
         *(.init)
         *libgcc.a:cmse_nonsecure_call.o
+        *libgcc.a:unwind-arm.o(.text*)
+        *libgcc.a:libunwind.o(.text*)
+        *libgcc.a:pr-support.o(.text*)
         *(EXCLUDE_FILE(*libgcc.a: *libc.a:*lib_a-mem*.o *libm.a:) .text*)
         *(.fini)
         /* Pull all c'tors into .text */
