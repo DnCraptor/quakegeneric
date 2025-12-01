@@ -57,7 +57,7 @@ byte		*host_colormap;
 #define COLORMAP_IN_SRAM
 
 #ifdef COLORMAP_IN_SRAM
-byte		colormap_sram[256*64 + 8];
+byte		colormap_sram[256*64 + 8];	// FIXME: removing that '+ 8' turns everything black  - am i misusing COM_LoadStackFile()? :p
 #endif
 
 cvar_t	host_framerate = {"host_framerate","0"};	// set for slow motion

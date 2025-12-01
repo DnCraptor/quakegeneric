@@ -165,7 +165,8 @@ void D_PolysetDrawFinalVerts (finalvert_t *fv, int numverts)
 				int		pix;
 				
 				*zbuf = z;
-				pix = skintable[fv->v[3]>>16][fv->v[2]>>16];
+				//pix = skintable[fv->v[3]>>16][fv->v[2]>>16];
+				pix = *(skinstart + skinwidth*(fv->v[3]>>16) + (fv->v[2]>>16));
 				pix = ((byte *)acolormap)[pix + (fv->v[4] & 0xFF00) ];
 				d_viewbuffer[(vid.rowbytes*fv->v[1]) + fv->v[0]] = pix;
 			}
@@ -375,7 +376,8 @@ split:
 		int		pix;
 		
 		*zbuf = z;
-		pix = d_pcolormap[skintable[new[3]>>16][new[2]>>16]];
+		//pix = d_pcolormap[skintable[new[3]>>16][new[2]>>16]];
+		pix = d_pcolormap[*(skinstart + skinwidth*(new[3]>>16) + (new[2]>>16))];
 		d_viewbuffer[(vid.rowbytes*new[1]) + new[0]] = pix;
 	}
 
@@ -400,9 +402,11 @@ void D_PolysetUpdateTables (void)
 	{
 		skinwidth = r_affinetridesc.skinwidth;
 		skinstart = r_affinetridesc.pskin;
+#if 0
 		s = skinstart;
 		for (i=0 ; i<MAX_LBM_HEIGHT ; i++, s+=skinwidth)
 			skintable[i] = s;
+#endif
 	}
 }
 
