@@ -42,12 +42,12 @@ void R_AnimateLight (void)
 	{
 		if (!cl_lightstyle[j].length)
 		{
-			d_lightstylevalue[j] = 256;
+			d_lightstylevalue[j] = (256 >> 2);
 			continue;
 		}
 		k = i % cl_lightstyle[j].length;
 		k = cl_lightstyle[j].map[k] - 'a';
-		k = k*22;
+		k = (k*22)>>2;
 		d_lightstylevalue[j] = k;
 	}	
 }
@@ -219,7 +219,7 @@ int RecursiveLightPoint (mnode_t *node, vec3_t start, vec3_t end)
 			for (maps = 0 ; maps < MAXLIGHTMAPS && surf->styles[maps] != 255 ;
 					maps++)
 			{
-				scale = d_lightstylevalue[surf->styles[maps]];
+				scale = d_lightstylevalue[surf->styles[maps]] << 2;
 				r += *lightmap * scale;
 				lightmap += ((surf->extents[0]>>4)+1) *
 						((surf->extents[1]>>4)+1);
