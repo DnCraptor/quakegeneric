@@ -28,12 +28,12 @@ __psram_data("r_sky") int		iskyspeed = 8;
 __psram_data("r_sky") int		iskyspeed2 = 2;
 __psram_bss ("r_sky") float	skyspeed, skyspeed2;
 
-__psram_bss ("r_sky") float		skytime;
+					  float		skytime;
 
 __psram_bss ("r_sky") byte		*r_skysource;
 
-__psram_bss ("r_sky") int r_skymade;
-__psram_bss ("r_sky") int r_skydirect;		// not used?
+					  qboolean  r_skymade;
+__psram_bss ("r_sky") int 		r_skydirect;		// not used?
 
 
 // TODO: clean up these routines

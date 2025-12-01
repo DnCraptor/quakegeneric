@@ -89,7 +89,7 @@ void __no_inline_not_in_flash_func(D_DrawParticle) (particle_t *pparticle)
 	}
 
 	pz = d_pzbuffer + (d_zwidth * v) + u;
-	pdest = d_viewbuffer + d_scantable[v] + u;
+	pdest = d_viewbuffer + (vid.rowbytes*v) + u;
 	izi = (int)(zi * 0x8000);
 
 	pix = izi >> d_pix_shift;

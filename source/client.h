@@ -317,8 +317,8 @@ extern	entity_t		*cl_visedicts[MAX_VISEDICTS];
 //
 typedef struct
 {
-	int		down[2];		// key nums holding it down
-	int		state;			// low bit is down state
+	byte		down[2];		// key nums holding it down
+	byte		state;			// low bit is down state
 } kbutton_t;
 
 extern	kbutton_t	in_mlook, in_klook;

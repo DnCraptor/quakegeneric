@@ -127,7 +127,7 @@ extern void TransformVector (vec3_t in, vec3_t out);
 extern void SetUpForLineScan(fixed8_t startvertu, fixed8_t startvertv,
 	fixed8_t endvertu, fixed8_t endvertv);
 
-extern int	r_skymade;
+extern qboolean	r_skymade;
 extern void R_MakeSky (void);
 
 extern int	ubasestep, errorterm, erroradjustup, erroradjustdown;

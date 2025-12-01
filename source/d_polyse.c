@@ -158,7 +158,8 @@ void D_PolysetDrawFinalVerts (finalvert_t *fv, int numverts)
 			(fv->v[1] < r_refdef.vrectbottom))
 		{
 			z = fv->v[5]>>16;
-			zbuf = zspantable[fv->v[1]] + fv->v[0];
+			//zbuf = zspantable[fv->v[1]] + fv->v[0];
+			zbuf = d_pzbuffer + (d_zwidth*fv->v[1]) + fv->v[0];
 			if (z >= *zbuf)
 			{
 				int		pix;
@@ -166,7 +167,7 @@ void D_PolysetDrawFinalVerts (finalvert_t *fv, int numverts)
 				*zbuf = z;
 				pix = skintable[fv->v[3]>>16][fv->v[2]>>16];
 				pix = ((byte *)acolormap)[pix + (fv->v[4] & 0xFF00) ];
-				d_viewbuffer[d_scantable[fv->v[1]] + fv->v[0]] = pix;
+				d_viewbuffer[(vid.rowbytes*fv->v[1]) + fv->v[0]] = pix;
 			}
 		}
 	}
@@ -368,14 +369,14 @@ split:
 
 
 	z = new[5]>>16;
-	zbuf = zspantable[new[1]] + new[0];
+	zbuf = d_pzbuffer + (d_zwidth*new[1]) + new[0];
 	if (z >= *zbuf)
 	{
 		int		pix;
 		
 		*zbuf = z;
 		pix = d_pcolormap[skintable[new[3]>>16][new[2]>>16]];
-		d_viewbuffer[d_scantable[new[1]] + new[0]] = pix;
+		d_viewbuffer[(vid.rowbytes*new[1]) + new[0]] = pix;
 	}
 
 nodraw:
