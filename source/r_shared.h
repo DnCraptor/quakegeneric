@@ -76,8 +76,12 @@ extern	entity_t		*currententity;
 // !!! if this is changed, it must be changed in asm_draw.h too !!!
 typedef struct espan_s
 {
-	short			u, v, count;
 	struct espan_s	*pnext;
+	unsigned int 	u     : 12;
+	unsigned int 	count : 12;
+	unsigned int 	v     : 8;
+	//short			u, v, count;
+	
 } espan_t;
 
 // FIXME: compress, make a union if that will help
