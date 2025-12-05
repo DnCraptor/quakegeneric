@@ -170,6 +170,8 @@ extern edge_t *edgebuf;
 #define edge_aftertail_idx  3
 #define edge_sentinel_idx   4
 
+#define RESERVED_EDGES		(edge_sentinel_idx+1)
+
 #define edge_head 		(edgebuf[edge_head_idx])
 #define edge_tail 		(edgebuf[edge_tail_idx])
 #define edge_aftertail 	(edgebuf[edge_aftertail_idx])

@@ -288,7 +288,7 @@ void R_NewMap (void)
 	else
 #endif
 	{
-		auxedges = Hunk_AllocName (r_numallocatededges * sizeof(edge_t),
+		auxedges = Hunk_AllocName ((r_numallocatededges + RESERVED_EDGES) * sizeof(edge_t),
 								   "edges");
 	}
 
@@ -862,10 +862,10 @@ static void R_EdgeDrawing ()
 	}
 	else
 	{
-		edgebuf_swap = ZBA_Alloc(sizeof(edge_t)*(NUMSTACKEDGES+4+1));
+		edgebuf_swap = ZBA_Alloc(sizeof(edge_t)*(NUMSTACKEDGES+RESERVED_EDGES));
 	}
 	edgebuf = edgebuf_swap;			// TODO that alloc
-	r_edges = edgebuf_swap + 4 + 1;
+	r_edges = edgebuf_swap + RESERVED_EDGES;
 
 	if (r_surfsonstack)
 	{
