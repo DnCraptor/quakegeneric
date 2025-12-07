@@ -154,7 +154,8 @@ typedef struct mleaf_s
 	struct mnode_s	*parent;
 
 // leaf specific
-	byte		*compressed_vis;
+	//byte		*compressed_vis;
+	uint32_t	compressed_vis;
 	efrag_t		*efrags;
 
 	msurface_t	**firstmarksurface;
@@ -357,6 +358,7 @@ typedef struct model_s
 	texture_t	**textures;
 
 	byte		*visdata;
+	byte		*visdata_cache;	// used for PVS caching in SRAM
 	byte		*lightdata;
 	char		*entities;
 
