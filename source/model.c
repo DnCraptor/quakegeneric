@@ -1037,7 +1037,7 @@ void Mod_LoadMarksurfaces (lump_t *l)
 {	
 	int		i, j, count;
 	short		*in;
-	msurface_t **out;
+	uint16_t    *out;
 	
 	in = (void *)(mod_base + l->fileofs);
 	if (l->filelen % sizeof(*in))
@@ -1053,7 +1053,7 @@ void Mod_LoadMarksurfaces (lump_t *l)
 		j = LittleShort(in[i]);
 		if (j >= loadmodel->numsurfaces)
 			Sys_Error ("Mod_ParseMarksurfaces: bad surface number");
-		out[i] = loadmodel->surfaces + j;
+		out[i] = j;
 	}
 }
 

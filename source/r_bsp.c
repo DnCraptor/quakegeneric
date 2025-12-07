@@ -53,6 +53,8 @@ static mvertex_t	*pfrontenter, *pfrontexit;
 
 static qboolean		makeclippededge;
 
+// mark surfaces visdata
+byte *msurfvis;
 
 //===========================================================================
 
@@ -457,7 +459,8 @@ void R_RecursiveWorldNode (mnode_t *node, int clipflags)
 	int			i, c, side, *pindex;
 	vec3_t		acceptpt, rejectpt;
 	mplane_t	*plane;
-	msurface_t	*surf, **mark;
+	msurface_t	*surf; 
+	uint16_t    *mark;
 	mleaf_t		*pleaf;
 #ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
 	float		d, dot;
@@ -521,8 +524,8 @@ void R_RecursiveWorldNode (mnode_t *node, int clipflags)
 		{
 			do
 			{
-				(*mark)->visframe = r_framecount;
-				mark++;
+				i = *mark++;
+				msurfvis[i>>3] |= (1 << (i & 7));
 			} while (--c);
 		}
 
@@ -571,72 +574,74 @@ void R_RecursiveWorldNode (mnode_t *node, int clipflags)
 
 		if (c)
 		{
-			surf = cl.worldmodel->surfaces + node->firstsurface;
+			i = node->firstsurface;
 
 			if (dot < -BACKFACE_EPSILON)
 			{
 				do
 				{
-					if ((surf->flags & SURF_PLANEBACK) &&
-						(surf->visframe == r_framecount))
-					{
-						if (r_drawpolys)
+					if (msurfvis[i>>3] & (1 << (i & 7))) {
+						surf = cl.worldmodel->surfaces + i;
+						if (surf->flags & SURF_PLANEBACK)
 						{
-							if (r_worldpolysbacktofront)
+							if (r_drawpolys)
 							{
-								if (numbtofpolys < MAX_BTOFPOLYS)
+								if (r_worldpolysbacktofront)
 								{
-									pbtofpolys[numbtofpolys].clipflags =
-											clipflags;
-									pbtofpolys[numbtofpolys].psurf = surf;
-									numbtofpolys++;
+									if (numbtofpolys < MAX_BTOFPOLYS)
+									{
+										pbtofpolys[numbtofpolys].clipflags =
+												clipflags;
+										pbtofpolys[numbtofpolys].psurf = surf;
+										numbtofpolys++;
+									}
+								}
+								else
+								{
+									R_RenderPoly (surf, clipflags);
 								}
 							}
 							else
 							{
-								R_RenderPoly (surf, clipflags);
+								R_RenderFace (surf, clipflags);
 							}
 						}
-						else
-						{
-							R_RenderFace (surf, clipflags);
-						}
 					}
-
-					surf++;
+					i++;
 				} while (--c);
 			}
 			else if (dot > BACKFACE_EPSILON)
 			{
 				do
 				{
-					if (!(surf->flags & SURF_PLANEBACK) &&
-						(surf->visframe == r_framecount))
-					{
-						if (r_drawpolys)
+					if (msurfvis[i>>3] & (1 << (i & 7))) {
+						surf = cl.worldmodel->surfaces + i;
+						if (!(surf->flags & SURF_PLANEBACK))
 						{
-							if (r_worldpolysbacktofront)
+							if (r_drawpolys)
 							{
-								if (numbtofpolys < MAX_BTOFPOLYS)
+								if (r_worldpolysbacktofront)
 								{
-									pbtofpolys[numbtofpolys].clipflags =
-											clipflags;
-									pbtofpolys[numbtofpolys].psurf = surf;
-									numbtofpolys++;
+									if (numbtofpolys < MAX_BTOFPOLYS)
+									{
+										pbtofpolys[numbtofpolys].clipflags =
+												clipflags;
+										pbtofpolys[numbtofpolys].psurf = surf;
+										numbtofpolys++;
+									}
+								}
+								else
+								{
+									R_RenderPoly (surf, clipflags);
 								}
 							}
 							else
 							{
-								R_RenderPoly (surf, clipflags);
+								R_RenderFace (surf, clipflags);
 							}
 						}
-						else
-						{
-							R_RenderFace (surf, clipflags);
-						}
 					}
-
-					surf++;
+					i++;
 				} while (--c);
 			}
 
@@ -668,6 +673,10 @@ void R_RenderWorld (void)
 	VectorCopy (r_origin, modelorg);
 	clmodel = currententity->model;
 	r_pcurrentvertbase = clmodel->vertexes;
+
+	// allocate and clear marksurfaces visdata
+	msurfvis = ZBA_Alloc((MAX_MAP_MARKSURFACES+7)>>3);
+	memset(msurfvis, 0, (clmodel->nummarksurfaces+7)>>3);
 
 	R_RecursiveWorldNode (clmodel->nodes, 15);
 
