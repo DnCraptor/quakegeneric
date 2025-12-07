@@ -699,16 +699,24 @@ void R_AliasDrawModel (alight_t *plighting)
 	finalvert_t		finalverts[MAXALIASVERTS +
 						((CACHE_SIZE - 1) / sizeof(finalvert_t)) + 1];
 	auxvert_t		auxverts[MAXALIASVERTS];
+	int alloc_on_heap;
 
 	r_amodels_drawn++;
 
-// cache align
-	pfinalverts = (finalvert_t *)
-			(((intptr_t)&finalverts[0] + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
-	pauxverts = &auxverts[0];
-
 	paliashdr = (aliashdr_t *)Mod_Extradata (currententity->model);
 	pmdl = (mdl_t *)((byte *)paliashdr + paliashdr->model);
+
+	alloc_on_heap = pmdl->numverts * (currententity->trivial_accept != 0 ? 1 : 3);
+	if (alloc_on_heap <= 400) {	// tweakme, default seems to perform well
+		pfinalverts = (finalvert_t *)(malloc(sizeof(finalvert_t)*alloc_on_heap));
+		pauxverts   = (auxvert_t   *)(malloc(sizeof(auxvert_t  )*alloc_on_heap));
+	} else {
+		// cache align
+		pfinalverts = (finalvert_t *)
+			(((intptr_t)&finalverts[0] + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
+		pauxverts = &auxverts[0];
+		alloc_on_heap = 0;
+	}
 
 	R_AliasSetupSkin ();
 	R_AliasSetUpTransform (currententity->trivial_accept);
@@ -737,5 +745,10 @@ void R_AliasDrawModel (alight_t *plighting)
 		R_AliasPrepareUnclippedPoints ();
 	else
 		R_AliasPreparePoints ();
+
+	if (alloc_on_heap) {
+		free(pfinalverts);
+		free(pauxverts);
+	}
 }
 
