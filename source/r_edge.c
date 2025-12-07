@@ -747,7 +747,7 @@ void __no_inline_not_in_flash_func(R_ScanEdges) ()
 			if (iv > zbuf_limit && edgebuf_swap != auxedges) {
 				// UH OH! we are about to overwrite the Z-buffer
 				// relocate edge list to the auxedges
-				memcpy(auxedges, edgebuf_swap, sizeof(edge_t)*(NUMSTACKEDGES+4+1));
+				memcpy(auxedges, edgebuf_swap, ((uintptr_t)edge_p - (uintptr_t)edgebuf_swap));
 				r_edges  	+= (auxedges - edgebuf_swap);
 				edge_p   	+= (auxedges - edgebuf_swap);
 				edge_max    += (auxedges - edgebuf_swap);
