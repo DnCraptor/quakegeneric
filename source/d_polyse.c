@@ -484,7 +484,11 @@ D_PolysetSetUpForLineScan
 void __no_inline_not_in_flash_func(D_PolysetSetUpForLineScan)(fixed8_t startvertu, fixed8_t startvertv,
 		fixed8_t endvertu, fixed8_t endvertv)
 {
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+	float 		dm, dn;
+#else
 	double		dm, dn;
+#endif
 	int			tm, tn;
 	adivtab_t	*ptemp;
 
@@ -505,10 +509,17 @@ void __no_inline_not_in_flash_func(D_PolysetSetUpForLineScan)(fixed8_t startvert
 	}
 	else
 	{
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+		dm = (float)tm;
+		dn = (float)tn;
+
+		FloorDivModFloat (dm, dn, &ubasestep, &erroradjustup);
+#else
 		dm = (double)tm;
 		dn = (double)tn;
 
 		FloorDivMod (dm, dn, &ubasestep, &erroradjustup);
+#endif
 
 		erroradjustdown = dn;
 	}
@@ -543,9 +554,9 @@ void __no_inline_not_in_flash_func(D_PolysetCalcGradients) (int skinwidth)
 	t0 = r_p0[4] - r_p2[4];
 	t1 = r_p1[4] - r_p2[4];
 	r_lstepx = (int)
-			ceil((t1 * p01_minus_p21 - t0 * p11_minus_p21) * xstepdenominv);
+			ceilf((t1 * p01_minus_p21 - t0 * p11_minus_p21) * xstepdenominv);
 	r_lstepy = (int)
-			ceil((t1 * p00_minus_p20 - t0 * p10_minus_p20) * ystepdenominv);
+			ceilf((t1 * p00_minus_p20 - t0 * p10_minus_p20) * ystepdenominv);
 
 	t0 = r_p0[2] - r_p2[2];
 	t1 = r_p1[2] - r_p2[2];

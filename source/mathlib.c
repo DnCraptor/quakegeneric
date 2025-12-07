@@ -528,6 +528,48 @@ void FloorDivMod (double numer, double denom, int *quotient,
 	*rem = r;
 }
 
+// w: same but float
+void FloorDivModFloat (float numer, float denom, int *quotient,
+		int *rem)
+{
+	int		q, r;
+	float	x;
+
+#ifndef PARANOID
+	if (denom <= 0.0)
+		Sys_Error ("FloorDivMod: bad denominator %d\n", denom);
+
+//	if ((floor(numer) != numer) || (floor(denom) != denom))
+//		Sys_Error ("FloorDivMod: non-integer numer or denom %f %f\n",
+//				numer, denom);
+#endif
+
+	if (numer >= 0.0)
+	{
+
+		x = floorf(numer / denom);
+		q = (int)x;
+		r = (int)floorf(numer - (x * denom));
+	}
+	else
+	{
+	//
+	// perform operations with positive values, and fix mod to make floor-based
+	//
+		x = floorf(-numer / denom);
+		q = -(int)x;
+		r = (int)floorf(-numer - (x * denom));
+		if (r != 0)
+		{
+			q--;
+			r = (int)denom - r;
+		}
+	}
+
+	*quotient = q;
+	*rem = r;
+}
+
 
 /*
 ===================
