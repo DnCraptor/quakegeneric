@@ -853,17 +853,7 @@ static void R_EdgeDrawing ()
 {
 	surf_t lsurfs[NUMSTACKSURFACES + ((CACHE_SIZE - 1) / sizeof(surf_t)) + 1];
 
-	// reset Z-Buffer allocator
-	ZBA_Reset();
-
-	if (r_numallocatededges > NUMSTACKEDGES)
-	{
-		edgebuf_swap = auxedges;
-	}
-	else
-	{
-		edgebuf_swap = ZBA_Alloc(sizeof(edge_t)*(NUMSTACKEDGES+RESERVED_EDGES));
-	}
+	// forward egde storage
 	edgebuf = edgebuf_swap;			// TODO that alloc
 	r_edges = edgebuf_swap + RESERVED_EDGES;
 
@@ -918,7 +908,7 @@ static void R_EdgeDrawing ()
 		R_ScanEdges ();
 	}
 
-	// reset Z-buffer allocator
+	// reset Z-buffer allocator (the buffer is dead at this moment)
 	ZBA_Reset();
 }
 

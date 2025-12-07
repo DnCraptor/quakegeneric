@@ -190,6 +190,7 @@ file(GLOB_RECURSE SRC
 	${PROJECT_SOURCE_DIR}/source/r_sprite.c
 	${PROJECT_SOURCE_DIR}/source/r_surf.c
 	${PROJECT_SOURCE_DIR}/source/r_vars.c
+    ${PROJECT_SOURCE_DIR}/source/recycler.c
 	${PROJECT_SOURCE_DIR}/source/sbar.c
 	${PROJECT_SOURCE_DIR}/source/screen.c
 	${PROJECT_SOURCE_DIR}/source/snd_null.c
@@ -203,6 +204,7 @@ file(GLOB_RECURSE SRC
 	${PROJECT_SOURCE_DIR}/source/view.c
 	${PROJECT_SOURCE_DIR}/source/wad.c
 	${PROJECT_SOURCE_DIR}/source/world.c
+    ${PROJECT_SOURCE_DIR}/source/xipstream.c
 	${PROJECT_SOURCE_DIR}/source/zone.c
 	${PROJECT_SOURCE_DIR}/source/quakegeneric.c
 )

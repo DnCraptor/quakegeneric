@@ -161,7 +161,7 @@ typedef struct edge_s
 	medge_t			*owner;
 } edge_t;
 
-extern edge_t *edgebuf;
+extern edge_t *edgebuf, *edgebuf_swap;
 
 // dirty hack
 #define edge_null_idx		0

@@ -1105,6 +1105,8 @@ static void finish_him(void) {
     multicore_launch_core1(render_core);
     sem_release(&vga_start_semaphore);
 
+    xipstream_init();
+
     create_argv();
 	QG_Create(argc, argv);
 	Sys_Printf ("QG_Create done\n");
