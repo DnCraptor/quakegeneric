@@ -355,7 +355,7 @@ void __no_inline_not_in_flash_func(R_ClipEdge) (mvertex_t *pv0, mvertex_t *pv1, 
 R_EmitCachedEdge
 ================
 */
-void R_EmitCachedEdge (void)
+void __no_inline_not_in_flash_func(R_EmitCachedEdge) (void)
 {
 	edge_t		*pedge_t;
 

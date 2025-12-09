@@ -217,7 +217,7 @@ void __not_in_flash_func(R_RemoveEdges) (edge_t *pedge)
 R_StepActiveU
 ==============
 */
-void R_StepActiveU (edge_t *pedge)
+void __no_inline_not_in_flash_func(R_StepActiveU) (edge_t *pedge)
 {
 	edge_t		*pnext_edge, *pwedge;
 	edge_t   *ebuf=edgebuf;
@@ -317,7 +317,7 @@ void __not_in_flash_func(R_CleanupSpan) ()
 R_LeadingEdgeBackwards
 ==============
 */
-void R_LeadingEdgeBackwards (edge_t *edge)
+void __no_inline_not_in_flash_func(R_LeadingEdgeBackwards) (edge_t *edge)
 {
 	espan_t			*span;
 	surf_t			*surf, *surf2;

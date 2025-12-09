@@ -260,7 +260,7 @@ int D_log2 (int num)
 D_CacheSurface
 ================
 */
-surfcache_t *D_CacheSurface (msurface_t *surface, int miplevel)
+surfcache_t* __no_inline_not_in_flash_func(D_CacheSurface) (msurface_t *surface, int miplevel)
 {
 	surfcache_t     *cache;
 
@@ -289,7 +289,7 @@ surfcache_t *D_CacheSurface (msurface_t *surface, int miplevel)
 //
 // determine shape of surface
 //
-	surfscale = 1.0 / (1<<miplevel);
+	surfscale = 1.0f / (1<<miplevel);
 	r_drawsurf.surfmip = miplevel;
 	r_drawsurf.surfwidth = surface->extents[0] >> miplevel;
 	r_drawsurf.rowbytes = r_drawsurf.surfwidth;

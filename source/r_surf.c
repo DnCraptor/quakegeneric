@@ -193,7 +193,7 @@ R_TextureAnimation
 Returns the proper texture for a given time and base texture
 ===============
 */
-texture_t *R_TextureAnimation (texture_t *base)
+texture_t* __no_inline_not_in_flash_func(R_TextureAnimation) (texture_t *base)
 {
 	int		reletive;
 	int		count;
@@ -207,7 +207,7 @@ texture_t *R_TextureAnimation (texture_t *base)
 	if (!base->anim_total)
 		return base;
 
-	reletive = (int)(cl.time*10) % base->anim_total;
+	reletive = (int)((float)cl.time*10) % base->anim_total;
 
 	count = 0;	
 	while (base->anim_min > reletive || base->anim_max <= reletive)
