@@ -457,7 +457,8 @@ R_RecursiveWorldNode
 void R_RecursiveWorldNode (mnode_t *node, int clipflags)
 {
 	int			i, c, side, *pindex;
-	vec3_t		acceptpt, rejectpt;
+	//vec3_t		acceptpt, rejectpt;
+	vec3_t		pt;
 	mplane_t	*plane;
 	msurface_t	*surf; 
 	uint16_t    *mark;
@@ -490,21 +491,21 @@ void R_RecursiveWorldNode (mnode_t *node, int clipflags)
 
 			pindex = pfrustum_indexes[i];
 
-			rejectpt[0] = (float)node->minmaxs[pindex[0]];
-			rejectpt[1] = (float)node->minmaxs[pindex[1]];
-			rejectpt[2] = (float)node->minmaxs[pindex[2]];
+			pt[0] = (float)node->minmaxs[pindex[0]];
+			pt[1] = (float)node->minmaxs[pindex[1]];
+			pt[2] = (float)node->minmaxs[pindex[2]];
 			
-			d = DotProduct (rejectpt, view_clipplanes[i].normal);
+			d = DotProduct (pt, view_clipplanes[i].normal);
 			d -= view_clipplanes[i].dist;
 
 			if (d <= 0.0f)
 				return;
 
-			acceptpt[0] = (float)node->minmaxs[pindex[3+0]];
-			acceptpt[1] = (float)node->minmaxs[pindex[3+1]];
-			acceptpt[2] = (float)node->minmaxs[pindex[3+2]];
+			pt[0] = (float)node->minmaxs[pindex[3+0]];
+			pt[1] = (float)node->minmaxs[pindex[3+1]];
+			pt[2] = (float)node->minmaxs[pindex[3+2]];
 
-			d = DotProduct (acceptpt, view_clipplanes[i].normal);
+			d = DotProduct (pt, view_clipplanes[i].normal);
 			d -= view_clipplanes[i].dist;
 
 			if (d >= 0.0f)
@@ -682,6 +683,7 @@ void R_RenderWorld (void)
 
 // if the driver wants the polygons back to front, play the visible ones back
 // in that order
+// w: should be dead code i guess
 	if (r_worldpolysbacktofront)
 	{
 		for (i=numbtofpolys-1 ; i>=0 ; i--)

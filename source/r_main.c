@@ -852,6 +852,7 @@ R_EdgeDrawing
 static void R_EdgeDrawing ()
 {
 	surf_t lsurfs[NUMSTACKSURFACES + ((CACHE_SIZE - 1) / sizeof(surf_t)) + 1];
+	uint8_t *tempstack;
 
 	// reset Z-Buffer allocator
     ZBA_Reset();
@@ -887,7 +888,8 @@ static void R_EdgeDrawing ()
 		rw_time1 = Sys_FloatTime ();
 	}
 
-	R_RenderWorld ();
+	//R_RenderWorld ();
+	stackcall_alloc(R_RenderWorld, 32768);
 
 	if (r_drawculledpolys)
 		R_ScanEdges ();
@@ -902,7 +904,8 @@ static void R_EdgeDrawing ()
 		db_time1 = rw_time2;
 	}
 
-	R_DrawBEntitiesOnList ();
+	//R_DrawBEntitiesOnList ();
+	stackcall_alloc(R_DrawBEntitiesOnList, 32768);
 
 	if ((r_dspeeds.value || cls.frametimedemo))
 	{
@@ -918,7 +921,8 @@ static void R_EdgeDrawing ()
 	}
 
 	if (!(r_drawpolys | r_drawculledpolys)) {
-		R_ScanEdges ();
+		//R_ScanEdges ();
+		stackcall_alloc(R_ScanEdges, 8192);
 	}
 
 	// reset Z-buffer allocator (the buffer is dead at this moment)
@@ -995,7 +999,8 @@ SetVisibilityByPassages ();
 		dp_time1 = Sys_FloatTime ();
 	}
 
-	R_DrawParticles ();
+	//R_DrawParticles ();
+	stackcall_alloc(R_DrawParticles, 8192);
 
 	if ((r_dspeeds.value || cls.frametimedemo))
 		dp_time2 = Sys_FloatTime ();
