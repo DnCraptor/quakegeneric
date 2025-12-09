@@ -853,8 +853,21 @@ static void R_EdgeDrawing ()
 {
 	surf_t lsurfs[NUMSTACKSURFACES + ((CACHE_SIZE - 1) / sizeof(surf_t)) + 1];
 
+	// reset Z-Buffer allocator
+    ZBA_Reset();
+
+    // allocate edge buffer
+    if (r_numallocatededges > NUMSTACKEDGES)
+	{
+		edgebuf_swap = auxedges;
+	}
+	else
+	{
+		edgebuf_swap = ZBA_Alloc(sizeof(edge_t)*(NUMSTACKEDGES+RESERVED_EDGES));
+	}
+
 	// forward egde storage
-	edgebuf = edgebuf_swap;			// TODO that alloc
+	edgebuf = edgebuf_swap;
 	r_edges = edgebuf_swap + RESERVED_EDGES;
 
 	if (r_surfsonstack)
@@ -903,7 +916,7 @@ static void R_EdgeDrawing ()
 		S_ExtraUpdate ();	// don't let sound get messed up if going slow
 		VID_LockBuffer ();
 	}
-	
+
 	if (!(r_drawpolys | r_drawculledpolys)) {
 		R_ScanEdges ();
 	}

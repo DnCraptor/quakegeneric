@@ -618,10 +618,6 @@ void _Host_Frame (float time)
 // decide the simulation time
 	if (!Host_FilterTime (time))
 		return;			// don't run too fast, or packets will flood out
-		
-
-	// start abusing (not currently used) Z-buffer for storing other crap
-	RC_NewFrame();
 
 // get new key events
 	Sys_SendKeyEvents ();
@@ -633,9 +629,6 @@ void _Host_Frame (float time)
 	Cbuf_Execute ();
 
 	NET_Poll();
-
-	// at this moment we assume compressed PVS is fetched from flash
-	RC_WaitForPreloadEnd();
 
 // if running the server locally, make intentions now
 	if (sv.active) {
