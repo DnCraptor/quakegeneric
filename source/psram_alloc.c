@@ -48,3 +48,22 @@ void* alloc(unsigned int sz, const char* for_what) {
 	Sys_Printf("alloc(%d, %s) %ph -> %ph (sp: %ph)\n", sz, for_what, res, base, get_sp());
 	return res;
 }
+
+// call a function on a temporary stack
+void __attribute__((naked)) stackcall(void (*proc)(), void *new_sp) {
+    __asm__ volatile (
+        "push   {r4, lr}" "\n"
+        "bic    r1, %[new_sp], 7" "\n"    // align by 8 bytes
+        "mrs    r4, msp" "\n"
+        "msr    msp, r1" "\n"
+        "isb" "\n"
+        "blx    %[proc]" "\n"
+        "msr    msp, r4" "\n"
+        "isb" "\n"
+        "pop    {r4, pc}" "\n"
+        :
+        : [new_sp] "r" (new_sp),
+          [proc] "r" (proc)
+        : "memory"
+    );
+}

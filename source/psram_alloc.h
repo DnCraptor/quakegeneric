@@ -46,6 +46,9 @@ static inline unsigned int get_sp(void) {
     return sp;
 }
 
+// call a function on a temporary stack
+void stackcall(void (*proc)(), void *new_sp);
+
 #ifdef __cplusplus
 }
 #endif

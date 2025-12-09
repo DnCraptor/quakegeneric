@@ -82,7 +82,7 @@ cvar_t	coop = {"coop","0"};			// 0 or 1
 cvar_t	pausable = {"pausable","1"};
 
 cvar_t	temp1 = {"temp1","0"};
-
+cvar_t  stacktosram = {"stacktosram", "0"};
 
 /*
 ================
@@ -233,6 +233,7 @@ void Host_InitLocal (void)
 	Cvar_RegisterVariable (&pausable);
 
 	Cvar_RegisterVariable (&temp1);
+	Cvar_RegisterVariable (&stacktosram);
 
 	Host_FindMaxClients ();
 	
