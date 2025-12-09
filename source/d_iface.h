@@ -39,6 +39,28 @@ typedef enum {
 
 // !!! if this is changed, it must be changed in d_ifacea.h too !!!
 // TODO update d_ifacea.h!!!
+#ifdef Q_PARTICLES_FP16
+// !!! if this is changed, it must be changed in d_ifacea.h too !!!
+// TODO update d_ifacea.h!!!
+typedef struct particle_s
+{
+	// first two 8b cache lines
+	struct particle_s	*next;
+	float				die;
+	
+	// next 8b cache line
+	vechalf3_t	vel;
+	int16_t     reserved;
+
+	// and next two 8b cachelines
+// driver-usable fields
+	vec3_t		org;
+// drivers never touch the following fields
+	int16_t		ramp;		// was float, now q1.7.8
+	byte		color;
+	ptype_t		type;
+} particle_t;
+#else
 typedef struct particle_s
 {
 	// first two 8b cache lines
@@ -55,6 +77,7 @@ typedef struct particle_s
 
 	vec3_t		vel;
 } particle_t;
+#endif
 
 #define PARTICLE_RAMP_FRACT 10
 #define PARTICLE_Z_CLIP	8.0
