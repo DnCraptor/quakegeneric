@@ -42,12 +42,12 @@ void __not_in_flash_func(D_Sky_uv_To_st) (int u, int v, fixed16_t *s, fixed16_t 
 	else
 		temp = (float)r_refdef.vrect.height;
 
-	wu = 8192.0 * (float)(u-((int)vid.width>>1)) / temp;
-	wv = 8192.0 * (float)(((int)vid.height>>1)-v) / temp;
+	wu = 8192.0f * (float)(u-((int)vid.width>>1)) / temp;
+	wv = 8192.0f * (float)(((int)vid.height>>1)-v) / temp;
 
-	end[0] = 4096*vpn[0] + wu*vright[0] + wv*vup[0];
-	end[1] = 4096*vpn[1] + wu*vright[1] + wv*vup[1];
-	end[2] = 4096*vpn[2] + wu*vright[2] + wv*vup[2];
+	end[0] = 4096.0f*vpn[0] + wu*vright[0] + wv*vup[0];
+	end[1] = 4096.0f*vpn[1] + wu*vright[1] + wv*vup[1];
+	end[2] = 4096.0f*vpn[2] + wu*vright[2] + wv*vup[2];
 	end[2] *= 3;
 	VectorNormalize (end);
 
@@ -62,6 +62,7 @@ void __not_in_flash_func(D_Sky_uv_To_st) (int u, int v, fixed16_t *s, fixed16_t 
 D_DrawSkyScans8
 =================
 */
+// w: same with D_DrawSpans8(): rewrite in assembly/drop RP2350's interpolators in if possible
 void __no_inline_not_in_flash_func(D_DrawSkyScans8) (espan_t *pspan)
 {
 	int				count, spancount, u, v;
@@ -120,13 +121,26 @@ void __no_inline_not_in_flash_func(D_DrawSkyScans8) (espan_t *pspan)
 				}
 			}
 
-			do
+			if (spancount >= 8) {
+				int sp8 = spancount >> 3;
+				spancount &= 7;
+
+				do {
+					// manual unroll
+					*pdest++ = r_skysource[((t & R_SKY_TMASK) >> (16-7)) + ((s & R_SKY_SMASK) >> 16)]; s += sstep;	t += tstep;
+					*pdest++ = r_skysource[((t & R_SKY_TMASK) >> (16-7)) + ((s & R_SKY_SMASK) >> 16)]; s += sstep;	t += tstep;
+					*pdest++ = r_skysource[((t & R_SKY_TMASK) >> (16-7)) + ((s & R_SKY_SMASK) >> 16)]; s += sstep;	t += tstep;
+					*pdest++ = r_skysource[((t & R_SKY_TMASK) >> (16-7)) + ((s & R_SKY_SMASK) >> 16)]; s += sstep;	t += tstep;
+					*pdest++ = r_skysource[((t & R_SKY_TMASK) >> (16-7)) + ((s & R_SKY_SMASK) >> 16)]; s += sstep;	t += tstep;
+					*pdest++ = r_skysource[((t & R_SKY_TMASK) >> (16-7)) + ((s & R_SKY_SMASK) >> 16)]; s += sstep;	t += tstep;
+					*pdest++ = r_skysource[((t & R_SKY_TMASK) >> (16-7)) + ((s & R_SKY_SMASK) >> 16)]; s += sstep;	t += tstep;
+					*pdest++ = r_skysource[((t & R_SKY_TMASK) >> (16-7)) + ((s & R_SKY_SMASK) >> 16)]; s += sstep;	t += tstep;
+				} while (--sp8);
+			}
+			if (spancount > 0) do
 			{
-				*pdest++ = r_skysource[((t & R_SKY_TMASK) >> 8) +
-						((s & R_SKY_SMASK) >> 16)];
-				s += sstep;
-				t += tstep;
-			} while (--spancount > 0);
+				*pdest++ = r_skysource[((t & R_SKY_TMASK) >> (16-7)) + ((s & R_SKY_SMASK) >> 16)]; s += sstep;	t += tstep;
+			} while (--spancount);
 
 			s = snext;
 			t = tnext;

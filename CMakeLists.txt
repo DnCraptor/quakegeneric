@@ -287,7 +287,7 @@ target_compile_options(${PROJECT_NAME} PUBLIC
         -Wno-error=restrict
         -w
         -mfp16-format=ieee
-#        -fstack-usage
+        -fstack-usage
 )
 endif ()
 

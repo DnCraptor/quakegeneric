@@ -38,13 +38,13 @@ __psram_bss ("r_sky") int 		r_skydirect;		// not used?
 
 // TODO: clean up these routines
 
-__psram_bss ("r_sky") byte	bottomsky[128*131];
-__psram_bss ("r_sky") byte	bottommask[128*131];
-byte	newsky[128*256];	// newsky and topsky both pack in here, 128 bytes
-							//  of newsky on the left of each scan, 128 bytes
-							//  of topsky on the right, because the low-level
-							//  drawers need 256-byte scan widths
+//__psram_bss ("r_sky") __aligned(8) byte	bottomsky[128*128];
+//__psram_bss ("r_sky") __aligned(8) byte	bottommask[128*128];
+//__psram_bss ("r_sky") __aligned(8) uint16_t	bottomsky[128*128*2]; // [sky,mask] interleaved
+__psram_bss ("r_sky") __aligned(8) byte topsky[128*128];
+__psram_bss ("r_sky") __aligned(8) byte	bottomsky[128*128]; // idx 255 is transparent
 
+byte	newsky[128*128];
 
 /*
 =============
@@ -64,23 +64,21 @@ void R_InitSky (texture_t *mt)
 	{
 		for (j=0 ; j<128 ; j++)
 		{
-			newsky[(i*256) + j + 128] = src[i*256 + j + 128];
+			topsky[(i*128) + j] = src[i*256 + j + 128];
 		}
 	}
 
 	for (i=0 ; i<128 ; i++)
 	{
-		for (j=0 ; j<131 ; j++)
+		for (j=0 ; j<128 ; j++)
 		{
 			if (src[i*256 + (j & 0x7F)])
 			{
-				bottomsky[(i*131) + j] = src[i*256 + (j & 0x7F)];
-				bottommask[(i*131) + j] = 0;
+				bottomsky[(i*128) + j] = src[i*256 + (j & 0x7F)];
 			}
 			else
 			{
-				bottomsky[(i*131) + j] = 0;
-				bottommask[(i*131) + j] = 0xff;
+				bottomsky[(i*128) + j] = 0xFF;
 			}
 		}
 	}
@@ -99,7 +97,7 @@ void __no_inline_not_in_flash_func(R_MakeSky) (void)
 	int			x, y;
 	int			ofs, baseofs;
 	int			xshift, yshift;
-	unsigned	*pnewsky;
+	byte		*pnewsky, *ptopsky;
 	static int	xlast = -1, ylast = -1;
 
 	xshift = skytime*skyspeed;
@@ -111,23 +109,20 @@ void __no_inline_not_in_flash_func(R_MakeSky) (void)
 	xlast = xshift;
 	ylast = yshift;
 	
-	pnewsky = (unsigned *)&newsky[0];
+	pnewsky = newsky;
+	ptopsky = topsky;
 
 	for (y=0 ; y<SKYSIZE ; y++)
 	{
-		baseofs = ((y+yshift) & SKYMASK) * 131;
+		baseofs = ((y+yshift) & SKYMASK) * 128;
 
+		#pragma GCC unroll 4
 		for (x=0 ; x<SKYSIZE ; x++)
 		{
 			ofs = baseofs + ((x+xshift) & SKYMASK);
-
-			*(byte *)pnewsky = (*((byte *)pnewsky + 128) &
-						*(byte *)&bottommask[ofs]) |
-						*(byte *)&bottomsky[ofs];
-			pnewsky = (unsigned *)((byte *)pnewsky + 1);
+			*pnewsky++ = bottomsky[ofs] == 255 ? (*ptopsky) : bottomsky[ofs];
+			ptopsky++;
 		}
-
-		pnewsky += 128 / sizeof (unsigned);
 	}
 
 	r_skymade = 1;
@@ -141,6 +136,8 @@ R_GenSkyTile
 */
 void R_GenSkyTile (void *pdest)
 {
+	return;			// not used iirc
+#if 0
 	int			x, y;
 	int			ofs, baseofs;
 	int			xshift, yshift;
@@ -170,6 +167,7 @@ void R_GenSkyTile (void *pdest)
 
 		pnewsky += 128 / sizeof (unsigned);
 	}
+#endif
 }
 
 /*
