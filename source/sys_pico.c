@@ -161,7 +161,14 @@ void Sys_Error (char *error, ...) {
 	f_write(&tmp_f_struct.f, buf, strlen(buf), &wb);
 	f_write(&tmp_f_struct.f, "\n", 1, &wb);
 	f_close(&tmp_f_struct.f);
-	Sys_Quit();
+	while(true) {
+		sleep_ms(33);
+        gpio_put(PICO_DEFAULT_LED_PIN, true);
+        sleep_ms(33);
+        gpio_put(PICO_DEFAULT_LED_PIN, false);
+		// TODO: input
+	}
+	//Sys_Quit();
 }
 
 int Sys_Fscanf(FIL *f, char *fmt, ...)

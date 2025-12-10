@@ -30,6 +30,7 @@ viddef_t	vid;				// global video state
 #define	BASEHEIGHT	240
 
 #define ZBUFFER_IN_SRAM
+#define AUX_BUFFER_SIZE (64 * 1024)		// should be "enough"
 
 byte	vid_buffer[BASEWIDTH*BASEHEIGHT];
 
@@ -79,6 +80,62 @@ int ZBA_GetZBufferMaxRow() {
 	return rtn < 0 ? 0 : rtn;
 }
 
+uint32_t ZBA_GetFreeBytes() {
+	return ((uintptr_t)zba_rover - (uintptr_t)zbuffer);
+}
+
+// ----------------------
+// aux buffer allocation stuff
+static __aligned(8) uint8_t auxbuffer[AUX_BUFFER_SIZE];
+
+uint8_t *auxa_rover = auxbuffer;
+void AUXA_Reset() {
+	auxa_rover = auxbuffer;
+}
+
+uint8_t* AUXA_GetRover() {
+	return auxa_rover;
+}
+
+void AUXA_FreeToRover(uint8_t *rover) {
+	if (((uintptr_t)rover < (uintptr_t)auxbuffer) || ((uintptr_t)rover > (uintptr_t)&auxbuffer[AUX_BUFFER_SIZE])) {
+		Sys_Error("AUXA_FreeToRover(): attempt to reset rover outside of aux buffer memory (%08X != [%08X..%08X])\n",
+			(uintptr_t)rover, (uintptr_t)auxbuffer, (uintptr_t)&auxbuffer[AUX_BUFFER_SIZE]
+		);
+	}
+	auxa_rover = rover;
+}
+
+// enforces 8-bytes align
+void *AUXA_Alloc(int bytes) {
+	if ((uintptr_t)(auxa_rover + bytes + 7) >= (uintptr_t)&auxbuffer[AUX_BUFFER_SIZE]) {
+		Sys_Error("AUXA_Alloc(): tried to allocate %d bytes but ran out of aux buffer memory\n", bytes);
+		return NULL;
+	}
+	uint8_t *rtn = (uint8_t*)(((uintptr_t)auxa_rover + 7) & ~7);
+	auxa_rover   = (uint8_t*)(((uintptr_t)auxa_rover + bytes + 7) & ~7);
+	//Sys_Printf("AUXA_Alloc(): %d bytes -> 0x%08X", bytes, (uintptr_t)rtn);
+	return (void*)rtn;
+}
+
+// a pair of malloc/free-like functions for local allocations
+void *AUXA_MAlloc(int bytes) {
+	uint8_t *rover = AUXA_GetRover();
+	void *rtn = AUXA_Alloc(bytes + sizeof(uint8_t*));
+	*(uint8_t**)rtn = rover;
+	return (void*)((uintptr_t)rtn + sizeof(uint8_t*));
+}
+
+void AUXA_MFree(void *ptr) {
+	// extract rover
+	uint8_t *rover = *(uint8_t**)((uintptr_t)ptr - 4);
+	AUXA_FreeToRover(rover);
+}
+
+uint32_t AUXA_GetFreeBytes() {
+	return ((uintptr_t)&auxbuffer[AUX_BUFFER_SIZE] - (uintptr_t)auxa_rover);
+}
+
 void	VID_SetPalette (unsigned char *palette)
 {
 	// quake generic
@@ -121,6 +178,9 @@ void	VID_Init (unsigned char *palette)
 
 	// reset Z-buffer allocator
 	ZBA_Reset();
+
+	// reset aux allocator
+	AUXA_Reset();
 }
 
 void	VID_Shutdown (void)

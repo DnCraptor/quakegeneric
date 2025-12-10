@@ -696,24 +696,23 @@ R_AliasDrawModel
 */
 void R_AliasDrawModel (alight_t *plighting)
 {
-	finalvert_t		finalverts[MAXALIASVERTS +
-						((CACHE_SIZE - 1) / sizeof(finalvert_t)) + 1];
-	auxvert_t		auxverts[MAXALIASVERTS];
+	static __psram_bss("r_alias") __aligned(8) finalvert_t	finalverts[MAXALIASVERTS];
+	static __psram_bss("r_alias") __aligned(8) auxvert_t	auxverts[MAXALIASVERTS];
 	int alloc_on_heap;
+	uint8_t *auxa_rover = AUXA_GetRover();
 
 	r_amodels_drawn++;
 
 	paliashdr = (aliashdr_t *)Mod_Extradata (currententity->model);
 	pmdl = (mdl_t *)((byte *)paliashdr + paliashdr->model);
 
-	alloc_on_heap = pmdl->numverts * (currententity->trivial_accept != 0 ? 1 : 3);
+	alloc_on_heap = pmdl->numverts * (currententity->trivial_accept != 0 ? 1 : 2);
 	if (alloc_on_heap <= 400) {	// tweakme, default seems to perform well
-		pfinalverts = (finalvert_t *)(malloc(sizeof(finalvert_t)*alloc_on_heap));
-		pauxverts   = (auxvert_t   *)(malloc(sizeof(auxvert_t  )*alloc_on_heap));
+		pfinalverts = (finalvert_t *)(AUXA_Alloc(sizeof(finalvert_t)*400)); // fixed-size predictable allocation =)
+		pauxverts   = (auxvert_t   *)(AUXA_Alloc(sizeof(auxvert_t  )*400)); // fixed-size predictable allocation =)
 	} else {
 		// cache align
-		pfinalverts = (finalvert_t *)
-			(((intptr_t)&finalverts[0] + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
+		pfinalverts = &finalverts[0];
 		pauxverts = &auxverts[0];
 		alloc_on_heap = 0;
 	}
@@ -747,8 +746,7 @@ void R_AliasDrawModel (alight_t *plighting)
 		R_AliasPreparePoints ();
 
 	if (alloc_on_heap) {
-		free(pfinalverts);
-		free(pauxverts);
+		AUXA_FreeToRover(auxa_rover);
 	}
 }
 

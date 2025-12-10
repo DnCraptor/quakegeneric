@@ -71,7 +71,7 @@ extern	entity_t		*currententity;
 // we could probably malloc it instead and get away with much smaller amount to save on SRAM
 // placing it in SRAM already gives extra 2.5 fps so it's worth it
 // upd: smaller amounts don't make rendering faster sadly
-#define	MAXSPANS			3000			// ca. 48k on SRAM heap
+#define	MAXSPANS			3000			// ca. 24k on SRAM heap
 
 // !!! if this is changed, it must be changed in asm_draw.h too !!!
 typedef struct espan_s

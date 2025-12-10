@@ -673,19 +673,11 @@ void __no_inline_not_in_flash_func(R_ScanEdges) ()
 {
 	int		iv, bottom;
 	surf_t	*s;
-#if 0
-	byte	basespans[MAXSPANS*sizeof(espan_t)+CACHE_SIZE];
-#else
-	byte   *basespans = (byte*)malloc(MAXSPANS*sizeof(espan_t)+CACHE_SIZE);
-	if (basespans == NULL) {
-		Sys_Error("R_ScanEdges: unable to allocate basespans (wanted %d bytes)\n",
-			MAXSPANS*sizeof(espan_t)+CACHE_SIZE
-		);
-	}
-#endif
 
-	espan_t* basespan_p = (espan_t *)
-			((intptr_t)(basespans + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
+	uint8_t *auxa_rover = AUXA_GetRover();
+	byte    *basespans  = (byte*)AUXA_Alloc((MAXSPANS+1)*sizeof(espan_t));
+
+	espan_t* basespan_p = (espan_t*)(basespans);
 	max_span_p = &basespan_p[MAXSPANS - r_refdef.vrect.width];
 
 	span_p = basespan_p;
@@ -806,10 +798,7 @@ void __no_inline_not_in_flash_func(R_ScanEdges) ()
 		D_DrawSurfaces ();
 	}
 
-#if 0
-#else
-	free(basespans);
-#endif
+	AUXA_FreeToRover(auxa_rover);
 }
 
 

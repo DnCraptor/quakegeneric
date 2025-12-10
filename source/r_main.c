@@ -983,7 +983,8 @@ SetVisibilityByPassages ();
 		de_time1 = se_time2;
 	}
 
-	R_DrawEntitiesOnList ();
+	//R_DrawEntitiesOnList ();
+	stackcall_alloc(R_DrawEntitiesOnList, 24576);
 
 	if ((r_dspeeds.value || cls.frametimedemo))
 	{
@@ -991,7 +992,8 @@ SetVisibilityByPassages ();
 		dv_time1 = de_time2;
 	}
 
-	R_DrawViewModel ();
+	//R_DrawViewModel ();
+	stackcall_alloc(R_DrawViewModel, 24576);
 
 	if ((r_dspeeds.value || cls.frametimedemo))
 	{

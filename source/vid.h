@@ -87,3 +87,13 @@ uint8_t* ZBA_GetRover();
 void ZBA_FreeToRover(uint8_t *rover);
 void *ZBA_Alloc(int bytes);
 int ZBA_GetZBufferMaxRow();
+uint32_t ZBA_GetFreeBytes();
+
+// aux buffer allocator - available at all times, used for predictable allocations
+void AUXA_Reset();
+uint8_t* AUXA_GetRover();
+void AUXA_FreeToRover(uint8_t *rover);
+void *AUXA_Alloc(int bytes);
+void *AUXA_MAlloc(int bytes);
+void AUXA_MFree(void *ptr);
+uint32_t AUXA_GetFreeBytes();
