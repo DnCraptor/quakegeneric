@@ -50,6 +50,8 @@ static inline unsigned int get_sp(void) {
 void stackcall(void (*proc)(), void *new_sp);
 // allocate stack memory and call a function on it
 void stackcall_alloc(void (*proc)(), uint32_t stackbytes);
+void stackcall_alloc_ex(void (*proc)(), uint32_t stackbytes, int always);
+void stackcall_alloc_zba(void (*proc)(), uint32_t stackbytes);
 
 #ifdef __cplusplus
 }

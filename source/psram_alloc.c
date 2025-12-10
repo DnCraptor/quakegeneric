@@ -69,10 +69,10 @@ void __attribute__((naked)) stackcall(void (*proc)(), void *new_sp) {
 }
 
 // allocate stack memory and call a function on it
-void stackcall_alloc(void (*proc)(), uint32_t stackbytes) {
+void stackcall_alloc_ex(void (*proc)(), uint32_t stackbytes, int always) {
 	uint8_t *auxa_rover;
 	uint8_t *tempstack;
-	if (stacktosram.value) {
+	if (always && stacktosram.value) {
 		auxa_rover = AUXA_GetRover(); 
 		tempstack  = (uint8_t*)AUXA_Alloc(stackbytes + 8);
 		if (tempstack) {
@@ -98,4 +98,36 @@ void stackcall_alloc(void (*proc)(), uint32_t stackbytes) {
 	} else {
 		proc ();
 	}
+}
+
+void stackcall_alloc(void (*proc)(), uint32_t stackbytes) {
+	stackcall_alloc_ex(proc, stackbytes, 0);
+}
+
+void stackcall_alloc_zba(void (*proc)(), uint32_t stackbytes) {
+	uint8_t *auxa_rover;
+	uint8_t *tempstack;
+
+	auxa_rover = ZBA_GetRover(); 
+	tempstack  = (uint8_t*)ZBA_Alloc(stackbytes + 8);
+	if (tempstack) {
+		// put canary on the bottom of "new" stack
+		((uint32_t*)tempstack)[0] = 0xDEADBEEF;
+		((uint32_t*)tempstack)[1] = 0xCAFEF00D;
+
+		// call the proc
+		stackcall(proc, tempstack + stackbytes + 8);
+		
+		// and check canary
+		if (((uint32_t*)tempstack)[0] != 0xDEADBEEF || ((uint32_t*)tempstack)[1] != 0xCAFEF00D) {
+			Sys_Error("stackcall_alloc(): stack overflow (proc=%08X stackbytes=%d)\n",
+				proc, stackbytes
+			);
+		}
+		
+	} else { 
+		proc ();
+	}
+	// only then we can free the stack :)
+	ZBA_FreeToRover(auxa_rover);
 }

@@ -92,7 +92,7 @@ Host_EndGame
 void Host_EndGame (char *message, ...)
 {
 	va_list		argptr;
-	char* string = (char*)malloc(1024);
+	char        string[1024];
 	
 	va_start (argptr,message);
 	vsprintf (string,message,argptr);
@@ -104,7 +104,6 @@ void Host_EndGame (char *message, ...)
 
 	if (cls.state == ca_dedicated)
 		Sys_Error ("Host_EndGame: %s\n",string);	// dedicated servers exit
-	free(string);
 
 	if (cls.demonum != -1)
 		CL_NextDemo ();
@@ -124,6 +123,7 @@ This shuts down both the client and server
 void Host_Error (char *error, ...)
 {
 	va_list		argptr;
+	char 		string[1024];
 	static	qboolean inerror = false;
 	
 	if (inerror)
@@ -133,7 +133,6 @@ void Host_Error (char *error, ...)
 	SCR_EndLoadingPlaque ();		// reenable screen updates
 
 	va_start (argptr,error);
-	char* string = (char*)malloc(1024);
 	vsprintf (string,error,argptr);
 	va_end (argptr);
 	Con_Printf ("Host_Error: %s\n",string);
@@ -143,7 +142,6 @@ void Host_Error (char *error, ...)
 
 	if (cls.state == ca_dedicated)
 		Sys_Error ("Host_Error: %s\n",string);	// dedicated servers exit
-	free(string);
 	
 	CL_Disconnect ();
 	cls.demonum = -1;
@@ -610,6 +608,8 @@ void _Host_Frame (float time)
 		Con_Printf("WARN: host_abortserver handled!\n");
 		Hunk_FreeToLowMark(lm);
 		Hunk_FreeToHighMark(hm);
+		AUXA_Reset();
+		ZBA_Reset();
 		return;			// something bad happened, or the server disconnected
 	}
 
@@ -629,11 +629,13 @@ void _Host_Frame (float time)
 // process console commands
 	Cbuf_Execute ();
 
-	NET_Poll();
+	//NET_Poll();
+	stackcall_alloc_zba(NET_Poll, 32768);
 
 // if running the server locally, make intentions now
 	if (sv.active) {
-		CL_SendCmd ();
+		//CL_SendCmd ();
+		stackcall_alloc_zba(CL_SendCmd, 32768);
 	}
 	
 //-------------------
@@ -646,7 +648,8 @@ void _Host_Frame (float time)
 	Host_GetConsoleCommands ();
 	
 	if (sv.active) {
-		Host_ServerFrame ();
+		//Host_ServerFrame ();
+		stackcall_alloc_zba(Host_ServerFrame, 32768);
 	}
 
 //-------------------
@@ -658,7 +661,8 @@ void _Host_Frame (float time)
 // if running the server remotely, send intentions now after
 // the incoming messages have been read
 	if (!sv.active) {
-		CL_SendCmd ();
+		//CL_SendCmd ();
+		stackcall_alloc_zba(CL_SendCmd, 32768);
 	}
 
 	host_time += host_frametime;
