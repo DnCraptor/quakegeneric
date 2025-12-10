@@ -128,7 +128,7 @@ void R_BeginEdgeFrame (void)
 
 	surface_p = &surfaces[2];	// background is surface 1,
 								//  surface 0 is a dummy
-	surfaces[1].spans = NULL;	// no background spans yet
+	surfaces[1].spans = 0;		// no background spans yet
 	surfaces[1].flags = SURF_DRAWBACKGROUND;
 
 // put the background behind everything in the world
@@ -291,7 +291,7 @@ void __not_in_flash_func(R_CleanupSpan) ()
 
 // now that we've reached the right edge of the screen, we're done with any
 // unfinished surfaces, so emit a span for whatever's on top
-	surf = surfaces[1].next;
+	surf = surfaces + surfaces[1].next;
 	iu = edge_tail_u_shift20;
 	if (iu > surf->last_u)
 	{
@@ -307,7 +307,7 @@ void __not_in_flash_func(R_CleanupSpan) ()
 	do
 	{
 		surf->spanstate = 0;
-		surf = surf->next;
+		surf = surfaces+surf->next;
 	} while (surf != &surfaces[1]);
 }
 
@@ -331,7 +331,7 @@ void __no_inline_not_in_flash_func(R_LeadingEdgeBackwards) (edge_t *edge)
 // end edge)
 	if (++surf->spanstate == 1)
 	{
-		surf2 = surfaces[1].next;
+		surf2 = surfaces+surfaces[1].next;
 
 		if (surf->key > surf2->key)
 			goto newtop;
@@ -349,7 +349,7 @@ continue_search:
 
 		do
 		{
-			surf2 = surf2->next;
+			surf2 = surfaces+surf2->next;
 		} while (surf->key < surf2->key);
 
 		if (surf->key == surf2->key)
@@ -384,10 +384,10 @@ newtop:
 				
 gotposition:
 	// insert before surf2
-		surf->next = surf2;
+		surf->next = surf2-surfaces;
 		surf->prev = surf2->prev;
-		surf2->prev->next = surf;
-		surf2->prev = surf;
+		(surfaces+surf2->prev)->next = surf-surfaces;
+		surf2->prev = surf-surfaces;
 	}
 }
 
@@ -410,7 +410,7 @@ void __not_in_flash_func(R_TrailingEdge) (surf_t *surf, edge_t *edge)
 		if (surf->insubmodel)
 			r_bmodelactive--;
 
-		if (surf == surfaces[1].next)
+		if (surf == surfaces+surfaces[1].next)
 		{
 		// emit a span (current top going away)
 			iu = edge->u >> 20;
@@ -425,11 +425,11 @@ void __not_in_flash_func(R_TrailingEdge) (surf_t *surf, edge_t *edge)
 			}
 
 		// set last_u on the surface below
-			surf->next->last_u = iu;
+			(surfaces+surf->next)->last_u = iu;
 		}
 
-		surf->prev->next = surf->next;
-		surf->next->prev = surf->prev;
+		(surfaces+surf->prev)->next = surf->next;
+		(surfaces+surf->next)->prev = surf->prev;
 	}
 }
 
@@ -462,7 +462,7 @@ void __not_in_flash_func(R_LeadingEdge) (edge_t *edge)
 			if (surf->insubmodel)
 				r_bmodelactive++;
 
-			surf2 = surfaces[1].next;
+			surf2 = surfaces+surfaces[1].next;
 
 			if (surf->key < surf2->key)
 				goto newtop;
@@ -509,7 +509,7 @@ continue_search:
 
 			do
 			{
-				surf2 = surf2->next;
+				surf2 = surfaces+surf2->next;
 			} while (surf->key > surf2->key);
 
 			if (surf->key == surf2->key)
@@ -577,10 +577,10 @@ newtop:
 				
 gotposition:
 		// insert before surf2
-			surf->next = surf2;
+			surf->next = surf2-surfaces;
 			surf->prev = surf2->prev;
-			surf2->prev->next = surf;
-			surf2->prev = surf;
+			(surfaces+surf2->prev)->next = surf-surfaces;
+			surf2->prev = surf-surfaces;
 		}
 	}
 }
@@ -601,7 +601,7 @@ void __not_in_flash_func(R_GenerateSpans) (void)
 	r_bmodelactive = 0;
 
 // clear active surfaces to just the background surface
-	surfaces[1].next = surfaces[1].prev = &surfaces[1];
+	surfaces[1].next = surfaces[1].prev = 1;
 	surfaces[1].last_u = edge_head_u_shift20;
 
 // generate spans
@@ -638,7 +638,7 @@ void __not_in_flash_func(R_GenerateSpansBackward) (void)
 	r_bmodelactive = 0;
 
 // clear active surfaces to just the background surface
-	surfaces[1].next = surfaces[1].prev = &surfaces[1];
+	surfaces[1].next = surfaces[1].prev = 1;
 	surfaces[1].last_u = edge_head_u_shift20;
 
 // generate spans

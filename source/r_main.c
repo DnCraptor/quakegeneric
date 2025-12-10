@@ -843,7 +843,6 @@ void R_DrawBEntitiesOnList (void)
 	insubmodel = false;
 }
 
-
 /*
 ================
 R_EdgeDrawing
@@ -851,8 +850,8 @@ R_EdgeDrawing
 */
 static void R_EdgeDrawing ()
 {
-	surf_t lsurfs[NUMSTACKSURFACES + ((CACHE_SIZE - 1) / sizeof(surf_t)) + 1];
-	uint8_t *tempstack;
+	//surf_t lsurfs[NUMSTACKSURFACES + ((CACHE_SIZE - 1) / sizeof(surf_t)) + 1];
+	uint8_t *auxa_rover = AUXA_GetRover();
 
 	// reset Z-Buffer allocator
     ZBA_Reset();
@@ -873,7 +872,8 @@ static void R_EdgeDrawing ()
 
 	if (r_surfsonstack)
 	{
-		surfaces =  (surf_t *)(((intptr_t)lsurfs + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
+		//surfaces =  (surf_t *)(((intptr_t)lsurfs + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
+		surfaces = (surf_t*)AUXA_Alloc(NUMSTACKSURFACES*sizeof(surf_t));
 		surf_max = &surfaces[r_cnumsurfs];
 	// surface 0 doesn't really exist; it's just a dummy because index 0
 	// is used to indicate no edge attached to surface
@@ -922,11 +922,12 @@ static void R_EdgeDrawing ()
 
 	if (!(r_drawpolys | r_drawculledpolys)) {
 		//R_ScanEdges ();
-		stackcall_alloc(R_ScanEdges, 8192);
+		stackcall_alloc(R_ScanEdges, 2048);
 	}
 
 	// reset Z-buffer allocator (the buffer is dead at this moment)
 	ZBA_Reset();
+	AUXA_FreeToRover(auxa_rover);
 }
 
 
