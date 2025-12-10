@@ -72,7 +72,7 @@ void __attribute__((naked)) stackcall(void (*proc)(), void *new_sp) {
 void stackcall_alloc_ex(void (*proc)(), uint32_t stackbytes, int always) {
 	uint8_t *auxa_rover;
 	uint8_t *tempstack;
-	if (always && stacktosram.value) {
+	if (always || stacktosram.value) {
 		auxa_rover = AUXA_GetRover(); 
 		tempstack  = (uint8_t*)AUXA_Alloc(stackbytes + 8);
 		if (tempstack) {
