@@ -1032,6 +1032,7 @@ SetVisibilityByPassages ();
 	Sys_HighFPPrecision ();
 }
 
+static qboolean in_render_view = false;
 void R_RenderView (void)
 {
 	int		dummy;
@@ -1050,7 +1051,11 @@ void R_RenderView (void)
 	if ( (intptr_t)(&r_warpbuffer) & 3 )
 		Sys_Error ("Globals are missaligned");
 
-	R_RenderView_ ();
+	if (!in_render_view) {
+		in_render_view = true;
+		R_RenderView_ ();
+		in_render_view = false;
+	}
 }
 
 /*
