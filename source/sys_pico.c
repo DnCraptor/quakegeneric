@@ -146,21 +146,36 @@ SYSTEM IO
 ===============================================================================
 */
 
+void Sys_PrintError(char *error, ...) {
+	UINT wb;
+	va_list         argptr;
+	va_start (argptr,error);
+    vsnprintf(buf, 256, error, argptr);
+	va_end (argptr);
+
+	// write error message on screen
+	tputstr( 0*5, 0, "Sys_Error: ");
+	tputstr(11*5, 0, buf);
+
+	// then write to the file
+	if (FR_OK == f_open(&tmp_f_struct.f, "quake.log", FA_WRITE | FA_OPEN_ALWAYS | FA_OPEN_APPEND)) {
+		f_write(&tmp_f_struct.f, "Sys_Error: ", 11, &wb);  
+		f_write(&tmp_f_struct.f, buf, strlen(buf), &wb);
+		f_write(&tmp_f_struct.f, "\n", 1, &wb);
+		f_close(&tmp_f_struct.f);
+	}
+}
+
 void Sys_MakeCodeWriteable (unsigned long startaddr, unsigned long length)
 {
 }
 
 void Sys_Error (char *error, ...) {
-	if (FR_OK != f_open(&tmp_f_struct.f, "quake.log", FA_WRITE | FA_OPEN_ALWAYS | FA_OPEN_APPEND)) return;
-	UINT wb;
 	va_list         argptr;
-	f_write(&tmp_f_struct.f, "Sys_Error: ", 11, &wb);  
 	va_start (argptr,error);
-    vsnprintf(buf, 256, error, argptr);
+	Sys_PrintError(error, argptr);
 	va_end (argptr);
-	f_write(&tmp_f_struct.f, buf, strlen(buf), &wb);
-	f_write(&tmp_f_struct.f, "\n", 1, &wb);
-	f_close(&tmp_f_struct.f);
+
 	while(true) {
 		sleep_ms(33);
         gpio_put(PICO_DEFAULT_LED_PIN, true);
