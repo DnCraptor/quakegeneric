@@ -99,12 +99,13 @@ void S_RenderSfx(int32_t *sfxbuf, int frames) {
 
 		// get data pointer, checked last
 		sc = (sfxcache_t*)&ch->sfx->cache.data;
-		if (sc == NULL || sc->data == NULL) continue;
+		if (sc == NULL || sc->data == NULL || sc->length <= 0) continue;
 
 		// render the channel (YES, UNDER A MUTEX)
-		s = (int8_t*)sc->data + ch->pos;
+		s = (int8_t*)&sc->data[0] + ch->pos;
 
 		while (f > 0) {
+			if (sc->length <= 0) break; // bogus sound
 			int n = (sc->length - ch->pos); if (n > f) n = f; int nn = n;
 			if (n > 0) do {
 				d[0] += (*s * vl); // 1.7 x 8.0 -> 1.15
@@ -120,7 +121,7 @@ void S_RenderSfx(int32_t *sfxbuf, int frames) {
 				} else {
 					// looped, rewind to loop position
 					ch->pos = sc->loopstart;
-					s = (int8_t*)sc->data + ch->pos;
+					s = (int8_t*)&sc->data[0] + ch->pos;
 				}
 			}
 		}
@@ -499,7 +500,9 @@ void S_StartSound(int entnum, int entchannel, sfx_t *sfx, vec3_t origin, float f
 	sc = S_LoadSound (sfx);
 	if (!sc)
 	{
+		mutex_enter_blocking(&snd_mutex);
 		target_chan->sfx = NULL;
+		mutex_exit(&snd_mutex);
 		return;		// couldn't load the sound's data
 	}
 

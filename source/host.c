@@ -606,6 +606,8 @@ void _Host_Frame (float time)
 	int lm = Hunk_LowMark();
 	if (setjmp (host_abortserver) ) {
 		Con_Printf("WARN: host_abortserver handled!\n");
+		// HACK HACK HACK: release mutex if we claimed it
+		if (snd_mutex.owner == 0) mutex_exit(&snd_mutex);
 		Hunk_FreeToLowMark(lm);
 		Hunk_FreeToHighMark(hm);
 		AUXA_Reset();

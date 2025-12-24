@@ -31,7 +31,7 @@ int __not_in_flash_func(audio_cb)(int16_t* dst, uint32_t frames, void* priv, con
     
     // get CD samples (todo: do this another way)
     if (!CDAudio_GetSamples(dst, frames)) memset(dst, 0, sizeof(int16_t) * 2 * frames);
-    S_RenderSfx(sfxbuf + 2, frames / SFX_DOWNSAMPLE_RATIO);
+    S_RenderSfx(sfxbuf, frames / SFX_DOWNSAMPLE_RATIO);
 
     // upsample sfx buffer, mix with CD audio and clamp
     // TODO: linearly interpolate sfx buffer data
