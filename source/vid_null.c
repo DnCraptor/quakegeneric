@@ -194,6 +194,8 @@ void	VID_Update (vrect_t *rects)
 	QG_DrawFrame(vid.buffer);
 }
 
+static __psram_bss("vid_null") byte	backingbuf[48*24];
+
 /*
 ================
 D_BeginDirectRect
@@ -201,6 +203,37 @@ D_BeginDirectRect
 */
 void D_BeginDirectRect (int x, int y, byte *pbitmap, int width, int height)
 {
+	int		i, j, reps, repshift;
+	vrect_t	rect;
+
+	if (vid.numpages != 1)
+		return;
+
+	if (vid.aspect > 1.5)
+	{
+		reps = 2;
+		repshift = 1;
+	}
+	else
+	{
+		reps = 1;
+		repshift = 0;
+	}
+
+	VID_LockBuffer ();
+	for (i=0 ; i<(height << repshift) ; i += reps)
+		{
+			for (j=0 ; j<reps ; j++)
+			{
+				memcpy (&backingbuf[(i + j) * 24],
+						FRAME_BUF+ x + ((y << repshift) + i + j) * vid.rowbytes,
+						width);
+				memcpy (FRAME_BUF + x + ((y << repshift) + i + j) * vid.rowbytes,
+						&pbitmap[(i >> repshift) * width],
+						width);
+			}
+		}
+	VID_UnlockBuffer ();
 }
 
 
@@ -211,6 +244,34 @@ D_EndDirectRect
 */
 void D_EndDirectRect (int x, int y, int width, int height)
 {
+	int		i, j, reps, repshift;
+	vrect_t	rect;
+
+	if (vid.numpages != 1)
+		return;
+
+	if (vid.aspect > 1.5)
+	{
+		reps = 2;
+		repshift = 1;
+	}
+	else
+	{
+		reps = 1;
+		repshift = 0;
+	}
+
+	VID_LockBuffer ();
+	for (i=0 ; i<(height << repshift) ; i += reps)
+		{
+			for (j=0 ; j<reps ; j++)
+			{
+				memcpy (FRAME_BUF+ x + ((y << repshift) + i + j) * vid.rowbytes,
+						&backingbuf[(i + j) * 24],
+						width);
+			}
+		}
+	VID_UnlockBuffer ();
 }
 
 
