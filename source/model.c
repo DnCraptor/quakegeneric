@@ -277,7 +277,7 @@ model_t *Mod_LoadModel (model_t *mod, qboolean crash)
 //
 // load the file
 //
-	Con_Printf("Mod_LoadModel: %s\n", mod->name ? mod->name : "null");
+	//Con_Printf("Mod_LoadModel: %s\n", mod->name ? mod->name : "null");
 	byte* smallbuf = (byte*)malloc(1024);
 	unsigned* buf = (unsigned *)COM_LoadStackFile (mod->name, smallbuf, 1024);
 	if (!buf)
