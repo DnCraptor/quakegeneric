@@ -58,6 +58,7 @@ static int vreg = VREG_VOLTAGE_1_60;
 static int new_vreg = VREG_VOLTAGE_1_60;
 int flash_mhz = 88;
 int psram_mhz = MAX_PSRAM_FREQ_MHZ;
+int volume    = 100;
 static uint new_flash_timings = 0;
 static uint new_psram_timings = 0;
 static uint8_t override_video = 0xFF;
@@ -689,7 +690,7 @@ void __scratch_x("render") render_core() {
 #endif
     sem_acquire_blocking(&vga_start_semaphore);
     
-    mixer_init();
+    mixer_init(volume);
     uint64_t tick = time_us_64();
 #if 0
     uint64_t last_cd_tick = 0;
@@ -1259,6 +1260,11 @@ static void load_config() {
                 } else if (strcmp("PWM", t) == 0) {
                     override_audio = 0;
                 }
+            } else if (strcmp(t, "VOLUME") == 0) {
+                t = next_token(t);
+                volume = atoi(t);
+                if (volume < 0) volume = 0;
+                if (volume > 100) volume = 100;
             } else if (strcmp(t, "VREG") == 0) {
                 t = next_token(t);
                 new_vreg = atoi(t);

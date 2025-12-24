@@ -31,7 +31,7 @@ static qboolean initialized = 0;
 static qboolean enabled = 0;
 static __psram_bss("cd_null") uint8_t remap[256];
 
-cvar_t bgmvolume = {"bgmvolume", "1", true, false, 1.0};
+cvar_t bgmvolume = {"bgmvolume", "0.5", true};
 
 void CDAudio_Play(byte track, qboolean looping)
 {

@@ -67,7 +67,7 @@ int 		sound_started=0;
 
 sfx_t		*ambient_sfx[NUM_AMBIENTS];
 
-cvar_t volume = {"volume", "0.7", true};
+cvar_t cvar_volume = {"volume", "0.7", true};
 cvar_t loadas8bit = {"loadas8bit", "1"};
 cvar_t nosound = {"nosound", "0"};
 cvar_t precache = {"precache", "1"};
@@ -79,7 +79,7 @@ cvar_t snd_noextraupdate = {"snd_noextraupdate", "0"};
 // CORE 1 STUFF
 
 // TODO redesign the whole system to be more robust
-void S_RenderSfx(int32_t *sfxbuf, int frames, uint32_t timestamp) {
+void __not_in_flash_func(S_RenderSfx)(int32_t *sfxbuf, int frames, uint32_t timestamp) {
 	channel_t *ch = channels;
 	sfxcache_t *sc;
 
@@ -89,8 +89,8 @@ void S_RenderSfx(int32_t *sfxbuf, int frames, uint32_t timestamp) {
 	// big a$$ mutex lock
 	mutex_enter_blocking(&snd_mutex);
 	for (int i = 0; i < total_channels; i++, ch++) {
-		if (ch->sfx == 0) continue;								// no sfx
-		if (ch->leftvol == 0 || ch->rightvol == 0) continue;	// silent
+		if (ch->sfx == 0) continue;													 // no sfx
+		if (ch->leftvol == 0 || ch->rightvol == 0 || ch->end >= timestamp) continue; // silent or died
 
 		int32_t *d = sfxbuf;
 		int8_t  *s;
@@ -102,7 +102,7 @@ void S_RenderSfx(int32_t *sfxbuf, int frames, uint32_t timestamp) {
 		if (sc == NULL || sc->data == NULL || sc->length <= 0) continue;
 
 		// render the channel (YES, UNDER A MUTEX)
-		s = (int8_t*)&sc->data[0] + ch->pos;
+		s = (int8_t*)sc->data + ch->pos;
 
 		// TODO this logic do not take into account ch->end, which kills sounds after certain amoutn of time
 		// or probably we shouldn't care lmao
@@ -124,8 +124,8 @@ void S_RenderSfx(int32_t *sfxbuf, int frames, uint32_t timestamp) {
 				} else {
 					// looped, rewind to loop position
 					ch->pos = sc->loopstart;
-					ch->end += sc->length - ch->pos;		// FIXME
-					s = (int8_t*)&sc->data[0] + ch->pos;
+					ch->end = timestamp + n + sc->length - ch->pos;		// FIXME
+					s = (int8_t*)sc->data + ch->pos;
 				}
 			}
 		}
@@ -225,7 +225,7 @@ void S_Init (void)
 	Cmd_AddCommand("soundinfo", S_SoundInfo_f);
 
 	Cvar_RegisterVariable(&nosound);
-	Cvar_RegisterVariable(&volume);
+	Cvar_RegisterVariable(&cvar_volume);
 	Cvar_RegisterVariable(&precache);
 	Cvar_RegisterVariable(&loadas8bit);
 	Cvar_RegisterVariable(&ambient_level);

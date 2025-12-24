@@ -22,7 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 
-cvar_t volume = {"volume", "0.7", true, false, 0.7};
+cvar_t cvar_volume = {"volume", "0.7", true, false, 0.7};
 
 #undef Con_Printf
 #define Con_Printf(...)

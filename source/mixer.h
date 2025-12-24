@@ -8,7 +8,7 @@ extern "C" {
 
 extern mutex_t snd_mutex;
 
-void mixer_init();
+void mixer_init(int volume);
 void mixer_samples(int16_t*, size_t);
 
 #ifdef __cplusplus
