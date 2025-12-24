@@ -64,7 +64,7 @@ void ResampleSfx (sfx_t *sfx, int inrate, int inwidth, byte *data)
 // fast special case
 		for (i=0 ; i<outcount ; i++)
 			((signed char *)sc->data)[i]
-			= (int)( (unsigned char)(data[i]) - 128);
+			= (int)(data[i] - 128);
 	}
 	else
 	{
@@ -78,7 +78,7 @@ void ResampleSfx (sfx_t *sfx, int inrate, int inwidth, byte *data)
 			if (inwidth == 2)
 				sample = LittleShort ( ((short *)data)[srcsample] );
 			else
-				sample = (int)( (unsigned char)(data[srcsample]) - 128) << 8;
+				sample = (int)(data[srcsample] - 128) << 8;
 			if (sc->width == 2)
 				((short *)sc->data)[i] = sample;
 			else
@@ -109,7 +109,7 @@ sfxcache_t *S_LoadSound (sfx_t *s)
 	if (sc)
 		return sc;
 
-//Con_Printf ("S_LoadSound: %x\n", (int)stackbuf);
+//   Con_Printf ("S_LoadSound: %x\n", (int)stackbuf);
 // load it in
     Q_strcpy(namebuffer, "sound/");
     Q_strcat(namebuffer, s->name);
@@ -140,6 +140,7 @@ sfxcache_t *S_LoadSound (sfx_t *s)
 	if (!sc)
 		return NULL;
 	
+    Con_Printf ("S_LoadSound: %s %x\n", namebuffer, (int)sc);
 	sc->length = info.samples;
 	sc->loopstart = info.loopstart;
 	sc->speed = info.rate;

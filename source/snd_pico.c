@@ -68,7 +68,7 @@ int 		sound_started=0;
 sfx_t		*ambient_sfx[NUM_AMBIENTS];
 
 cvar_t volume = {"volume", "0.7", true};
-cvar_t loadas8bit = {"loadas8bit", "0"};
+cvar_t loadas8bit = {"loadas8bit", "1"};
 cvar_t nosound = {"nosound", "0"};
 cvar_t precache = {"precache", "1"};
 cvar_t ambient_level = {"ambient_level", "0.3"};
@@ -98,7 +98,7 @@ void S_RenderSfx(int32_t *sfxbuf, int frames) {
 		int f  = frames;
 
 		// get data pointer, checked last
-		sc = (sfxcache_t*)&ch->sfx->cache.data;
+		sc = (sfxcache_t*)ch->sfx->cache.data;
 		if (sc == NULL || sc->data == NULL || sc->length <= 0) continue;
 
 		// render the channel (YES, UNDER A MUTEX)
@@ -114,10 +114,10 @@ void S_RenderSfx(int32_t *sfxbuf, int frames) {
 			} while (--nn);
 
 			ch->pos += n; f -= n;
-			if (f > 0) {
+			if (ch->pos >= sc->length) {
 				if (sc->loopstart >= 0) {
 					ch->sfx = NULL;	// done, kill sfx
-					continue;
+					break;
 				} else {
 					// looped, rewind to loop position
 					ch->pos = sc->loopstart;
