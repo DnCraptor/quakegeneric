@@ -94,7 +94,7 @@ void S_RenderSfx(int32_t *sfxbuf, int frames, uint32_t timestamp) {
 
 		int32_t *d = sfxbuf;
 		int8_t  *s;
-		int vl = ch->leftvol, vr = ch->rightvol;
+		int vl = MIN(ch->leftvol >> 1, 255), vr = MIN(ch->rightvol >> 1, 255);
 		int f  = frames;
 
 		// get data pointer, checked last
