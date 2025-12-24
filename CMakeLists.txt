@@ -194,7 +194,8 @@ file(GLOB_RECURSE SRC
     ${PROJECT_SOURCE_DIR}/source/recycler.c
 	${PROJECT_SOURCE_DIR}/source/sbar.c
 	${PROJECT_SOURCE_DIR}/source/screen.c
-	${PROJECT_SOURCE_DIR}/source/snd_null.c
+	${PROJECT_SOURCE_DIR}/source/snd_pico.c
+    ${PROJECT_SOURCE_DIR}/source/snd_mem.c
 	${PROJECT_SOURCE_DIR}/source/sv_main.c
 	${PROJECT_SOURCE_DIR}/source/sv_move.c
 	${PROJECT_SOURCE_DIR}/source/sv_phys.c
