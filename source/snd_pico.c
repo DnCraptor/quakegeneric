@@ -25,6 +25,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <pico/multicore.h> 
 #include <pico/mutex.h>
+#include <pico/critical_section.h>
 
 void S_Play(void);
 void S_PlayVol(void);
@@ -74,11 +75,58 @@ cvar_t ambient_level = {"ambient_level", "0.3"};
 cvar_t ambient_fade = {"ambient_fade", "100"};
 cvar_t snd_noextraupdate = {"snd_noextraupdate", "0"};
 
-// ---------------------------------------------------
-mutex_t snd_mutex;		// used to coordinate access between core 1 mixer and core0
-
 // ---------------------------
 // CORE 1 STUFF
+
+// TODO redesign the whole system to be more robust
+void S_RenderSfx(int32_t *sfxbuf, int frames) {
+	channel_t *ch = channels;
+	sfxcache_t *sc;
+
+	memset(sfxbuf, 0, frames*2*sizeof(int32_t));
+	if (!snd_initialized) return;	// don't waste time
+
+	// big a$$ mutex lock
+	mutex_enter_blocking(&snd_mutex);
+	for (int i = 0; i < total_channels; i++, ch++) {
+		if (ch->sfx == 0) continue;								// no sfx
+		if (ch->leftvol == 0 || ch->rightvol == 0) continue;	// silent
+
+		int32_t *d = sfxbuf;
+		int8_t  *s;
+		int vl = ch->leftvol, vr = ch->rightvol;
+		int f  = frames;
+
+		// get data pointer, checked last
+		sc = (sfxcache_t*)&ch->sfx->cache.data;
+		if (sc == NULL || sc->data == NULL) continue;
+
+		// render the channel (YES, UNDER A MUTEX)
+		s = (int8_t*)sc->data + ch->pos;
+
+		while (f > 0) {
+			int n = (sc->length - ch->pos); if (n > f) n = f; int nn = n;
+			if (n > 0) do {
+				d[0] += (*s * vl); // 1.7 x 8.0 -> 1.15
+				d[1] += (*s * vr); // 1.7 x 8.0 -> 1.15
+				d += 2; s++;
+			} while (--nn);
+
+			ch->pos += n; f -= n;
+			if (f > 0) {
+				if (sc->loopstart >= 0) {
+					ch->sfx = NULL;	// done, kill sfx
+					continue;
+				} else {
+					// looped, rewind to loop position
+					ch->pos = sc->loopstart;
+					s = (int8_t*)sc->data + ch->pos;
+				}
+			}
+		}
+	}
+	mutex_exit(&snd_mutex);
+}
 
 // ---------------------------
 
@@ -187,8 +235,6 @@ void S_Init (void)
 
 	snd_initialized = true;
 	paintedtime = 0;
-
-	mutex_init(&snd_mutex);
 
 	S_Startup ();
 

@@ -614,15 +614,21 @@ void Cache_FreeLow (int new_low_hunk)
 {
 	cache_system_t	*c;
 	
+	mutex_enter_blocking(&snd_mutex);
 	while (1)
 	{
 		c = cache_head.next;
-		if (c == &cache_head)
+		if (c == &cache_head) {
+			mutex_exit(&snd_mutex);
 			return;		// nothing in cache at all
-		if ((byte *)c >= hunk_base + new_low_hunk)
+		}
+		if ((byte *)c >= hunk_base + new_low_hunk) {
+			mutex_exit(&snd_mutex);
 			return;		// there is space to grow the hunk
+		}
 		Cache_Move ( c );	// reclaim the space
 	}
+	mutex_exit(&snd_mutex);
 }
 
 /*
@@ -636,14 +642,19 @@ void Cache_FreeHigh (int new_high_hunk)
 {
 	cache_system_t	*c, *prev;
 	
+	mutex_enter_blocking(&snd_mutex);
 	prev = NULL;
 	while (1)
 	{
 		c = cache_head.prev;
-		if (c == &cache_head)
+		if (c == &cache_head) {
+			mutex_exit(&snd_mutex);
 			return;		// nothing in cache at all
-		if ( (byte *)c + c->size <= hunk_base + hunk_size - new_high_hunk)
+		}
+		if ( (byte *)c + c->size <= hunk_base + hunk_size - new_high_hunk) {
+			mutex_exit(&snd_mutex);
 			return;		// there is space to grow the hunk
+		}
 		if (c == prev)
 			Cache_Free (c->user);	// didn't move out of the way
 		else
@@ -652,6 +663,7 @@ void Cache_FreeHigh (int new_high_hunk)
 			prev = c;
 		}
 	}
+	mutex_exit(&snd_mutex);
 }
 
 void Cache_UnlinkLRU (cache_system_t *cs)
@@ -689,7 +701,6 @@ cache_system_t *Cache_TryAlloc (int size, qboolean nobottom)
 	cache_system_t	*cs, *new;
 	
 // is the cache completely empty?
-
 	if (!nobottom && cache_head.prev == &cache_head)
 	{
 		if (hunk_size - hunk_high_used - hunk_low_used < size)
@@ -703,6 +714,7 @@ cache_system_t *Cache_TryAlloc (int size, qboolean nobottom)
 		new->prev = new->next = &cache_head;
 		
 		Cache_MakeLRU (new);
+
 		return new;
 	}
 	
@@ -765,8 +777,10 @@ Throw everything out, so new data will be demand cached
 */
 void Cache_Flush (void)
 {
+	mutex_enter_blocking(&snd_mutex);
 	while (cache_head.next != &cache_head)
 		Cache_Free ( cache_head.next->user );	// reclaim the space
+	mutex_exit(&snd_mutex);
 }
 
 
@@ -865,7 +879,7 @@ void *Cache_Check (cache_user_t *c)
 // move to head of LRU
 	Cache_UnlinkLRU (cs);
 	Cache_MakeLRU (cs);
-	
+
 	return c->data;
 }
 
@@ -903,7 +917,11 @@ void *Cache_Alloc (cache_user_t *c, int size, char *name)
 		if (cache_head.lru_prev == &cache_head)
 			Sys_Error ("Cache_Alloc: out of memory");
 													// not enough memory at all
+		
+		// don't mess with audio thread
+		mutex_enter_blocking(&snd_mutex);
 		Cache_Free ( cache_head.lru_prev->user );
+		mutex_exit(&snd_mutex);
 	} 
 	
 	return Cache_Check (c);

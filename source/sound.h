@@ -22,6 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef __SOUND__
 #define __SOUND__
 
+#define SFX_DOWNSAMPLE_RATIO 4
+
 #define DEFAULT_SOUND_PACKET_VOLUME 255
 #define DEFAULT_SOUND_PACKET_ATTENUATION 1.0
 
@@ -127,7 +129,7 @@ void SNDDMA_Shutdown(void);
 // User-setable variables
 // ====================================================================
 
-#define	MAX_CHANNELS			24
+#define	MAX_CHANNELS			128
 #define	MAX_DYNAMIC_CHANNELS	8
 
 

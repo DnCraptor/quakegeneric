@@ -46,6 +46,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "xipstream.h"
 #include "recycler.h"
 #include "pico/platform/sections.h"
+#include "pico/mutex.h"
 
 #define	VID_LockBuffer()
 #define	VID_UnlockBuffer()
@@ -319,6 +320,8 @@ void Chase_Update (void);
 #include "psram_alloc.h"
 #include "tprintf.h"
 extern uint8_t FRAME_BUF[];	// currently displaying frame buffer 
+
+extern mutex_t snd_mutex;
 
 #ifdef __cplusplus
 }

@@ -1116,6 +1116,8 @@ static void finish_him(void) {
     keyboard_send(0xFF);
 #endif
     sem_init(&vga_start_semaphore, 0, 1);
+    mutex_init(&snd_mutex);
+
     multicore_launch_core1(render_core);
     sem_release(&vga_start_semaphore);
 
