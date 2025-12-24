@@ -140,7 +140,6 @@ sfxcache_t *S_LoadSound (sfx_t *s)
 	if (!sc)
 		return NULL;
 	
-    Con_Printf ("S_LoadSound: %s %x\n", namebuffer, (int)sc);
 	sc->length = info.samples;
 	sc->loopstart = info.loopstart;
 	sc->speed = info.rate;

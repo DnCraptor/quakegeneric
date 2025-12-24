@@ -79,7 +79,7 @@ cvar_t snd_noextraupdate = {"snd_noextraupdate", "0"};
 // CORE 1 STUFF
 
 // TODO redesign the whole system to be more robust
-void S_RenderSfx(int32_t *sfxbuf, int frames) {
+void S_RenderSfx(int32_t *sfxbuf, int frames, uint32_t timestamp) {
 	channel_t *ch = channels;
 	sfxcache_t *sc;
 
@@ -104,6 +104,8 @@ void S_RenderSfx(int32_t *sfxbuf, int frames) {
 		// render the channel (YES, UNDER A MUTEX)
 		s = (int8_t*)&sc->data[0] + ch->pos;
 
+		// TODO this logic do not take into account ch->end, which kills sounds after certain amoutn of time
+		// or probably we shouldn't care lmao
 		while (f > 0) {
 			if (sc->length <= 0) break; // bogus sound
 			int n = (sc->length - ch->pos); if (n > f) n = f; int nn = n;
@@ -115,12 +117,14 @@ void S_RenderSfx(int32_t *sfxbuf, int frames) {
 
 			ch->pos += n; f -= n;
 			if (ch->pos >= sc->length) {
-				if (sc->loopstart >= 0) {
+				if (sc->loopstart < 0) {
+					// oneshot
 					ch->sfx = NULL;	// done, kill sfx
 					break;
 				} else {
 					// looped, rewind to loop position
 					ch->pos = sc->loopstart;
+					ch->end += sc->length - ch->pos;		// FIXME
 					s = (int8_t*)&sc->data[0] + ch->pos;
 				}
 			}
