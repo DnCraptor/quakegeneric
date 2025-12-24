@@ -115,6 +115,7 @@ project(${PROJECT_NAME} C CXX ASM)
 pico_sdk_init()
 
 add_subdirectory(drivers/audio)
+add_subdirectory(drivers/audio_ringbuf)
 add_subdirectory(drivers/picomp3lib)
 add_subdirectory(drivers/nespad)
 add_subdirectory(drivers/fatfs)
@@ -227,7 +228,7 @@ endif()
 # pull in common dependencies
 target_link_libraries(${PROJECT_NAME} PRIVATE
     psram
-    audio
+    audio_i2s_pwm
     graphics
     picomp3lib
 

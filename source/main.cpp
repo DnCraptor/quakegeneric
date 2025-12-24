@@ -691,9 +691,12 @@ void __scratch_x("render") render_core() {
     
     mixer_init();
     uint64_t tick = time_us_64();
+#if 0
     uint64_t last_cd_tick = 0;
     int16_t samples[2];
+#endif
     while (true) {
+#if 0
         // Sound Blaster sampling
         if (tick > last_cd_tick + (1000000 / 44100)) {
             last_cd_tick = tick;
@@ -703,6 +706,7 @@ void __scratch_x("render") render_core() {
             }
             mixer_samples(samples, 1);
         }
+#endif
 #if TFT
         refresh_lcd();
 #endif
