@@ -100,6 +100,7 @@ inline static void add_key(int key, int down) {
         const key_action_t& pk = key_actions[next_key_action - 1];
         if (pk.key == key && pk.down == down) return;
     }
+#if 0
     // <-> protection
     if (kbd_bits.right && key == K_LEFTARROW) add_key(K_RIGHTARROW, 0);
     if (kbd_bits.left && key == K_RIGHTARROW) add_key(K_LEFTARROW, 0);
@@ -110,7 +111,7 @@ inline static void add_key(int key, int down) {
     if (key == K_LEFTARROW) kbd_bits.left = down;
     if (key == K_DOWNARROW) kbd_bits.down = down;
     if (key == K_UPARROW) kbd_bits.up = down;
-
+#endif
     key_action_t& k = key_actions[next_key_action++];
     k.key = key;
     k.down = down;
@@ -981,7 +982,9 @@ extern "C" void QG_SetPalette(unsigned char palette[768]) {
 
 extern "C" void QG_GetJoyAxes(float *axes)
 {
-    *axes = 0;
+    axes[0] = (gamepad1_bits.left ? -1 : (gamepad1_bits.right ? 1 : 0));
+    axes[1] = (gamepad1_bits.up   ? -1 : (gamepad1_bits.down  ? 1 : 0));
+    //*axes = 0;
 }
 
 static int argc = 1;
