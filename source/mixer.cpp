@@ -106,7 +106,7 @@ void mixer_init(int volume) {
         cfg->i2s.data_pin = I2S_DATA_PIO;
         cfg->i2s.bclk_pin = I2S_BCK_PIO;
         cfg->i2s.pio      = pio1,
-        cfg->i2s.sm       = 0;
+        cfg->i2s.sm       = pio_claim_unused_sm(pio1, false);
     } else {
         cfg->pwm.base_pin = PWM_PIN0;
     }

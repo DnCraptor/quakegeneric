@@ -32,6 +32,8 @@
     #include "ps2.h"
 #endif
 
+#include "ps2mouse.h"
+
 #if USE_NESPAD
 #include "nespad.h"
 #endif
@@ -63,6 +65,7 @@ static uint new_flash_timings = 0;
 static uint new_psram_timings = 0;
 static uint8_t override_video = 0xFF;
 static uint8_t override_audio = 0xFF;
+static uint8_t ps2mouse_present = 0;
 
 extern "C" bool is_i2s_enabled;
 extern "C" int testPins(uint32_t pin0, uint32_t pin1);
@@ -531,6 +534,28 @@ void __not_in_flash_func(process_mouse_report)(hid_mouse_report_t const * report
     cumulative_dy += report->y;
 }
 
+
+void ps2mouse_get_state_q() {
+    int16_t dx, dy; int8_t wheel; uint8_t buttons;
+    if (ps2mouse_get_state(&dx, &dy, &wheel, &buttons) == 0) return;
+
+    // inject mouse data
+    uint8_t btns_a = prev_report.buttons & ~(buttons);
+    if (btns_a & MOUSE_BUTTON_LEFT) add_key(K_MOUSE1, 0);
+    if (btns_a & MOUSE_BUTTON_RIGHT) add_key(K_MOUSE2, 0);
+    if (btns_a & MOUSE_BUTTON_MIDDLE) add_key(K_MOUSE3, 0);
+    Sys_Printf("%d %d %d %d %d\n", dx, dy, (prev_report.buttons & ~(buttons), (~prev_report.buttons & buttons)));
+
+    btns_a = ~prev_report.buttons & buttons;
+    if (btns_a & MOUSE_BUTTON_LEFT) add_key(K_MOUSE1, 1);
+    if (btns_a & MOUSE_BUTTON_RIGHT) add_key(K_MOUSE2, 1);
+    if (btns_a & MOUSE_BUTTON_MIDDLE) add_key(K_MOUSE3, 1);
+
+    prev_report.buttons = buttons;
+    cumulative_dx += dx;
+    cumulative_dy += dy;
+}
+
 Ps2Kbd_Mrmltr ps2kbd(
         pio1,
         KBD_CLOCK_PIN,
@@ -549,11 +574,17 @@ void repeat_me_for_input() {
             ps2kbd.tick();
 #endif
 #ifdef USE_NESPAD
+#if PS2MOUSE_NESPAD_SHARED
+            if (!ps2mouse_present)
+#endif 
             nespad_tick();
 #endif
             last_input_tick = tick;
         }
         tick = time_us_64();
+#ifdef USE_PS2MOUSE
+        if (ps2mouse_present) ps2mouse_get_state_q();
+#endif
 #ifdef KBDUSB
         tuh_task();
 #endif
@@ -584,6 +615,7 @@ static union dvi_hstx_pin_layout_t hstx_out_pin_layouts[] = {
     .lane2_n = 17-12, .lane2_p = 16-12,
     }
 };
+static union dvi_hstx_pin_layout_t hstx_out_layout = hstx_out_pin_layouts[HSTX_OUT_PIN_LAYOUT_MURMULATOR2];
 
 // palette used by the DVI/VGA HSTX driver
 static uint32_t linebuf_pal[256] = { 0 };
@@ -600,7 +632,7 @@ extern "C" void linebuf_cb_index8_a(const struct dvi_linebuf_task_t *task, void 
 void __noinline hstx_init() {
     // init hstx driver here!
     bool is_vga    = SELECT_VGA;
-    union dvi_hstx_pin_layout_t pin_cfg = hstx_out_pin_layouts[HSTX_OUT_PIN_LAYOUT_MURMULATOR2];
+    union dvi_hstx_pin_layout_t pin_cfg = hstx_out_layout;
     int mode       = DVI_MODE_320x240;
     int hstx_div   = is_vga ? 1 : clock_get_hz(clk_sys)/(dvi_modes[mode].timings.pixelclock*5);
     int phase_rept = (clock_get_hz(clk_sys) * dvi_modes[mode].pixel_rep) / dvi_modes[mode].timings.pixelclock;
@@ -1103,7 +1135,15 @@ static void finish_him(void) {
         Sys_Printf("WARN: Unexpected VREG value: %d (from cong)\n", new_vreg);
     }
 
+#if USE_PS2MOUSE
+    ps2mouse_present = ps2mouse_init(MOUSE_CLOCK_PIN, MOUSE_DATA_PIN);
+    Sys_Printf("PS/2 mouse: %spresent\n", ps2mouse_present ? "" : "not ");
+#endif
+
 #if USE_NESPAD
+#if PS2MOUSE_NESPAD_SHARED
+    if (!ps2mouse_present)
+#endif 
     nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
 #endif
 

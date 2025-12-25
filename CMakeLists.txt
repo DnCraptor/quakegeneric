@@ -128,6 +128,7 @@ add_subdirectory(drivers/tv-software)
 add_subdirectory(drivers/graphics)
 add_subdirectory(drivers/psram)
 add_subdirectory(drivers/dvi_hstx)
+add_subdirectory(drivers/ps2mouse)
 
 #target_compile_definitions(${PROJECT_NAME} PRIVATE VGA)
 
@@ -232,6 +233,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     audio_i2s_pwm
     graphics
     picomp3lib
+    ps2mouse
 
     nespad
     sdcard
@@ -323,6 +325,10 @@ IF(MURM2)
         KBD_CLOCK_PIN=2
         KBD_DATA_PIN=3
 
+        USE_PS2MOUSE
+        MOUSE_CLOCK_PIN=0
+        MOUSE_DATA_PIN=1
+
         LOAD_WAV_PIO=22
 
         CLK_AY_PIN1=21 # not in use
@@ -394,6 +400,11 @@ ELSEIF(PICO_PC)
         KBD_CLOCK_PIN=0
         KBD_DATA_PIN=1
 
+        USE_PS2MOUSE
+        PS2MOUSE_NESPAD_SHARED
+        MOUSE_CLOCK_PIN=5
+        MOUSE_DATA_PIN=9
+
         LOAD_WAV_PIO=5 # UXT1-10
 
         CLK_AY_PIN1=21 # not in use
@@ -447,6 +458,11 @@ ELSEIF(PICO_DV)
         # DBG1 1/2
         KBD_CLOCK_PIN=0
         KBD_DATA_PIN=1
+
+        USE_PS2MOUSE
+        PS2MOUSE_NESPAD_SHARED
+        MOUSE_CLOCK_PIN=8
+        MOUSE_DATA_PIN=9
 
         LOAD_WAV_PIO=14 # Same place as button A on the board (replacement)
 
@@ -504,6 +520,11 @@ ELSEIF(ZERO)
         KBD_CLOCK_PIN=0
         KBD_DATA_PIN=1
 
+        USE_PS2MOUSE
+        PS2MOUSE_NESPAD_SHARED
+        MOUSE_CLOCK_PIN=7
+        MOUSE_DATA_PIN=8
+
         LOAD_WAV_PIO=17
 
         CLK_AY_PIN1=8 # not in use
@@ -560,6 +581,11 @@ ELSEIF(ZERO2)
         KBD_CLOCK_PIN=2
         KBD_DATA_PIN=3
 
+        #USE_PS2MOUSE
+        PS2MOUSE_NESPAD_SHARED
+        MOUSE_CLOCK_PIN=7
+        MOUSE_DATA_PIN=8
+
         LOAD_WAV_PIO=17
 
         CLK_AY_PIN1=8 # not in use
@@ -612,6 +638,11 @@ ELSE()
     target_compile_definitions(${PROJECT_NAME} PRIVATE
         KBD_CLOCK_PIN=0
         KBD_DATA_PIN=1
+
+        USE_PS2MOUSE
+        PS2MOUSE_NESPAD_SHARED
+        MOUSE_CLOCK_PIN=14
+        MOUSE_DATA_PIN=15
 
         LOAD_WAV_PIO=22
 
