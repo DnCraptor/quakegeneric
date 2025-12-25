@@ -1,4 +1,4 @@
-# quakegeneric
+# quakegeneric for RP2350
 
 ![a low-resolution screenshot of quake](./.github/quakegeneric.png)
 
@@ -6,64 +6,28 @@ it's like [doomgeneric](https://github.com/ozkl/doomgeneric), but for quake. it'
 
 currently it can only compile for 32-bit architechtures.
 
-## implementations
+## original
 
-- [`quakegeneric_null.c`](./source/quakegeneric_null.c) - null
-- [`quakegeneric_dos.c`](./source/quakegeneric_dos.c) - MS-DOS
-- [`quakegeneric_sdl2.c`](./source/quakegeneric_sdl2.c) - SDL2
-- [`quakegeneric_w32.c`](./source/quakegeneric_w32.c) - Win32
+https://github.com/erysdren/quakegeneric (for MS-DOS / SDL2 / Win32)
 
-## building
+## platforms supported
 
-on unix-like platforms:
+ARM Cortex-M33 RP2350 + 8MB QSPI PSRAM
 
-```
-cd source/
-make
-```
+## boards supported
 
-for Open Watcom:
+Murmulator 1.x
+Murmulator 2.0
 
-```
-cd source/
-wmake -f makefile.wat
-```
+## video-out supported
 
-for CMake:
+HDMI (without sound)
+VGA
 
-```
-mkdir cmake-build
-cd cmake-build/
-cmake ..
-make
-```
+## audio-out supported
 
-for Meson:
-
-```
-mkdir meson-build
-meson setup meson-build
-cd meson-build/
-meson compile
-```
-
-for Windows:
-
-```
-cd source/
-nmake makefile.win
-```
-
-## platforms
-
-the following compilers have been tested to work with this source:
-
-- GCC
-- Clang
-- MinGW
-- TinyCC
-- Open Watcom
-- MSVC
+PWM
+i2s TDA1387 / PCM510x
 
 ## License
 
