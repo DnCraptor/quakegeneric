@@ -16,18 +16,18 @@ ARM Cortex-M33 RP2350 + 8MB QSPI PSRAM
 
 ## boards supported
 
-Murmulator 1.x
-Murmulator 2.0
+- Murmulator 1.x
+- Murmulator 2.0
 
 ## video-out supported
 
-HDMI (without sound)
-VGA
+- HDMI (without sound)
+- VGA
 
 ## audio-out supported
 
-PWM
-i2s TDA1387 / PCM510x
+- PWM
+- i2s TDA1387 / PCM510x
 
 ## License
 
