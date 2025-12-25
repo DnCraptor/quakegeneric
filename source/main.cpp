@@ -566,7 +566,8 @@ Ps2Kbd_Mrmltr ps2kbd(
 void repeat_me_for_input() {
     static uint32_t tickKbdRep1 = time_us_32();
     // 60 FPS loop
-#define frame_tick (16666)
+//#define frame_tick (16666)
+#define frame_tick (0)      // make it no-op and process input as fast as possible
     static uint64_t tick = time_us_64();
     static uint64_t last_input_tick = tick;
         if (tick >= last_input_tick + frame_tick) {
@@ -592,7 +593,6 @@ void repeat_me_for_input() {
 
 extern "C" bool SELECT_VGA;
 
-//uint8_t* FRAME_BUF = (uint8_t*)0x20000000; // temp "trash" value
 extern "C" uint8_t __aligned(4) FRAME_BUF[QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y] = { 0 };
 
 #if DVI_HSTX
@@ -632,7 +632,6 @@ extern "C" void linebuf_cb_index8_a(const struct dvi_linebuf_task_t *task, void 
 void __noinline hstx_init() {
     // init hstx driver here!
     bool is_vga    = SELECT_VGA;
-    union dvi_hstx_pin_layout_t pin_cfg = hstx_out_layout;
     int mode       = DVI_MODE_320x240;
     int hstx_div   = is_vga ? 1 : clock_get_hz(clk_sys)/(dvi_modes[mode].timings.pixelclock*5);
     int phase_rept = (clock_get_hz(clk_sys) * dvi_modes[mode].pixel_rep) / dvi_modes[mode].timings.pixelclock;
@@ -659,9 +658,9 @@ void __noinline hstx_init() {
     // enable pins
     dvi_configure_hstx_command_expander(DVI_HSTX_MODE_XRGB8888, dvi_modes[mode].pixel_rep);
     if (is_vga) {
-        vga_configure_hstx_output(pin_cfg, GPIO_SLEW_RATE_FAST, GPIO_DRIVE_STRENGTH_4MA, phase_rept);
+        vga_configure_hstx_output(hstx_out_layout, GPIO_SLEW_RATE_FAST, GPIO_DRIVE_STRENGTH_4MA, phase_rept);
     } else {
-        dvi_configure_hstx_output(pin_cfg, GPIO_SLEW_RATE_FAST, GPIO_DRIVE_STRENGTH_4MA);
+        dvi_configure_hstx_output(hstx_out_layout, GPIO_SLEW_RATE_FAST, GPIO_DRIVE_STRENGTH_4MA);
     }
 
     // allocate memory for the linebuf
@@ -1298,7 +1297,7 @@ static void load_config() {
                 }
             } else if (strcmp(t, "AUDIO") == 0) {
                 t = next_token(t);
-                if (strcmp("i2s", t) == 0) {
+                if (strcmp("I2S", t) == 0) {
                     override_audio = 1;
                 } else if (strcmp("PWM", t) == 0) {
                     override_audio = 0;
@@ -1322,7 +1321,15 @@ static void load_config() {
                     flash_mhz = new_flash_mhz;
                     flash_timings();
                 }
-            } else if (strcmp(t, "FLASH_T") == 0) {
+            }
+#if DVI_HSTX
+            else if (strcmp(t, "HSTX_PINMAP") == 0) {
+                t = next_token(t);
+                char *endptr;
+                hstx_out_layout.raw = (uint)strtol(t, &endptr, 16);
+            }
+#endif
+            else if (strcmp(t, "FLASH_T") == 0) {
                 t = next_token(t);
                 char *endptr;
                 new_flash_timings = (uint)strtol(t, &endptr, 16);
