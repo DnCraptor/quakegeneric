@@ -1,4 +1,4 @@
-# quakegeneric
+# quakegeneric for RP2350
 
 ![a low-resolution screenshot of quake](./.github/quakegeneric.png)
 
@@ -6,64 +6,61 @@ it's like [doomgeneric](https://github.com/ozkl/doomgeneric), but for quake. it'
 
 currently it can only compile for 32-bit architechtures.
 
-## implementations
+## original
 
-- [`quakegeneric_null.c`](./source/quakegeneric_null.c) - null
-- [`quakegeneric_dos.c`](./source/quakegeneric_dos.c) - MS-DOS
-- [`quakegeneric_sdl2.c`](./source/quakegeneric_sdl2.c) - SDL2
-- [`quakegeneric_w32.c`](./source/quakegeneric_w32.c) - Win32
+https://github.com/erysdren/quakegeneric (for MS-DOS / SDL2 / Win32)
 
-## building
+## platforms supported
 
-on unix-like platforms:
+ARM Cortex-M33 RP2350 + 8MB QSPI PSRAM
 
+## boards supported
+
+- Murmulator 1.x
+- Murmulator 2.0
+
+## video-out supported
+
+- HDMI (without sound)
+- VGA
+
+## audio-out supported
+
+- PWM
+- i2s TDA1387 / PCM510x
+
+## SD-Card
+
+- /quake folder is required
+- /quake/ID1 folder is required (copy it from your copy of Quake distribution)
+- /quake/CD folder to store CD-tracks in format
+- /quake/argv.conf - use it to populate command line arguments, like -hipnotic or -rouge
+- /quake/quake.conf - to tune up performance / overclocking
+- https://t.me/ZX_MURMULATOR/241810/244194 https://t.me/murmulator_talks/990 https://t.me/murmulator_news/1668 examples.
+
+## overclocking
+
+/quake/quake.conf example:<br/>
 ```
-cd source/
-make
-```
-
-for Open Watcom:
-
-```
-cd source/
-wmake -f makefile.wat
-```
-
-for CMake:
-
-```
-mkdir cmake-build
-cd cmake-build/
-cmake ..
-make
-```
-
-for Meson:
-
-```
-mkdir meson-build
-meson setup meson-build
-cd meson-build/
-meson compile
-```
-
-for Windows:
-
-```
-cd source/
-nmake makefile.win
+CPU=504
+FLASH=100
+PSRAM=100
+VREG=21
 ```
 
-## platforms
+VREG - is not voltage, but one of enum values. 19 - 1.55V, 20 - 1.6V, 21 - 1.65V...
 
-the following compilers have been tested to work with this source:
+FLASH/PSRAM - are not actual frequencies, but a limit for autoconfiguration mode.
 
-- GCC
-- Clang
-- MinGW
-- TinyCC
-- Open Watcom
-- MSVC
+CPU - RP2350 CPU cores freq. in MHzz
+
+Also supported:
+
+```
+FLASH_T=60007304
+PSRAM_T=607C6304
+```
+ - both are hexidecimal masks to set exact dividers (let review RP2350 datasheets)
 
 ## License
 
