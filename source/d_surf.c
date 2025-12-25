@@ -260,7 +260,7 @@ int D_log2 (int num)
 D_CacheSurface
 ================
 */
-surfcache_t *D_CacheSurface (msurface_t *surface, int miplevel)
+surfcache_t* __no_inline_not_in_flash_func(D_CacheSurface) (msurface_t *surface, int miplevel)
 {
 	surfcache_t     *cache;
 
@@ -268,10 +268,10 @@ surfcache_t *D_CacheSurface (msurface_t *surface, int miplevel)
 // if the surface is animating or flashing, flush the cache
 //
 	r_drawsurf.texture = R_TextureAnimation (surface->texinfo->texture);
-	r_drawsurf.lightadj[0] = d_lightstylevalue[surface->styles[0]];
-	r_drawsurf.lightadj[1] = d_lightstylevalue[surface->styles[1]];
-	r_drawsurf.lightadj[2] = d_lightstylevalue[surface->styles[2]];
-	r_drawsurf.lightadj[3] = d_lightstylevalue[surface->styles[3]];
+	r_drawsurf.lightadj[0] = d_lightstylevalue[surface->styles[0]] << 2;
+	r_drawsurf.lightadj[1] = d_lightstylevalue[surface->styles[1]] << 2;
+	r_drawsurf.lightadj[2] = d_lightstylevalue[surface->styles[2]] << 2;
+	r_drawsurf.lightadj[3] = d_lightstylevalue[surface->styles[3]] << 2;
 	
 //
 // see if the cache holds apropriate data
@@ -289,7 +289,7 @@ surfcache_t *D_CacheSurface (msurface_t *surface, int miplevel)
 //
 // determine shape of surface
 //
-	surfscale = 1.0 / (1<<miplevel);
+	surfscale = 1.0f / (1<<miplevel);
 	r_drawsurf.surfmip = miplevel;
 	r_drawsurf.surfwidth = surface->extents[0] >> miplevel;
 	r_drawsurf.rowbytes = r_drawsurf.surfwidth;

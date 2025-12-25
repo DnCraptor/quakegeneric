@@ -211,6 +211,10 @@ void CL_ParseServerInfo (void)
 	char	sound_precache[MAX_SOUNDS][MAX_QPATH];
 	
 	Con_DPrintf ("Serverinfo packet received.\n");
+
+	// abort current recycler task
+	RC_AbortNewFrame();
+
 //
 // wipe the client_state_t struct
 //
@@ -314,6 +318,9 @@ void CL_ParseServerInfo (void)
 	Hunk_Check ();		// make sure nothing is hurt
 	
 	noclip_anglehack = false;		// noclip is turned off at start	
+
+	// restart new frame in recycler
+	RC_NewFrame();
 }
 
 

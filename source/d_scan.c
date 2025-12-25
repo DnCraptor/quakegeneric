@@ -53,6 +53,11 @@ void D_WarpScreen (void)
 	int		column[MAXWIDTH+(AMP2*2)];
 	float	wratio, hratio;
 
+	ZBA_Reset();
+
+	r_warpbuffer = ZBA_Alloc(r_refdef.vrect.width * r_refdef.vrect.height);
+	memcpy(r_warpbuffer, vid.buffer, (r_refdef.vrect.width * r_refdef.vrect.height));
+
 	w = r_refdef.vrect.width;
 	h = r_refdef.vrect.height;
 
@@ -61,7 +66,7 @@ void D_WarpScreen (void)
 
 	for (v=0 ; v<scr_vrect.height+AMP2*2 ; v++)
 	{
-		rowptr[v] = d_viewbuffer + (r_refdef.vrect.y * screenwidth) +
+		rowptr[v] = r_warpbuffer + (r_refdef.vrect.y * screenwidth) +
 				 (screenwidth * (int)((float)v * hratio * h / (h + AMP2 * 2)));
 	}
 
@@ -87,6 +92,8 @@ void D_WarpScreen (void)
 			dest[u+3] = row[turb[u+3]][col[u+3]];
 		}
 	}
+
+	ZBA_Reset();
 }
 
 /*

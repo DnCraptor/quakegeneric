@@ -42,12 +42,12 @@ void R_AnimateLight (void)
 	{
 		if (!cl_lightstyle[j].length)
 		{
-			d_lightstylevalue[j] = 256;
+			d_lightstylevalue[j] = (256 >> 2);
 			continue;
 		}
 		k = i % cl_lightstyle[j].length;
 		k = cl_lightstyle[j].map[k] - 'a';
-		k = k*22;
+		k = (k*22)>>2;
 		d_lightstylevalue[j] = k;
 	}	
 }
@@ -138,13 +138,8 @@ LIGHT SAMPLING
 =============================================================================
 */
 
-int RecursiveLightPoint (mnode_t *node, vec3_t start, vec3_t end)
-{
-	int			r;
-	float		front, back, frac;
-	int			side;
-	mplane_t	*plane;
-	vec3_t		mid;
+int LightPointSample(mnode_t *node, vec3_t mid) {
+	int 		r;
 	msurface_t	*surf;
 	int			s, t, ds, dt;
 	int			i;
@@ -152,36 +147,7 @@ int RecursiveLightPoint (mnode_t *node, vec3_t start, vec3_t end)
 	byte		*lightmap;
 	unsigned	scale;
 	int			maps;
-
-	if (node->contents < 0)
-		return -1;		// didn't hit anything
 	
-// calculate mid point
-
-// FIXME: optimize for axial
-	plane = node->plane;
-	front = DotProduct (start, plane->normal) - plane->dist;
-	back = DotProduct (end, plane->normal) - plane->dist;
-	side = front < 0;
-	
-	if ( (back < 0) == side)
-	
-	return RecursiveLightPoint (node->children[side], start, end);
-	frac = front / (front-back);
-	mid[0] = start[0] + (end[0] - start[0])*frac;
-	mid[1] = start[1] + (end[1] - start[1])*frac;
-	mid[2] = start[2] + (end[2] - start[2])*frac;
-	
-// go down front side	
-	r = RecursiveLightPoint (node->children[side], start, mid);
-	if (r >= 0)
-		return r;		// hit something
-		
-	if ( (back < 0) == side )
-		return -1;		// didn't hit anuthing
-		
-// check for impact on this node
-
 	surf = cl.worldmodel->surfaces + node->firstsurface;
 	for (i=0 ; i<node->numsurfaces ; i++, surf++)
 	{
@@ -219,7 +185,7 @@ int RecursiveLightPoint (mnode_t *node, vec3_t start, vec3_t end)
 			for (maps = 0 ; maps < MAXLIGHTMAPS && surf->styles[maps] != 255 ;
 					maps++)
 			{
-				scale = d_lightstylevalue[surf->styles[maps]];
+				scale = d_lightstylevalue[surf->styles[maps]] << 2;
 				r += *lightmap * scale;
 				lightmap += ((surf->extents[0]>>4)+1) *
 						((surf->extents[1]>>4)+1);
@@ -230,6 +196,49 @@ int RecursiveLightPoint (mnode_t *node, vec3_t start, vec3_t end)
 		
 		return r;
 	}
+
+	return -1;		// back to RecursiveLightPoint()...
+}
+
+int RecursiveLightPoint (mnode_t *node, vec3_t start, vec3_t end)
+{
+	int			r;
+	float		front, back, frac;
+	int			side;
+	mplane_t	*plane;
+	vec3_t		mid;
+
+	if (node->contents < 0)
+		return -1;		// didn't hit anything
+	
+// calculate mid point
+
+// FIXME: optimize for axial
+	plane = node->plane;
+	front = DotProduct (start, plane->normal) - plane->dist;
+	back = DotProduct (end, plane->normal) - plane->dist;
+	side = front < 0;
+	
+	if ( (back < 0) == side)
+	
+	return RecursiveLightPoint (node->children[side], start, end);
+	frac = front / (front-back);
+	mid[0] = start[0] + (end[0] - start[0])*frac;
+	mid[1] = start[1] + (end[1] - start[1])*frac;
+	mid[2] = start[2] + (end[2] - start[2])*frac;
+	
+// go down front side	
+	r = RecursiveLightPoint (node->children[side], start, mid);
+	if (r >= 0)
+		return r;		// hit something
+		
+	if ( (back < 0) == side )
+		return -1;		// didn't hit anuthing
+		
+// check for impact on this node
+
+	r = LightPointSample(node, mid);
+	if (r != -1) return r;
 
 // go down back side
 	return RecursiveLightPoint (node->children[!side], mid, end);

@@ -712,7 +712,7 @@ int dvi_linebuf_init_dma() {
     irq_set_exclusive_handler(dvi_sm.res.irq_dma, dvi_dma_irq_handler);
     irq_set_exclusive_handler(dvi_sm.res.irq_linebuf_callback, dvi_cb_irq_handler);
     irq_set_priority(dvi_sm.res.irq_dma, PICO_HIGHEST_IRQ_PRIORITY);
-    irq_set_priority(dvi_sm.res.irq_linebuf_callback, PICO_DEFAULT_IRQ_PRIORITY + 0x10); // must be lower priority than hardware IRQs but higher than other user callbacks
+    irq_set_priority(dvi_sm.res.irq_linebuf_callback, PICO_DEFAULT_IRQ_PRIORITY - 0x10); // must be lower priority than hardware IRQs but higher than other user callbacks
     irq_set_enabled(dvi_sm.res.irq_dma, true);
     irq_set_enabled(dvi_sm.res.irq_linebuf_callback, true);
 

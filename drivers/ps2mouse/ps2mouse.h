@@ -1,0 +1,42 @@
+// PS/2 Mouse Driver for RP2350
+// Based on DnCraptor's implementation
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+#ifndef PS2MOUSE_H
+#define PS2MOUSE_H
+
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// Mouse state structure
+typedef struct {
+    int16_t delta_x;      // Accumulated X movement
+    int16_t delta_y;      // Accumulated Y movement
+    int8_t  wheel;        // Wheel movement (if IntelliMouse)
+    uint8_t buttons;      // Button state (bit 0=left, 1=right, 2=middle)
+    uint8_t buttons_old;  // Old buttons state
+    int     has_wheel;    // True if IntelliMouse detected
+    int     initialized;  // True if mouse detected and initialized
+} ps2mouse_state_t;
+
+// Initialize the PS/2 mouse driver
+int ps2mouse_init(int pin_clk, int pin_data);
+
+// Poll for mouse data (call regularly from main loop)
+void ps2mouse_poll(void);
+
+// Get accumulated mouse movement and clear accumulators
+// Returns 1 if there was any movement or button change, 0 otherwise
+int ps2mouse_get_state(int16_t *dx, int16_t *dy, int8_t *wheel, uint8_t *buttons);
+
+// Check if mouse is initialized
+int ps2mouse_is_initialized(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // PS2MOUSE_H

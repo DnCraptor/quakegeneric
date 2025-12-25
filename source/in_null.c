@@ -32,7 +32,7 @@ enum _ControlList
 };
 
 float	mouse_x, mouse_y;
-cvar_t	in_joystick = {"joystick","0", true};
+cvar_t	in_joystick = {"joystick","1", true};
 cvar_t	joy_advanced = {"joyadvanced", "0"};
 cvar_t	joy_advaxisx = {"joyadvaxisx", "0"};
 cvar_t	joy_advaxisy = {"joyadvaxisy", "0"};

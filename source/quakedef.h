@@ -28,7 +28,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define	GAMENAME	"id1"
 
 #define Q_ALIAS_DOUBLE_TO_FLOAT_RENDER		// w: rp2350 fpu performance hacks
-#define Q_COMPACT_PARTICLES
+#define Q_PARTICLES_FP16
 
 #include <math.h>
 #include <string.h>
@@ -43,7 +43,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "ff.h"
 #include "psram_alloc.h"
+#include "xipstream.h"
+#include "recycler.h"
 #include "pico/platform/sections.h"
+#include "pico/mutex.h"
 
 #define	VID_LockBuffer()
 #define	VID_UnlockBuffer()
@@ -56,7 +59,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define	MINIMUM_MEMORY			0x550000 // 5.3 MB
 #define	MINIMUM_MEMORY_LEVELPAK	(MINIMUM_MEMORY + 0x100000) // 6.3 MB
 
-#define __PSRAM_HUNK_SIZE MINIMUM_MEMORY_LEVELPAK
+#define __PSRAM_HUNK_SIZE (MINIMUM_MEMORY_LEVELPAK)
 
 #define __PSRAM_BASE (&__psram_heap_start__)
 #define __PSRAM_Z_BUFF (__PSRAM_BASE + __PSRAM_HUNK_SIZE)
@@ -273,6 +276,7 @@ extern	quakeparms_t host_parms;
 extern	cvar_t		sys_ticrate;
 extern	cvar_t		sys_nostdout;
 extern	cvar_t		developer;
+extern  cvar_t      stacktosram;
 
 extern	qboolean	host_initialized;		// true if into command execution
 extern	double		host_frametime;
@@ -314,6 +318,10 @@ void Chase_Reset (void);
 void Chase_Update (void);
 
 #include "psram_alloc.h"
+#include "tprintf.h"
+extern uint8_t FRAME_BUF[];	// currently displaying frame buffer 
+
+extern mutex_t snd_mutex;
 
 #ifdef __cplusplus
 }

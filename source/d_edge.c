@@ -52,7 +52,7 @@ void D_DrawPoly (void)
 D_MipLevelForScale
 =============
 */
-int D_MipLevelForScale (float scale)
+int __not_in_flash_func(D_MipLevelForScale) (float scale)
 {
 	int		lmiplevel;
 

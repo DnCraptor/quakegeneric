@@ -154,10 +154,11 @@ typedef struct mleaf_s
 	struct mnode_s	*parent;
 
 // leaf specific
-	byte		*compressed_vis;
+	//byte		*compressed_vis;
+	uint32_t	compressed_vis;
 	efrag_t		*efrags;
 
-	msurface_t	**firstmarksurface;
+	uint16_t	*firstmarksurface;
 	int			nummarksurfaces;
 	int			key;			// BSP sequence number for leaf's contents
 	byte		ambient_sound_level[NUM_AMBIENTS];
@@ -349,7 +350,7 @@ typedef struct model_s
 	dclipnode_t	*clipnodes;
 
 	int			nummarksurfaces;
-	msurface_t	**marksurfaces;
+	uint16_t	*marksurfaces;
 
 	hull_t		hulls[MAX_MAP_HULLS];
 
@@ -357,6 +358,7 @@ typedef struct model_s
 	texture_t	**textures;
 
 	byte		*visdata;
+	byte		*visdata_cache;	// used for PVS caching in SRAM
 	byte		*lightdata;
 	char		*entities;
 

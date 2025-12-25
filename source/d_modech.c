@@ -26,8 +26,7 @@ int	d_vrectx, d_vrecty, d_vrectright_particle, d_vrectbottom_particle;
 
 int	d_y_aspect_shift, d_pix_min, d_pix_max, d_pix_shift;
 
-int		d_scantable[MAXHEIGHT];
-short	*zspantable[MAXHEIGHT]; 
+int		d_scantable[MAXHEIGHT]; 
 
 /*
 ================
@@ -38,10 +37,7 @@ void D_ViewChanged (void)
 {
 	int rowbytes;
 
-	if (r_dowarp)
-		rowbytes = WARP_WIDTH;
-	else
-		rowbytes = vid.rowbytes;
+	rowbytes = vid.rowbytes;
 
 	scale_for_mip = xscale;
 	if (yscale > xscale)
@@ -72,12 +68,13 @@ void D_ViewChanged (void)
 
 	{
 		int		i;
-
+#if 0
 		for (i=0 ; i<vid.height; i++)
 		{
 			d_scantable[i] = i*rowbytes;
 			zspantable[i] = d_pzbuffer + i*d_zwidth;
 		}
+#endif
 	}
 }
 

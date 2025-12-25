@@ -158,15 +158,17 @@ void D_PolysetDrawFinalVerts (finalvert_t *fv, int numverts)
 			(fv->v[1] < r_refdef.vrectbottom))
 		{
 			z = fv->v[5]>>16;
-			zbuf = zspantable[fv->v[1]] + fv->v[0];
+			//zbuf = zspantable[fv->v[1]] + fv->v[0];
+			zbuf = d_pzbuffer + (d_zwidth*fv->v[1]) + fv->v[0];
 			if (z >= *zbuf)
 			{
 				int		pix;
 				
 				*zbuf = z;
-				pix = skintable[fv->v[3]>>16][fv->v[2]>>16];
+				//pix = skintable[fv->v[3]>>16][fv->v[2]>>16];
+				pix = *(skinstart + skinwidth*(fv->v[3]>>16) + (fv->v[2]>>16));
 				pix = ((byte *)acolormap)[pix + (fv->v[4] & 0xFF00) ];
-				d_viewbuffer[d_scantable[fv->v[1]] + fv->v[0]] = pix;
+				d_viewbuffer[(vid.rowbytes*fv->v[1]) + fv->v[0]] = pix;
 			}
 		}
 	}
@@ -368,14 +370,15 @@ split:
 
 
 	z = new[5]>>16;
-	zbuf = zspantable[new[1]] + new[0];
+	zbuf = d_pzbuffer + (d_zwidth*new[1]) + new[0];
 	if (z >= *zbuf)
 	{
 		int		pix;
 		
 		*zbuf = z;
-		pix = d_pcolormap[skintable[new[3]>>16][new[2]>>16]];
-		d_viewbuffer[d_scantable[new[1]] + new[0]] = pix;
+		//pix = d_pcolormap[skintable[new[3]>>16][new[2]>>16]];
+		pix = d_pcolormap[*(skinstart + skinwidth*(new[3]>>16) + (new[2]>>16))];
+		d_viewbuffer[(vid.rowbytes*new[1]) + new[0]] = pix;
 	}
 
 nodraw:
@@ -399,9 +402,11 @@ void D_PolysetUpdateTables (void)
 	{
 		skinwidth = r_affinetridesc.skinwidth;
 		skinstart = r_affinetridesc.pskin;
+#if 0
 		s = skinstart;
 		for (i=0 ; i<MAX_LBM_HEIGHT ; i++, s+=skinwidth)
 			skintable[i] = s;
+#endif
 	}
 }
 
@@ -479,7 +484,11 @@ D_PolysetSetUpForLineScan
 void __no_inline_not_in_flash_func(D_PolysetSetUpForLineScan)(fixed8_t startvertu, fixed8_t startvertv,
 		fixed8_t endvertu, fixed8_t endvertv)
 {
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+	float 		dm, dn;
+#else
 	double		dm, dn;
+#endif
 	int			tm, tn;
 	adivtab_t	*ptemp;
 
@@ -500,10 +509,17 @@ void __no_inline_not_in_flash_func(D_PolysetSetUpForLineScan)(fixed8_t startvert
 	}
 	else
 	{
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+		dm = (float)tm;
+		dn = (float)tn;
+
+		FloorDivModFloat (dm, dn, &ubasestep, &erroradjustup);
+#else
 		dm = (double)tm;
 		dn = (double)tn;
 
 		FloorDivMod (dm, dn, &ubasestep, &erroradjustup);
+#endif
 
 		erroradjustdown = dn;
 	}
@@ -538,9 +554,9 @@ void __no_inline_not_in_flash_func(D_PolysetCalcGradients) (int skinwidth)
 	t0 = r_p0[4] - r_p2[4];
 	t1 = r_p1[4] - r_p2[4];
 	r_lstepx = (int)
-			ceil((t1 * p01_minus_p21 - t0 * p11_minus_p21) * xstepdenominv);
+			ceilf((t1 * p01_minus_p21 - t0 * p11_minus_p21) * xstepdenominv);
 	r_lstepy = (int)
-			ceil((t1 * p00_minus_p20 - t0 * p10_minus_p20) * ystepdenominv);
+			ceilf((t1 * p00_minus_p20 - t0 * p10_minus_p20) * ystepdenominv);
 
 	t0 = r_p0[2] - r_p2[2];
 	t1 = r_p1[2] - r_p2[2];

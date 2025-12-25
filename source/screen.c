@@ -23,8 +23,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "r_local.h"
 
 // only the refresh window will be updated unless these variables are flagged 
-int			scr_copytop;
-int			scr_copyeverything;
+qboolean	scr_copytop;
+qboolean	scr_copyeverything;
+qboolean	scr_initialized;		// ready to draw
+qboolean	scr_disabled_for_loading;
+qboolean	scr_drawloading;
+qboolean	scr_skipupdate;
+qboolean	block_drawing;
+byte		scr_fullupdate;
+byte		clearconsole;
+byte		clearnotify;
 
 float		scr_con_current;
 float		scr_conlines;		// lines of console to display
@@ -34,33 +42,21 @@ cvar_t		scr_viewsize = {"viewsize","100", true};
 cvar_t		scr_fov = {"fov","90"};	// 10 - 170
 cvar_t		scr_conspeed = {"scr_conspeed","300"};
 cvar_t		scr_centertime = {"scr_centertime","2"};
-cvar_t		scr_showram = {"showram","1"};
-cvar_t		scr_showturtle = {"showturtle","0"};
-cvar_t		scr_showpause = {"showpause","1"};
+__psram_data("screen") cvar_t		scr_showram = {"showram","1"};
+__psram_data("screen") cvar_t		scr_showturtle = {"showturtle","0"};
+__psram_data("screen") cvar_t		scr_showpause = {"showpause","1"};
 cvar_t		scr_printspeed = {"scr_printspeed","8"};
-
-qboolean	scr_initialized;		// ready to draw
 
 qpic_t		*scr_ram;
 qpic_t		*scr_net;
 qpic_t		*scr_turtle;
-
-int			scr_fullupdate;
-
-int			clearconsole;
-int			clearnotify;
 
 extern viddef_t	vid;				// global video state
 
 vrect_t		*pconupdate;
 vrect_t		scr_vrect;
 
-qboolean	scr_disabled_for_loading;
-qboolean	scr_drawloading;
 float		scr_disabled_time;
-qboolean	scr_skipupdate;
-
-qboolean	block_drawing;
 
 void SCR_ScreenShot_f (void);
 
@@ -73,11 +69,11 @@ CENTER PRINTING
 */
 
 __psram_bss ("screen") char		scr_centerstring[1024];
-__psram_bss ("screen") float		scr_centertime_start;	// for slow victory printing
-__psram_bss ("screen") float		scr_centertime_off;
-__psram_bss ("screen") int			scr_center_lines;
-__psram_bss ("screen") int			scr_erase_lines;
-__psram_bss ("screen") int			scr_erase_center;
+__psram_bss ("screen") float	scr_centertime_start;	// for slow victory printing
+__psram_bss ("screen") float	scr_centertime_off;
+__psram_bss ("screen") int		scr_center_lines;
+__psram_bss ("screen") int		scr_erase_lines;
+__psram_bss ("screen") int		scr_erase_center;
 
 /*
 ==============
@@ -345,10 +341,10 @@ SCR_DrawRam
 */
 void SCR_DrawRam (void)
 {
-	if (!scr_showram.value)
+	if (!r_cache_thrash)
 		return;
 
-	if (!r_cache_thrash)
+	if (!scr_showram.value)
 		return;
 
 	Draw_Pic (scr_vrect.x+32, scr_vrect.y, scr_ram);
@@ -362,15 +358,15 @@ SCR_DrawTurtle
 void SCR_DrawTurtle (void)
 {
 	static int	count;
-	
-	if (!scr_showturtle.value)
-		return;
 
 	if (host_frametime < 0.1)
 	{
 		count = 0;
 		return;
 	}
+
+	if (!scr_showturtle.value)
+		return;
 
 	count++;
 	if (count < 3)
@@ -403,10 +399,10 @@ void SCR_DrawPause (void)
 {
 	qpic_t	*pic;
 
-	if (!scr_showpause.value)		// turn off for screenshots
+	if (!cl.paused)
 		return;
 
-	if (!cl.paused)
+	if (!scr_showpause.value)		// turn off for screenshots
 		return;
 
 	pic = Draw_CachePic ("gfx/pause.lmp");

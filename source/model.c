@@ -112,17 +112,17 @@ mleaf_t *Mod_PointInLeaf (vec3_t p, model_t *model)
 Mod_DecompressVis
 ===================
 */
-byte *Mod_DecompressVis (byte *in, model_t *model)
+byte *Mod_DecompressVis (uint32_t ofs, model_t *model)
 {
 	static byte	decompressed[MAX_MAP_LEAFS/8];
 	int		c;
-	byte	*out;
+	byte	*in, *out;
 	int		row;
 
 	row = (model->numleafs+7)>>3;	
 	out = decompressed;
 
-	if (!in)
+	if (ofs == -1)
 	{	// no vis info, so make all visible
 		while (row)
 		{
@@ -132,6 +132,7 @@ byte *Mod_DecompressVis (byte *in, model_t *model)
 		return decompressed;		
 	}
 
+	in = model->visdata_cache + ofs;
 	do
 	{
 		if (*in)
@@ -276,7 +277,7 @@ model_t *Mod_LoadModel (model_t *mod, qboolean crash)
 //
 // load the file
 //
-	Con_Printf("Mod_LoadModel: %s\n", mod->name ? mod->name : "null");
+	//Con_Printf("Mod_LoadModel: %s\n", mod->name ? mod->name : "null");
 	byte* smallbuf = (byte*)malloc(1024);
 	unsigned* buf = (unsigned *)COM_LoadStackFile (mod->name, smallbuf, 1024);
 	if (!buf)
@@ -524,10 +525,12 @@ void Mod_LoadVisibility (lump_t *l)
 	if (!l->filelen)
 	{
 		loadmodel->visdata = NULL;
+		loadmodel->visdata_cache = NULL;
 		return;
 	}
 	loadmodel->visdata = Hunk_AllocName ( l->filelen, loadname);	
 	memcpy (loadmodel->visdata, mod_base + l->fileofs, l->filelen);
+	loadmodel->visdata_cache = loadmodel->visdata;
 }
 
 
@@ -926,10 +929,7 @@ void Mod_LoadLeafs (lump_t *l)
 		out->nummarksurfaces = LittleShort(in->nummarksurfaces);
 		
 		p = LittleLong(in->visofs);
-		if (p == -1)
-			out->compressed_vis = NULL;
-		else
-			out->compressed_vis = loadmodel->visdata + p;
+		out->compressed_vis = p;
 		out->efrags = NULL;
 		
 		for (j=0 ; j<4 ; j++)
@@ -1037,7 +1037,7 @@ void Mod_LoadMarksurfaces (lump_t *l)
 {	
 	int		i, j, count;
 	short		*in;
-	msurface_t **out;
+	uint16_t    *out;
 	
 	in = (void *)(mod_base + l->fileofs);
 	if (l->filelen % sizeof(*in))
@@ -1053,7 +1053,7 @@ void Mod_LoadMarksurfaces (lump_t *l)
 		j = LittleShort(in[i]);
 		if (j >= loadmodel->numsurfaces)
 			Sys_Error ("Mod_ParseMarksurfaces: bad surface number");
-		out[i] = loadmodel->surfaces + j;
+		out[i] = j;
 	}
 }
 

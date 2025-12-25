@@ -1651,11 +1651,12 @@ pack_t *COM_LoadPackFile (char *packfile)
 	int                             numpackfiles;
 	pack_t                  *pack;
 	int                             packhandle;
+	dpackfile_t             info[MAX_FILES_IN_PACK];
 	unsigned short          crc;
 
 	if (Sys_FileOpenRead (packfile, &packhandle) == -1)
 	{
-        Con_Printf ("Couldn't open %s\n", packfile);
+//              Con_Printf ("Couldn't open %s\n", packfile);
 		return NULL;
 	}
 	Sys_FileRead (packhandle, (void *)&header, sizeof(header));
@@ -1676,7 +1677,6 @@ pack_t *COM_LoadPackFile (char *packfile)
 	newfiles = Hunk_AllocName (numpackfiles * sizeof(packfile_t), "packfile");
 
 	Sys_FileSeek (packhandle, header.dirofs);
-	dpackfile_t* info = (dpackfile_t*)alloc_base_sz(MAX_FILES_IN_PACK * sizeof(dpackfile_t), "dpackfile_t* info");
 	Sys_FileRead (packhandle, (void *)info, header.dirlen);
 
 // crc the directory to check for modifications
@@ -1693,7 +1693,6 @@ pack_t *COM_LoadPackFile (char *packfile)
 		newfiles[i].filepos = LittleLong(info[i].filepos);
 		newfiles[i].filelen = LittleLong(info[i].filelen);
 	}
-	free_base(); // info
 
 	pack = Hunk_Alloc (sizeof (pack_t));
 	strcpy (pack->filename, packfile);
@@ -1704,7 +1703,6 @@ pack_t *COM_LoadPackFile (char *packfile)
 	Con_Printf ("Added packfile %s (%i files)\n", packfile, numpackfiles);
 	return pack;
 }
-
 
 /*
 ================

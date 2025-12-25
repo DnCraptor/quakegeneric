@@ -19,7 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "quakedef.h"
 
-#define CD_BUF_SIZE 44100
+#define CD_BUF_SIZE 16384
 
 static FIL* play_file = 0;
 static qboolean play_looping = 0;
@@ -27,12 +27,15 @@ static volatile qboolean play_paused = 0;
 static uint8_t cd_buf[CD_BUF_SIZE] __psram_bss("cd_buf");
 static size_t pos = 0;
 static qboolean invalidated[2] = { 0, 0 };
+static qboolean initialized = 0;
+static qboolean enabled = 0;
+static __psram_bss("cd_null") uint8_t remap[256];
 
-cvar_t bgmvolume = {"bgmvolume", "0.3", true, false, 0.3};
+cvar_t bgmvolume = {"bgmvolume", "0.5", true};
 
 void CDAudio_Play(byte track, qboolean looping)
 {
-	CDAudio_Init();
+	if (!initialized || !enabled) return;
 	if (play_file) {
 		f_close(play_file);
 	} else {
@@ -58,7 +61,7 @@ void CDAudio_Play(byte track, qboolean looping)
 qboolean CDAudio_GetPCM(unsigned char* buf, size_t len)
 {
 	// Если файла нет или воспроизведение на паузе — данных не будет
-	if (!play_file || play_paused)
+	if (!initialized || !enabled || !play_file || play_paused)
 		return 0;
 
 	UINT br = 0;
@@ -92,43 +95,62 @@ qboolean CDAudio_GetPCM(unsigned char* buf, size_t len)
 	return 1;
 }
 
+static void CDAudio_WriteToBuffer(int16_t *dst, int16_t *src, int vol, int frames) {
+	if (frames > 0) do {
+		dst[0] = (src[0] * vol) >> 15;
+        dst[1] = (src[1] * vol) >> 15;
+        dst += 2;
+		src += 2;
+	} while (--frames);
+}
+
 #define samples_per_buffer (CD_BUF_SIZE / 4)        // 11025
 #define samples_per_half   (samples_per_buffer / 2) // 5512
 // вызывается со второго ядра RP2350 CPU, n == 1 (возможно, позже будет больше и вызов реже)
 qboolean __not_in_flash_func() CDAudio_GetSamples(int16_t* buf, size_t n)
 {
-    while (n--)
-    {
-        if (!play_file || play_paused)
+	if (!initialized || !enabled || !play_file || play_paused)
             return 0;
 
-        size_t half = (pos < samples_per_half) ? 0 : 1;
-        if (invalidated[half])
-            return 0;
+	int vol = bgmvolume.value * 32767;
+	int half, half_end;
+	if (pos < samples_per_half) {
+		half = 0;
+		half_end = samples_per_half;
+	} else {
+		half = 1;
+		half_end = samples_per_buffer;
+	}
+	if (invalidated[half]) return 0;
+	int16_t* src = (int16_t*)(cd_buf + pos*4);
 
-        size_t b_pos = pos * 4;
-        int16_t* src = (int16_t*)(cd_buf + b_pos);
-		float f = bgmvolume.value;
-        buf[0] += src[0] * f;
-        buf[1] += src[1] * f;
-        buf += 2;
+	// render up to half end or number of samples requested
+	int render_now = (half_end - pos); if (render_now > n) render_now = n;
+	CDAudio_WriteToBuffer(buf, src, vol, render_now);
+	buf += render_now*2;
+	src += render_now*2;
+	pos += render_now;
+	if (pos == half_end) {
+		invalidated[half] = 1;
+		if (half == 1) { 
+			pos = 0;
+			src = (int16_t*)(cd_buf);
+		}
+		half ^= 1;
+	}
+	if (render_now == n) return 1;
 
-        pos++;
-
-        if (pos == samples_per_half)
-            invalidated[0] = 1;
-        else if (pos == samples_per_buffer)
-        {
-            invalidated[1] = 1;
-            pos = 0;
-        }
-    }
+	// render the rest
+	render_now = n - render_now;
+	CDAudio_WriteToBuffer(buf, src, vol, render_now);
+	pos += render_now;
 
     return 1;
 }
 
 void CDAudio_Stop(void)
 {
+	if (!initialized || !enabled) return;
 	if (play_file) {
 		Con_Printf("CDAudio_Stop\n");
 		f_close(play_file);
@@ -142,6 +164,7 @@ void CDAudio_Stop(void)
 
 void CDAudio_Pause(void)
 {
+	if (!initialized || !enabled) return;
 	Con_Printf("CDAudio_Pause\n");
 	play_paused = 1;
 }
@@ -149,6 +172,7 @@ void CDAudio_Pause(void)
 
 void CDAudio_Resume(void)
 {
+	if (!initialized || !enabled) return;
 	Con_Printf("CDAudio_Resume\n");
 	play_paused = 0;
 }
@@ -156,6 +180,7 @@ void CDAudio_Resume(void)
 
 void CDAudio_Update(void)
 {
+	if (!initialized || !enabled) return;
 	if (invalidated[0]) {
 		CDAudio_GetPCM(cd_buf, CD_BUF_SIZE / 2);
 		invalidated[0] = 0;
@@ -166,14 +191,134 @@ void CDAudio_Update(void)
 	}
 }
 
-
-int CDAudio_Init(void)
+static void CD_f (void)
 {
-	return 0;
+	char	*command;
+	int		ret;
+	int		n;
+	int		startAddress;
+
+	if (Cmd_Argc() < 2)
+		return;
+
+	command = Cmd_Argv (1);
+
+	if (!initialized) {
+		Con_Printf("CD Audio not initialized.\n");
+		return;
+	}
+
+	if (Q_strcasecmp(command, "on") == 0)
+	{
+		enabled = true;
+		return;
+	}
+
+	if (Q_strcasecmp(command, "off") == 0)
+	{
+		if (play_file)
+			CDAudio_Stop();
+		enabled = false;
+		return;
+	}
+
+	if (Q_strcasecmp(command, "reset") == 0)
+	{
+		enabled = true;
+		if (play_file)
+			CDAudio_Stop();
+		for (n = 0; n < 256; n++)
+			remap[n] = n;
+		
+		// nothing else to reset
+		return;
+	}
+
+	if (Q_strcasecmp(command, "remap") == 0)
+	{
+		ret = Cmd_Argc() - 2;
+		if (ret <= 0)
+		{
+			for (n = 1; n < 256; n++)
+				if (remap[n] != n)
+					Con_Printf("  %u -> %u\n", n, remap[n]);
+			return;
+		}
+		for (n = 1; n <= ret; n++)
+			remap[n] = Q_atoi(Cmd_Argv (n+1));
+		return;
+	}
+
+	if (!enabled)
+	{
+		Con_Printf("No CD in player.\n");
+		return;
+	}
+
+	if (Q_strcasecmp(command, "play") == 0)
+	{
+		CDAudio_Play(Q_atoi(Cmd_Argv (2)), false);
+		return;
+	}
+
+	if (Q_strcasecmp(command, "loop") == 0)
+	{
+		CDAudio_Play(Q_atoi(Cmd_Argv (2)), true);
+		return;
+	}
+
+	if (Q_strcasecmp(command, "stop") == 0)
+	{
+		CDAudio_Stop();
+		return;
+	}
+
+	if (Q_strcasecmp(command, "pause") == 0)
+	{
+		CDAudio_Pause();
+		return;
+	}
+
+	if (Q_strcasecmp(command, "resume") == 0)
+	{
+		CDAudio_Resume();
+		return;
+	}
 }
 
 
+int CDAudio_Init(void)
+{
+	int n;
+
+	if (cls.state == ca_dedicated)
+		return -1;
+
+	if (COM_CheckParm("-nocdaudio")) {
+		return -1;
+	}
+
+	Cvar_RegisterVariable(&bgmvolume);
+
+	for (n = 0; n < 256; n++)
+		remap[n] = n;
+
+	initialized = true;
+	enabled = true;
+	
+	Cmd_AddCommand ("cd", CD_f);
+
+	Con_Printf("CD Audio Initialized\n");
+
+	return 0;
+}
+
 void CDAudio_Shutdown(void)
 {
+	if (!initialized)
+		return;
 	CDAudio_Stop();
+
+	initialized = false;
+	enabled = false;
 }

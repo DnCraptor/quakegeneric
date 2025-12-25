@@ -57,7 +57,7 @@ byte		*host_colormap;
 #define COLORMAP_IN_SRAM
 
 #ifdef COLORMAP_IN_SRAM
-byte		colormap_sram[256*64 + 8];
+byte		colormap_sram[256*64 + 8];	// FIXME: removing that '+ 8' turns everything black  - am i misusing COM_LoadStackFile()? :p
 #endif
 
 cvar_t	host_framerate = {"host_framerate","0"};	// set for slow motion
@@ -82,7 +82,7 @@ cvar_t	coop = {"coop","0"};			// 0 or 1
 cvar_t	pausable = {"pausable","1"};
 
 cvar_t	temp1 = {"temp1","0"};
-
+cvar_t  stacktosram = {"stacktosram", "0"};
 
 /*
 ================
@@ -92,7 +92,7 @@ Host_EndGame
 void Host_EndGame (char *message, ...)
 {
 	va_list		argptr;
-	char* string = (char*)malloc(1024);
+	char        string[1024];
 	
 	va_start (argptr,message);
 	vsprintf (string,message,argptr);
@@ -104,7 +104,6 @@ void Host_EndGame (char *message, ...)
 
 	if (cls.state == ca_dedicated)
 		Sys_Error ("Host_EndGame: %s\n",string);	// dedicated servers exit
-	free(string);
 
 	if (cls.demonum != -1)
 		CL_NextDemo ();
@@ -124,6 +123,7 @@ This shuts down both the client and server
 void Host_Error (char *error, ...)
 {
 	va_list		argptr;
+	char 		string[1024];
 	static	qboolean inerror = false;
 	
 	if (inerror)
@@ -133,7 +133,6 @@ void Host_Error (char *error, ...)
 	SCR_EndLoadingPlaque ();		// reenable screen updates
 
 	va_start (argptr,error);
-	char* string = (char*)malloc(1024);
 	vsprintf (string,error,argptr);
 	va_end (argptr);
 	Con_Printf ("Host_Error: %s\n",string);
@@ -143,7 +142,6 @@ void Host_Error (char *error, ...)
 
 	if (cls.state == ca_dedicated)
 		Sys_Error ("Host_Error: %s\n",string);	// dedicated servers exit
-	free(string);
 	
 	CL_Disconnect ();
 	cls.demonum = -1;
@@ -233,6 +231,7 @@ void Host_InitLocal (void)
 	Cvar_RegisterVariable (&pausable);
 
 	Cvar_RegisterVariable (&temp1);
+	Cvar_RegisterVariable (&stacktosram);
 
 	Host_FindMaxClients ();
 	
@@ -472,6 +471,7 @@ void Host_ShutdownServer(qboolean crash)
 // clear structures
 //
 	memset (&sv, 0, sizeof(sv));
+	memset (&svp, 0, sizeof(svp));
 	memset (svs.clients, 0, svs.maxclientslimit*sizeof(client_t));
 }
 
@@ -494,6 +494,7 @@ void Host_ClearMemory (void)
 
 	cls.signon = 0;
 	memset (&sv, 0, sizeof(sv));
+	memset (&svp, 0, sizeof(svp));
 	memset (&cl, 0, sizeof(cl));
 	memset (&clp, 0, sizeof(clp));
 }
@@ -604,9 +605,12 @@ void _Host_Frame (float time)
 	int hm = Hunk_HighMark();
 	int lm = Hunk_LowMark();
 	if (setjmp (host_abortserver) ) {
-		Con_Printf("WARN: host_abortserver handled!\n");
+		// HACK HACK HACK: release mutex if we claimed it
+		if (snd_mutex.owner == 0) mutex_exit(&snd_mutex);
 		Hunk_FreeToLowMark(lm);
 		Hunk_FreeToHighMark(hm);
+		AUXA_Reset();
+		ZBA_Reset();
 		return;			// something bad happened, or the server disconnected
 	}
 
@@ -616,7 +620,7 @@ void _Host_Frame (float time)
 // decide the simulation time
 	if (!Host_FilterTime (time))
 		return;			// don't run too fast, or packets will flood out
-		
+
 // get new key events
 	Sys_SendKeyEvents ();
 
@@ -626,11 +630,13 @@ void _Host_Frame (float time)
 // process console commands
 	Cbuf_Execute ();
 
-	NET_Poll();
+	//NET_Poll();
+	stackcall_alloc_zba(NET_Poll, 32768);
 
 // if running the server locally, make intentions now
 	if (sv.active) {
-		CL_SendCmd ();
+		//CL_SendCmd ();
+		stackcall_alloc_zba(CL_SendCmd, 32768);
 	}
 	
 //-------------------
@@ -643,7 +649,8 @@ void _Host_Frame (float time)
 	Host_GetConsoleCommands ();
 	
 	if (sv.active) {
-		Host_ServerFrame ();
+		//Host_ServerFrame ();
+		stackcall_alloc_zba(Host_ServerFrame, 32768);
 	}
 
 //-------------------
@@ -655,9 +662,9 @@ void _Host_Frame (float time)
 // if running the server remotely, send intentions now after
 // the incoming messages have been read
 	if (!sv.active) {
-		CL_SendCmd ();
+		//CL_SendCmd ();
+		stackcall_alloc_zba(CL_SendCmd, 32768);
 	}
-
 
 	host_time += host_frametime;
 
