@@ -29,6 +29,14 @@ ARM Cortex-M33 RP2350 + 8MB QSPI PSRAM
 - PWM
 - i2s TDA1387 / PCM510x
 
+## SD-Card
+
+- /quake folder is required
+- /quake/ID1 folder is required (copy it from your copy of Quake distribution)
+- /quake/CD folder to store CD-tracks in format
+- /quake/argv.conf - use it to populate command line arguments, like -hipnotic or -rouge
+- https://t.me/ZX_MURMULATOR/241810/244194 https://t.me/murmulator_talks/990 https://t.me/murmulator_news/1668 examples.
+
 ## License
 
 Copyright (C) 1996-1997 Id Software, Inc.
