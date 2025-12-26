@@ -107,7 +107,7 @@ texture_t	*r_notexture_mip;
 
 float		r_aliastransition, r_resfudge;
 
-int		d_lightstylevalue[256];	// 8.8 fraction of base light value
+byte		d_lightstylevalue[256];	// 2.6 fraction of base light value
 
 float	dp_time1, dp_time2, db_time1, db_time2, rw_time1, rw_time2;
 float	se_time1, se_time2, de_time1, de_time2, dv_time1, dv_time2;
@@ -140,6 +140,9 @@ extern cvar_t	scr_fov;
 
 void CreatePassages (void);
 void SetVisibilityByPassages (void);
+
+// edge buffer "swap"
+edge_t *edgebuf, *edgebuf_swap;
 
 /*
 ==================
@@ -277,13 +280,15 @@ void R_NewMap (void)
 	if (r_numallocatededges < MINEDGES)
 		r_numallocatededges = MINEDGES;
 
+#if 0
 	if (r_numallocatededges <= NUMSTACKEDGES)
 	{
 		auxedges = NULL;
 	}
 	else
+#endif
 	{
-		auxedges = Hunk_AllocName (r_numallocatededges * sizeof(edge_t),
+		auxedges = Hunk_AllocName ((r_numallocatededges + RESERVED_EDGES) * sizeof(edge_t),
 								   "edges");
 	}
 
@@ -838,7 +843,6 @@ void R_DrawBEntitiesOnList (void)
 	insubmodel = false;
 }
 
-
 /*
 ================
 R_EdgeDrawing
@@ -846,21 +850,30 @@ R_EdgeDrawing
 */
 static void R_EdgeDrawing ()
 {
-	edge_t ledges[NUMSTACKEDGES + ((CACHE_SIZE - 1) / sizeof(edge_t)) + 1];
-	surf_t lsurfs[NUMSTACKSURFACES + ((CACHE_SIZE - 1) / sizeof(surf_t)) + 1];
+	//surf_t lsurfs[NUMSTACKSURFACES + ((CACHE_SIZE - 1) / sizeof(surf_t)) + 1];
+	uint8_t *auxa_rover = AUXA_GetRover();
 
-	if (auxedges)
+	// reset Z-Buffer allocator
+    ZBA_Reset();
+
+    // allocate edge buffer
+    if (r_numallocatededges > NUMSTACKEDGES)
 	{
-		r_edges = auxedges;
+		edgebuf_swap = auxedges;
 	}
 	else
 	{
-		r_edges =  (edge_t *)(((intptr_t)ledges + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
+		edgebuf_swap = ZBA_Alloc(sizeof(edge_t)*(NUMSTACKEDGES+RESERVED_EDGES));
 	}
+
+	// forward egde storage
+	edgebuf = edgebuf_swap;
+	r_edges = edgebuf_swap + RESERVED_EDGES;
 
 	if (r_surfsonstack)
 	{
-		surfaces =  (surf_t *)(((intptr_t)lsurfs + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
+		//surfaces =  (surf_t *)(((intptr_t)lsurfs + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
+		surfaces = (surf_t*)AUXA_Alloc(NUMSTACKSURFACES*sizeof(surf_t));
 		surf_max = &surfaces[r_cnumsurfs];
 	// surface 0 doesn't really exist; it's just a dummy because index 0
 	// is used to indicate no edge attached to surface
@@ -875,7 +888,8 @@ static void R_EdgeDrawing ()
 		rw_time1 = Sys_FloatTime ();
 	}
 
-	R_RenderWorld ();
+	//R_RenderWorld ();
+	stackcall_alloc(R_RenderWorld, 32768);
 
 	if (r_drawculledpolys)
 		R_ScanEdges ();
@@ -890,7 +904,8 @@ static void R_EdgeDrawing ()
 		db_time1 = rw_time2;
 	}
 
-	R_DrawBEntitiesOnList ();
+	//R_DrawBEntitiesOnList ();
+	stackcall_alloc(R_DrawBEntitiesOnList, 32768);
 
 	if ((r_dspeeds.value || cls.frametimedemo))
 	{
@@ -904,10 +919,15 @@ static void R_EdgeDrawing ()
 		S_ExtraUpdate ();	// don't let sound get messed up if going slow
 		VID_LockBuffer ();
 	}
-	
+
 	if (!(r_drawpolys | r_drawculledpolys)) {
-		R_ScanEdges ();
+		//R_ScanEdges ();
+		stackcall_alloc(R_ScanEdges, 2048);
 	}
+
+	// reset Z-buffer allocator (the buffer is dead at this moment)
+	ZBA_Reset();
+	AUXA_FreeToRover(auxa_rover);
 }
 
 
@@ -922,7 +942,7 @@ static byte warpbuffer[WARP_WIDTH * WARP_HEIGHT] __psram_bss("warpbuffer");
 
 void R_RenderView_ (void)
 {
-	r_warpbuffer = warpbuffer;
+	r_warpbuffer = NULL;
 
 	if (r_timegraph.value || r_speeds.value || (r_dspeeds.value || cls.frametimedemo))
 		r_time1 = Sys_FloatTime ();
@@ -966,7 +986,8 @@ SetVisibilityByPassages ();
 		de_time1 = se_time2;
 	}
 
-	R_DrawEntitiesOnList ();
+	//R_DrawEntitiesOnList ();
+	stackcall_alloc(R_DrawEntitiesOnList, 24576);
 
 	if ((r_dspeeds.value || cls.frametimedemo))
 	{
@@ -974,7 +995,8 @@ SetVisibilityByPassages ();
 		dv_time1 = de_time2;
 	}
 
-	R_DrawViewModel ();
+	//R_DrawViewModel ();
+	stackcall_alloc(R_DrawViewModel, 24576);
 
 	if ((r_dspeeds.value || cls.frametimedemo))
 	{
@@ -982,7 +1004,8 @@ SetVisibilityByPassages ();
 		dp_time1 = Sys_FloatTime ();
 	}
 
-	R_DrawParticles ();
+	//R_DrawParticles ();
+	stackcall_alloc(R_DrawParticles, 8192);
 
 	if ((r_dspeeds.value || cls.frametimedemo))
 		dp_time2 = Sys_FloatTime ();
@@ -1014,6 +1037,7 @@ SetVisibilityByPassages ();
 	Sys_HighFPPrecision ();
 }
 
+static qboolean in_render_view = false;
 void R_RenderView (void)
 {
 	int		dummy;
@@ -1032,7 +1056,11 @@ void R_RenderView (void)
 	if ( (intptr_t)(&r_warpbuffer) & 3 )
 		Sys_Error ("Globals are missaligned");
 
-	R_RenderView_ ();
+	if (!in_render_view) {
+		in_render_view = true;
+		R_RenderView_ ();
+		in_render_view = false;
+	}
 }
 
 /*

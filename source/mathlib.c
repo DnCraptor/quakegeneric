@@ -351,7 +351,13 @@ void CrossProduct (vec3_t v1, vec3_t v2, vec3_t cross)
 	cross[2] = v1[0]*v2[1] - v1[1]*v2[0];
 }
 
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+float sqrtf(float x);
+#define Q_sqrt(x) sqrtf(x)
+#else
 double sqrt(double x);
+#define Q_sqrt(x) sqrt(x)
+#endif
 
 vec_t Length(vec3_t v)
 {
@@ -361,7 +367,7 @@ vec_t Length(vec3_t v)
 	length = 0;
 	for (i=0 ; i< 3 ; i++)
 		length += v[i]*v[i];
-	length = sqrt (length);		// FIXME
+	length = Q_sqrt (length);		// FIXME
 
 	return length;
 }
@@ -371,7 +377,7 @@ float VectorNormalize (vec3_t v)
 	float	length, ilength;
 
 	length = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
-	length = sqrt (length);		// FIXME
+	length = Q_sqrt (length);		// FIXME
 
 	if (length)
 	{
@@ -511,6 +517,48 @@ void FloorDivMod (double numer, double denom, int *quotient,
 		x = floor(-numer / denom);
 		q = -(int)x;
 		r = (int)floor(-numer - (x * denom));
+		if (r != 0)
+		{
+			q--;
+			r = (int)denom - r;
+		}
+	}
+
+	*quotient = q;
+	*rem = r;
+}
+
+// w: same but float
+void FloorDivModFloat (float numer, float denom, int *quotient,
+		int *rem)
+{
+	int		q, r;
+	float	x;
+
+#ifndef PARANOID
+	if (denom <= 0.0)
+		Sys_Error ("FloorDivMod: bad denominator %d\n", denom);
+
+//	if ((floor(numer) != numer) || (floor(denom) != denom))
+//		Sys_Error ("FloorDivMod: non-integer numer or denom %f %f\n",
+//				numer, denom);
+#endif
+
+	if (numer >= 0.0)
+	{
+
+		x = floorf(numer / denom);
+		q = (int)x;
+		r = (int)floorf(numer - (x * denom));
+	}
+	else
+	{
+	//
+	// perform operations with positive values, and fix mod to make floor-based
+	//
+		x = floorf(-numer / denom);
+		q = -(int)x;
+		r = (int)floorf(-numer - (x * denom));
 		if (r != 0)
 		{
 			q--;

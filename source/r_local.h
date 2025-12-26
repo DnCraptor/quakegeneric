@@ -183,7 +183,11 @@ extern	model_t		*cl_worldmodel;
 extern int		*pfrustum_indexes[4];
 
 // !!! if this is changed, it must be changed in asm_draw.h too !!!
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+#define	NEAR_CLIP	0.01f
+#else
 #define	NEAR_CLIP	0.01
+#endif
 
 extern int			ubasestep, errorterm, erroradjustup, erroradjustdown;
 extern int			vstartscan;
@@ -257,15 +261,12 @@ extern edge_t	*auxedges;
 extern int		r_numallocatededges;
 extern edge_t	*r_edges, *edge_p, *edge_max;
 
-extern	edge_t	*newedges[MAXHEIGHT];
-extern	edge_t	*removeedges[MAXHEIGHT];
+extern short newedges[MAXHEIGHT];
+extern short removeedges[MAXHEIGHT];
 
 extern	int	screenwidth;
 
 // FIXME: make stack vars when debugging done
-extern	edge_t	edge_head;
-extern	edge_t	edge_tail;
-extern	edge_t	edge_aftertail;
 extern int		r_bmodelactive;
 extern vrect_t	*pconupdate;
 
@@ -312,3 +313,5 @@ void R_EmitEdge (mvertex_t *pv0, mvertex_t *pv1);
 void R_ClipEdge (mvertex_t *pv0, mvertex_t *pv1, clipplane_t *clip);
 void R_SplitEntityOnNode2 (mnode_t *node);
 void R_MarkLights (dlight_t *light, int bit, mnode_t *node);
+
+extern edge_t *edgebuf, *edgebuf_swap;

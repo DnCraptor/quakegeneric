@@ -71,36 +71,40 @@ extern	entity_t		*currententity;
 // we could probably malloc it instead and get away with much smaller amount to save on SRAM
 // placing it in SRAM already gives extra 2.5 fps so it's worth it
 // upd: smaller amounts don't make rendering faster sadly
-#define	MAXSPANS			3000			// ca. 48k on SRAM heap
+#define	MAXSPANS			3000			// ca. 24k on SRAM heap
 
 // !!! if this is changed, it must be changed in asm_draw.h too !!!
 typedef struct espan_s
 {
-	int				u, v, count;
 	struct espan_s	*pnext;
+	unsigned int 	u     : 12;
+	unsigned int 	count : 12;
+	unsigned int 	v     : 8;
+	//short			u, v, count;
+	
 } espan_t;
+
+extern espan_t *spanbuf;
 
 // FIXME: compress, make a union if that will help
 // insubmodel is only 1, flags is fewer than 32, spanstate could be a byte
 typedef struct surf_s
 {
-	struct surf_s	*next;			// active surface stack in r_edge.c
-	struct surf_s	*prev;			// used in r_edge.c for active surf stack
+	short		next;			// active surface stack in r_edge.c
+	short		prev;			// used in r_edge.c for active surf stack
 	struct espan_s	*spans;			// pointer to linked list of spans to draw
 	int			key;				// sorting key (BSP order)
-	int			last_u;				// set during tracing
-	int			spanstate;			// 0 = not in span
+	short		last_u;				// set during tracing
+	_Float16	nearzi;				// nearest 1/z on surface, for mipmapping
+	signed char	spanstate;			// 0 = not in span
 									// 1 = in span
 									// -1 = in inverted span (end before
 									//  start)
-	int			flags;				// currentface flags
-	void		*data;				// associated data like msurface_t
+	byte		flags : 7;				// currentface flags
+	byte	    insubmodel : 1;
 	entity_t	*entity;
-	float		nearzi;				// nearest 1/z on surface, for mipmapping
-	qboolean	insubmodel;
+	void		*data;				// associated data like msurface_t
 	float		d_ziorigin, d_zistepu, d_zistepv;
-
-	int			pad[2];				// to 64 bytes
 } surf_t;
 
 extern	surf_t	*surfaces, *surface_p, *surf_max;
@@ -123,13 +127,13 @@ extern	float	xscale, yscale;
 extern	float	xscaleinv, yscaleinv;
 extern	float	xscaleshrink, yscaleshrink;
 
-extern	int d_lightstylevalue[256]; // 8.8 frac of base light value
+extern	byte	d_lightstylevalue[256];	// 2.6 fraction of base light value
 
 extern void TransformVector (vec3_t in, vec3_t out);
 extern void SetUpForLineScan(fixed8_t startvertu, fixed8_t startvertv,
 	fixed8_t endvertu, fixed8_t endvertv);
 
-extern int	r_skymade;
+extern qboolean	r_skymade;
 extern void R_MakeSky (void);
 
 extern int	ubasestep, errorterm, erroradjustup, erroradjustdown;
@@ -150,11 +154,29 @@ typedef struct edge_s
 {
 	fixed16_t		u;
 	fixed16_t		u_step;
-	struct edge_s	*prev, *next;
+	short			prev, next;
+	//struct edge_s	*prev, *next;
 	unsigned short	surfs[2];
-	struct edge_s	*nextremove;
+	short	        nextremove;
+	//struct edge_s	*nextremove;
 	float			nearzi;
 	medge_t			*owner;
 } edge_t;
+
+extern edge_t *edgebuf, *edgebuf_swap;
+
+// dirty hack
+#define edge_null_idx		0
+#define edge_head_idx   	1
+#define edge_tail_idx   	2
+#define edge_aftertail_idx  3
+#define edge_sentinel_idx   4
+
+#define RESERVED_EDGES		(edge_sentinel_idx+1)
+
+#define edge_head 		(edgebuf[edge_head_idx])
+#define edge_tail 		(edgebuf[edge_tail_idx])
+#define edge_aftertail 	(edgebuf[edge_aftertail_idx])
+#define edge_sentinel 	(edgebuf[edge_sentinel_idx])
 
 #endif	// _R_SHARED_H_

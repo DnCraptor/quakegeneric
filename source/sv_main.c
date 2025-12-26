@@ -21,8 +21,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 
-__psram_bss ("sv") server_t		sv = { 0 };
-__psram_bss ("sv") server_static_t	svs = { 0 };
+					server_t		sv = { 0 };
+__psram_bss ("sv") 	server_slow_t	svp = { 0 };
+__psram_bss ("sv") 	server_static_t	svs = { 0 };
 
 __psram_bss ("sv") char	localmodels[MAX_MODELS][5] = { { 0 } };			// inline model names for precache
 
@@ -137,11 +138,11 @@ void SV_StartSound (edict_t *entity, int channel, char *sample, int volume,
 
 // find precache number for sound
     for (sound_num=1 ; sound_num<MAX_SOUNDS
-        && sv.sound_precache[sound_num] ; sound_num++)
-        if (!strcmp(sample, sv.sound_precache[sound_num]))
+        && svp.sound_precache[sound_num] ; sound_num++)
+        if (!strcmp(sample, svp.sound_precache[sound_num]))
             break;
     
-    if ( sound_num == MAX_SOUNDS || !sv.sound_precache[sound_num] )
+    if ( sound_num == MAX_SOUNDS || !svp.sound_precache[sound_num] )
     {
         Con_Printf ("SV_StartSound: %s not precacheed\n", sample);
         return;
@@ -208,11 +209,11 @@ void SV_SendServerinfo (client_t *client)
 
 	MSG_WriteString (&client->message, message);
 
-	for (s = sv.model_precache+1 ; *s ; s++)
+	for (s = svp.model_precache+1 ; *s ; s++)
 		MSG_WriteString (&client->message, *s);
 	MSG_WriteByte (&client->message, 0);
 
-	for (s = sv.sound_precache+1 ; *s ; s++)
+	for (s = svp.sound_precache+1 ; *s ; s++)
 		MSG_WriteString (&client->message, *s);
 	MSG_WriteByte (&client->message, 0);
 
@@ -898,10 +899,10 @@ int SV_ModelIndex (char *name)
 	if (!name || !name[0])
 		return 0;
 
-	for (i=0 ; i<MAX_MODELS && sv.model_precache[i] ; i++)
-		if (!strcmp(sv.model_precache[i], name))
+	for (i=0 ; i<MAX_MODELS && svp.model_precache[i] ; i++)
+		if (!strcmp(svp.model_precache[i], name))
 			return i;
-	if (i==MAX_MODELS || !sv.model_precache[i])
+	if (i==MAX_MODELS || !svp.model_precache[i])
 		Sys_Error ("SV_ModelIndex: model %s not precached", name);
 	return i;
 }
@@ -1067,8 +1068,9 @@ void SV_SpawnServer (char *server)
 	Host_ClearMemory ();
 
 	memset (&sv, 0, sizeof(sv));
+	memset (&svp, 0, sizeof(svp));
 
-	strcpy (sv.name, server);
+	strcpy (svp.name, server);
 
 // load progs to get entity field count
 	PR_LoadProgs ();
@@ -1078,17 +1080,17 @@ void SV_SpawnServer (char *server)
 	
 	sv.edicts = Hunk_AllocName (sv.max_edicts*pr_edict_size, "edicts");
 
-	sv.datagram.maxsize = sizeof(sv.datagram_buf);
+	sv.datagram.maxsize = sizeof(svp.datagram_buf);
 	sv.datagram.cursize = 0;
-	sv.datagram.data = sv.datagram_buf;
+	sv.datagram.data = svp.datagram_buf;
 	
-	sv.reliable_datagram.maxsize = sizeof(sv.reliable_datagram_buf);
+	sv.reliable_datagram.maxsize = sizeof(svp.reliable_datagram_buf);
 	sv.reliable_datagram.cursize = 0;
-	sv.reliable_datagram.data = sv.reliable_datagram_buf;
+	sv.reliable_datagram.data = svp.reliable_datagram_buf;
 	
-	sv.signon.maxsize = sizeof(sv.signon_buf);
+	sv.signon.maxsize = sizeof(svp.signon_buf);
 	sv.signon.cursize = 0;
-	sv.signon.data = sv.signon_buf;
+	sv.signon.data = svp.signon_buf;
 	
 // leave slots at start for clients only
 	sv.num_edicts = svs.maxclients+1;
@@ -1103,30 +1105,30 @@ void SV_SpawnServer (char *server)
 
 	sv.time = 1.0;
 	
-	strcpy (sv.name, server);
-	sprintf (sv.modelname,"maps/%s.bsp", server);
-	sv.worldmodel = Mod_ForName (sv.modelname, false);
+	strcpy (svp.name, server);
+	sprintf (svp.modelname,"maps/%s.bsp", server);
+	sv.worldmodel = Mod_ForName (svp.modelname, false);
 	if (!sv.worldmodel)
 	{
-		Con_Printf ("Couldn't spawn server %s\n", sv.modelname);
+		Con_Printf ("Couldn't spawn server %s\n", svp.modelname);
 		sv.active = false;
 		return;
 	}
-	sv.models[1] = sv.worldmodel;
+	svp.models[1] = sv.worldmodel;
 	
 //
 // clear world interaction links
 //
 	SV_ClearWorld ();
 	
-	sv.sound_precache[0] = pr_strings;
+	svp.sound_precache[0] = pr_strings;
 
-	sv.model_precache[0] = pr_strings;
-	sv.model_precache[1] = sv.modelname;
+	svp.model_precache[0] = pr_strings;
+	svp.model_precache[1] = svp.modelname;
 	for (i=1 ; i<sv.worldmodel->numsubmodels ; i++)
 	{
-		sv.model_precache[1+i] = localmodels[i];
-		sv.models[i+1] = Mod_ForName (localmodels[i], false);
+		svp.model_precache[1+i] = localmodels[i];
+		svp.models[i+1] = Mod_ForName (localmodels[i], false);
 	}
 
 //
@@ -1145,7 +1147,7 @@ void SV_SpawnServer (char *server)
 	else
 		pr_global_struct->deathmatch = deathmatch.value;
 
-	pr_global_struct->mapname = sv.name - pr_strings;
+	pr_global_struct->mapname = svp.name - pr_strings;
 
 // serverflags are for cross level information (sigils)
 	pr_global_struct->serverflags = svs.serverflags;

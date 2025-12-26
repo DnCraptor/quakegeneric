@@ -32,6 +32,8 @@
     #include "ps2.h"
 #endif
 
+#include "ps2mouse.h"
+
 #if USE_NESPAD
 #include "nespad.h"
 #endif
@@ -56,10 +58,12 @@ static int vreg = VREG_VOLTAGE_1_60;
 static int new_vreg = VREG_VOLTAGE_1_60;
 int flash_mhz = 88;
 int psram_mhz = MAX_PSRAM_FREQ_MHZ;
+int volume    = 100;
 static uint new_flash_timings = 0;
 static uint new_psram_timings = 0;
 static uint8_t override_video = 0xFF;
 static uint8_t override_audio = 0xFF;
+static uint8_t ps2mouse_present = 0;
 
 extern "C" bool is_i2s_enabled;
 extern "C" int testPins(uint32_t pin0, uint32_t pin1);
@@ -97,6 +101,7 @@ inline static void add_key(int key, int down) {
         const key_action_t& pk = key_actions[next_key_action - 1];
         if (pk.key == key && pk.down == down) return;
     }
+#if 0
     // <-> protection
     if (kbd_bits.right && key == K_LEFTARROW) add_key(K_RIGHTARROW, 0);
     if (kbd_bits.left && key == K_RIGHTARROW) add_key(K_LEFTARROW, 0);
@@ -107,7 +112,7 @@ inline static void add_key(int key, int down) {
     if (key == K_LEFTARROW) kbd_bits.left = down;
     if (key == K_DOWNARROW) kbd_bits.down = down;
     if (key == K_UPARROW) kbd_bits.up = down;
-
+#endif
     key_action_t& k = key_actions[next_key_action++];
     k.key = key;
     k.down = down;
@@ -527,6 +532,28 @@ void __not_in_flash_func(process_mouse_report)(hid_mouse_report_t const * report
     cumulative_dy += report->y;
 }
 
+
+void ps2mouse_get_state_q() {
+    int16_t dx, dy; int8_t wheel; uint8_t buttons;
+    if (ps2mouse_get_state(&dx, &dy, &wheel, &buttons) == 0) return;
+
+    // inject mouse data
+    uint8_t btns_a = prev_report.buttons & ~(buttons);
+    if (btns_a & MOUSE_BUTTON_LEFT) add_key(K_MOUSE1, 0);
+    if (btns_a & MOUSE_BUTTON_RIGHT) add_key(K_MOUSE2, 0);
+    if (btns_a & MOUSE_BUTTON_MIDDLE) add_key(K_MOUSE3, 0);
+    Sys_Printf("%d %d %d %d %d\n", dx, dy, (prev_report.buttons & ~(buttons), (~prev_report.buttons & buttons)));
+
+    btns_a = ~prev_report.buttons & buttons;
+    if (btns_a & MOUSE_BUTTON_LEFT) add_key(K_MOUSE1, 1);
+    if (btns_a & MOUSE_BUTTON_RIGHT) add_key(K_MOUSE2, 1);
+    if (btns_a & MOUSE_BUTTON_MIDDLE) add_key(K_MOUSE3, 1);
+
+    prev_report.buttons = buttons;
+    cumulative_dx += dx;
+    cumulative_dy += dy;
+}
+
 Ps2Kbd_Mrmltr ps2kbd(
         pio1,
         KBD_CLOCK_PIN,
@@ -537,7 +564,8 @@ Ps2Kbd_Mrmltr ps2kbd(
 void repeat_me_for_input() {
     static uint32_t tickKbdRep1 = time_us_32();
     // 60 FPS loop
-#define frame_tick (16666)
+//#define frame_tick (16666)
+#define frame_tick (0)      // make it no-op and process input as fast as possible
     static uint64_t tick = time_us_64();
     static uint64_t last_input_tick = tick;
         if (tick >= last_input_tick + frame_tick) {
@@ -545,11 +573,17 @@ void repeat_me_for_input() {
             ps2kbd.tick();
 #endif
 #ifdef USE_NESPAD
+#if PS2MOUSE_NESPAD_SHARED
+            if (!ps2mouse_present)
+#endif 
             nespad_tick();
 #endif
             last_input_tick = tick;
         }
         tick = time_us_64();
+#ifdef USE_PS2MOUSE
+        if (ps2mouse_present) ps2mouse_get_state_q();
+#endif
 #ifdef KBDUSB
         tuh_task();
 #endif
@@ -557,8 +591,7 @@ void repeat_me_for_input() {
 
 extern "C" bool SELECT_VGA;
 
-//uint8_t* FRAME_BUF = (uint8_t*)0x20000000; // temp "trash" value
-uint8_t __aligned(4) FRAME_BUF[QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y] = { 0 };
+extern "C" uint8_t __aligned(4) FRAME_BUF[QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y] = { 0 };
 
 #if DVI_HSTX
 enum {
@@ -580,9 +613,10 @@ static union dvi_hstx_pin_layout_t hstx_out_pin_layouts[] = {
     .lane2_n = 17-12, .lane2_p = 16-12,
     }
 };
+static union dvi_hstx_pin_layout_t hstx_out_layout = hstx_out_pin_layouts[HSTX_OUT_PIN_LAYOUT_MURMULATOR2];
 
 // palette used by the DVI/VGA HSTX driver
-static uint32_t linebuf_pal[256];
+static uint32_t linebuf_pal[256] = { 0 };
 
 struct linebuf_cb_info_8bpp_t {
     const uint8_t  *pic;
@@ -596,7 +630,6 @@ extern "C" void linebuf_cb_index8_a(const struct dvi_linebuf_task_t *task, void 
 void __noinline hstx_init() {
     // init hstx driver here!
     bool is_vga    = SELECT_VGA;
-    union dvi_hstx_pin_layout_t pin_cfg = hstx_out_pin_layouts[HSTX_OUT_PIN_LAYOUT_MURMULATOR2];
     int mode       = DVI_MODE_320x240;
     int hstx_div   = is_vga ? 1 : clock_get_hz(clk_sys)/(dvi_modes[mode].timings.pixelclock*5);
     int phase_rept = (clock_get_hz(clk_sys) * dvi_modes[mode].pixel_rep) / dvi_modes[mode].timings.pixelclock;
@@ -623,9 +656,9 @@ void __noinline hstx_init() {
     // enable pins
     dvi_configure_hstx_command_expander(DVI_HSTX_MODE_XRGB8888, dvi_modes[mode].pixel_rep);
     if (is_vga) {
-        vga_configure_hstx_output(pin_cfg, GPIO_SLEW_RATE_FAST, GPIO_DRIVE_STRENGTH_4MA, phase_rept);
+        vga_configure_hstx_output(hstx_out_layout, GPIO_SLEW_RATE_FAST, GPIO_DRIVE_STRENGTH_4MA, phase_rept);
     } else {
-        dvi_configure_hstx_output(pin_cfg, GPIO_SLEW_RATE_FAST, GPIO_DRIVE_STRENGTH_4MA);
+        dvi_configure_hstx_output(hstx_out_layout, GPIO_SLEW_RATE_FAST, GPIO_DRIVE_STRENGTH_4MA);
     }
 
     // allocate memory for the linebuf
@@ -670,23 +703,37 @@ void __scratch_x("render") render_core() {
     multicore_lockout_victim_init();
 #if DVI_HSTX
     hstx_init();
+    if (SELECT_VGA) {
+        linebuf_pal[0x00] = 0x000000;
+        linebuf_pal[0x0F] = 0xEBEBEB;
+    } else {
+        linebuf_pal[0x00] = vga_pwm_xlat_color32(0x000000);
+        linebuf_pal[0x0F] = vga_pwm_xlat_color32(0xEBEBEB);
+    }
 #else
     multicore_lockout_victim_init();
     graphics_init();
     graphics_set_buffer(FRAME_BUF, QUAKEGENERIC_RES_X, QUAKEGENERIC_RES_Y);
     graphics_set_bgcolor(0x000000);
+    graphics_set_palette(0,    0x000000);
+    graphics_set_palette(0x0F, 0xEBEBEB);   // white in quake palette
 #endif
     sem_acquire_blocking(&vga_start_semaphore);
     
-    mixer_init();
+    mixer_init(volume);
     uint64_t tick = time_us_64();
+#if 0
     uint64_t last_cd_tick = 0;
+    int16_t samples[2];
+#endif
     while (true) {
+#if 0
         // Sound Blaster sampling
         if (tick > last_cd_tick + (1000000 / 44100)) {
             last_cd_tick = tick;
             mixer_tick();
         }
+#endif
 #if TFT
         refresh_lcd();
 #endif
@@ -839,9 +886,10 @@ uint32_t __not_in_flash_func(butter_psram_size)() { return 0; }
 
 #define STACK_CORE0 0x11800000
 
+// TODO extract PC
 void sigbus(void) {
     quietlog = 0;
-    Sys_Printf("SIGBUS exception caught... SP %ph (%d)\n", get_sp(), STACK_CORE0 - get_sp());
+    Sys_PrintError("SIGBUS exception caught... SP %ph (%d)\n", get_sp(), STACK_CORE0 - get_sp());
     #if PICO_DEFAULT_LED_PIN
     while(1) {
         sleep_ms(33);
@@ -854,10 +902,10 @@ void sigbus(void) {
 }
 void __attribute__((naked, noreturn)) __printflike(1, 0) dummy_panic(__unused const char *fmt, ...) {
     quietlog = 0;
-    Sys_Printf("*** PANIC ***\n");
-    Sys_Printf("SP %ph (%s)\n", get_sp(), STACK_CORE0 - get_sp());
+    Sys_PrintError("*** PANIC ***\n");
+    Sys_PrintError("SP %ph (%s)\n", get_sp(), STACK_CORE0 - get_sp());
     if (fmt)
-        Sys_Printf((char*)fmt);
+        Sys_PrintError((char*)fmt);
     #if PICO_DEFAULT_LED_PIN
     while(1) {
         sleep_ms(33);
@@ -959,7 +1007,9 @@ extern "C" void QG_SetPalette(unsigned char palette[768]) {
 
 extern "C" void QG_GetJoyAxes(float *axes)
 {
-    *axes = 0;
+    axes[0] = (gamepad1_bits.left ? -1 : (gamepad1_bits.right ? 1 : 0));
+    axes[1] = (gamepad1_bits.up   ? -1 : (gamepad1_bits.down  ? 1 : 0));
+    //*axes = 0;
 }
 
 static int argc = 1;
@@ -1078,7 +1128,15 @@ static void finish_him(void) {
         Sys_Printf("WARN: Unexpected VREG value: %d (from cong)\n", new_vreg);
     }
 
+#if USE_PS2MOUSE
+    ps2mouse_present = ps2mouse_init(MOUSE_CLOCK_PIN, MOUSE_DATA_PIN);
+    Sys_Printf("PS/2 mouse: %spresent\n", ps2mouse_present ? "" : "not ");
+#endif
+
 #if USE_NESPAD
+#if PS2MOUSE_NESPAD_SHARED
+    if (!ps2mouse_present)
+#endif 
     nespad_begin(clock_get_hz(clk_sys) / 1000, NES_GPIO_CLK, NES_GPIO_DATA, NES_GPIO_LAT);
 #endif
 
@@ -1095,8 +1153,12 @@ static void finish_him(void) {
     keyboard_send(0xFF);
 #endif
     sem_init(&vga_start_semaphore, 0, 1);
+    mutex_init(&snd_mutex);
+
     multicore_launch_core1(render_core);
     sem_release(&vga_start_semaphore);
+
+    xipstream_init();
 
     create_argv();
 	QG_Create(argc, argv);
@@ -1229,11 +1291,16 @@ static void load_config() {
                 }
             } else if (strcmp(t, "AUDIO") == 0) {
                 t = next_token(t);
-                if (strcmp("i2s", t) == 0) {
+                if (strcmp("I2S", t) == 0) {
                     override_audio = 1;
                 } else if (strcmp("PWM", t) == 0) {
                     override_audio = 0;
                 }
+            } else if (strcmp(t, "VOLUME") == 0) {
+                t = next_token(t);
+                volume = atoi(t);
+                if (volume < 0) volume = 0;
+                if (volume > 100) volume = 100;
             } else if (strcmp(t, "VREG") == 0) {
                 t = next_token(t);
                 new_vreg = atoi(t);
@@ -1248,7 +1315,15 @@ static void load_config() {
                     flash_mhz = new_flash_mhz;
                     flash_timings();
                 }
-            } else if (strcmp(t, "FLASH_T") == 0) {
+            }
+#if DVI_HSTX
+            else if (strcmp(t, "HSTX_PINMAP") == 0) {
+                t = next_token(t);
+                char *endptr;
+                hstx_out_layout.raw = (uint)strtol(t, &endptr, 16);
+            }
+#endif
+            else if (strcmp(t, "FLASH_T") == 0) {
                 t = next_token(t);
                 char *endptr;
                 new_flash_timings = (uint)strtol(t, &endptr, 16);

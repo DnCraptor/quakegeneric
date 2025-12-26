@@ -77,7 +77,7 @@ R_EmitEdge
 */
 void  __no_inline_not_in_flash_func(R_EmitEdge) (mvertex_t *pv0, mvertex_t *pv1)
 {
-	edge_t	*edge, *pcheck;
+	edge_t	*edge, *pcheck, *ebuf=edgebuf;
 	int		u_check;
 	float	u, u_step;
 	vec3_t	local, transformed;
@@ -104,7 +104,7 @@ void  __no_inline_not_in_flash_func(R_EmitEdge) (mvertex_t *pv0, mvertex_t *pv1)
 		if (transformed[2] < NEAR_CLIP)
 			transformed[2] = NEAR_CLIP;
 	
-		lzi0 = 1.0 / transformed[2];
+		lzi0 = 1.0f / transformed[2];
 	
 	// FIXME: build x/yscale into transform?
 		scale = xscale * lzi0;
@@ -121,7 +121,7 @@ void  __no_inline_not_in_flash_func(R_EmitEdge) (mvertex_t *pv0, mvertex_t *pv1)
 		if (v0 > r_refdef.fvrectbottom_adj)
 			v0 = r_refdef.fvrectbottom_adj;
 	
-		ceilv0 = (int) ceil(v0);
+		ceilv0 = (int) ceilf(v0);
 	}
 
 	world = &pv1->position[0];
@@ -133,7 +133,7 @@ void  __no_inline_not_in_flash_func(R_EmitEdge) (mvertex_t *pv0, mvertex_t *pv1)
 	if (transformed[2] < NEAR_CLIP)
 		transformed[2] = NEAR_CLIP;
 
-	r_lzi1 = 1.0 / transformed[2];
+	r_lzi1 = 1.0f / transformed[2];
 
 	scale = xscale * r_lzi1;
 	r_u1 = (xcenter + scale*transformed[0]);
@@ -161,7 +161,7 @@ void  __no_inline_not_in_flash_func(R_EmitEdge) (mvertex_t *pv0, mvertex_t *pv1)
 
 	r_emitted = 1;
 
-	r_ceilv1 = (int) ceil(r_v1);
+	r_ceilv1 = (int) ceilf(r_v1);
 
 
 // create the edge
@@ -230,22 +230,22 @@ void  __no_inline_not_in_flash_func(R_EmitEdge) (mvertex_t *pv0, mvertex_t *pv1)
 	if (edge->surfs[0])
 		u_check++;	// sort trailers after leaders
 
-	if (!newedges[v] || newedges[v]->u >= u_check)
+		if (!newedges[v] || (ebuf+newedges[v])->u >= u_check)
 	{
 		edge->next = newedges[v];
-		newedges[v] = edge;
+		newedges[v] = edge-ebuf;
 	}
 	else
 	{
-		pcheck = newedges[v];
-		while (pcheck->next && pcheck->next->u < u_check)
-			pcheck = pcheck->next;
+		pcheck = ebuf+newedges[v];
+		while (pcheck->next && (ebuf+pcheck->next)->u < u_check)
+			pcheck = ebuf+pcheck->next;
 		edge->next = pcheck->next;
-		pcheck->next = edge;
+		pcheck->next = edge-ebuf;
 	}
 
 	edge->nextremove = removeedges[v2];
-	removeedges[v2] = edge;
+	removeedges[v2] = edge-ebuf;
 }
 
 
@@ -355,7 +355,7 @@ void __no_inline_not_in_flash_func(R_ClipEdge) (mvertex_t *pv0, mvertex_t *pv1, 
 R_EmitCachedEdge
 ================
 */
-void R_EmitCachedEdge (void)
+void __no_inline_not_in_flash_func(R_EmitCachedEdge) (void)
 {
 	edge_t		*pedge_t;
 
@@ -558,7 +558,11 @@ void __no_inline_not_in_flash_func(R_RenderFace) (msurface_t *fa, int clipflags)
 // FIXME: cache this?
 	TransformVector (pplane->normal, p_normal);
 // FIXME: cache this?
+#ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
+	distinv = 1.0f / (pplane->dist - DotProduct (modelorg, pplane->normal));
+#else
 	distinv = 1.0 / (pplane->dist - DotProduct (modelorg, pplane->normal));
+#endif
 
 	surface_p->d_zistepu = p_normal[0] * xscaleinv * distinv;
 	surface_p->d_zistepv = -p_normal[1] * yscaleinv * distinv;

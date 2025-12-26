@@ -22,56 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 
-#define shm_speed 22050
-#define	MAX_SFX		512
-#define PAINTBUFFER_SIZE 32768
-
-cvar_t volume = {"volume", "0.7", true, false, 0.7};
-cvar_t ambient_level = {"ambient_level", "0.3", true, false, 0.3};
-cvar_t ambient_fade = {"ambient_fade", "100", true, false, 100.0};
-cvar_t _snd_mixahead = {"_snd_mixahead", "0.1", true, false, 0.1};
-static qboolean	snd_ambient = 1;
-static volatile int sound_started = 0;
-static volatile int	snd_blocked = 0;
-sfx_t known_sfx[MAX_SFX] __psram_bss("known_sfx");
-int			num_sfx;
-
-int total_channels = 0;
-vec3_t		listener_origin;
-vec3_t		listener_forward;
-vec3_t		listener_right;
-vec3_t		listener_up;
-vec_t		sound_nominal_clip_dist=1000.0;
-volatile int soundtime;		// sample PAIRS
-int   		paintedtime; 	// sample PAIRS
-
-channel_t   channels[MAX_CHANNELS] __psram_bss("snd_channels");
-sfx_t		*ambient_sfx[NUM_AMBIENTS] __psram_bss("ambient_sfx");
-
-typedef struct stereo_sample_16_s {
-	int16_t left;
-	int16_t right;
-} stereo_sample_16_t;
-
-stereo_sample_16_t paintbuffer[PAINTBUFFER_SIZE] __psram_bss("paintbuffer") __aligned(4);
-stereo_sample_16_t outputbuffer[PAINTBUFFER_SIZE] __psram_bss("outputbuffer") __aligned(4);
-volatile size_t snd_buf_pos = 0; // current playing position
-int	snd_scaletable[32][256]  __psram_bss("snd_scaletable");
-
-void SND_InitScaletable (void)
-{
-	int		i, j;
-	
-	for (i=0 ; i<32 ; i++)
-		for (j=0 ; j<256 ; j++)
-			snd_scaletable[i][j] = ((signed char)j) * i * 8;
-}
-
-
-void S_StopAllSoundsC (void)
-{
-	S_StopAllSounds (true);
-}
+cvar_t cvar_volume = {"volume", "0.7", true, false, 0.7};
 
 void S_Init (void)
 {

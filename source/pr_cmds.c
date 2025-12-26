@@ -242,7 +242,7 @@ void PF_setmodel (void)
 	m = G_STRING(OFS_PARM1);
 
 // check to see if model was properly precached
-	for (i=0, check = sv.model_precache ; *check ; i++, check++)
+	for (i=0, check = svp.model_precache ; *check ; i++, check++)
 		if (!strcmp(*check, m))
 			break;
 			
@@ -253,7 +253,7 @@ void PF_setmodel (void)
 	e->v.model = m - pr_strings;
 	e->v.modelindex = i; //SV_ModelIndex (m);
 
-	mod = sv.models[ (int)e->v.modelindex];  // Mod_ForName (m, true);
+	mod = svp.models[ (int)e->v.modelindex];  // Mod_ForName (m, true);
 	
 	if (mod)
 		SetMinMaxSize (e, mod->mins, mod->maxs, true);
@@ -517,7 +517,7 @@ void PF_ambientsound (void)
 	attenuation = G_FLOAT(OFS_PARM3);
 	
 // check to see if samp was properly precached
-	for (soundnum=0, check = sv.sound_precache ; *check ; check++, soundnum++)
+	for (soundnum=0, check = svp.sound_precache ; *check ; check++, soundnum++)
 		if (!strcmp(*check,samp))
 			break;
 			
@@ -989,12 +989,12 @@ void PF_precache_sound (void)
 	
 	for (i=0 ; i<MAX_SOUNDS ; i++)
 	{
-		if (!sv.sound_precache[i])
+		if (!svp.sound_precache[i])
 		{
-			sv.sound_precache[i] = s;
+			svp.sound_precache[i] = s;
 			return;
 		}
-		if (!strcmp(sv.sound_precache[i], s))
+		if (!strcmp(svp.sound_precache[i], s))
 			return;
 	}
 	PR_RunError ("PF_precache_sound: overflow");
@@ -1014,13 +1014,13 @@ void PF_precache_model (void)
 
 	for (i=0 ; i<MAX_MODELS ; i++)
 	{
-		if (!sv.model_precache[i])
+		if (!svp.model_precache[i])
 		{
-			sv.model_precache[i] = s;
-			sv.models[i] = Mod_ForName (s, true);
+			svp.model_precache[i] = s;
+			svp.models[i] = Mod_ForName (s, true);
 			return;
 		}
-		if (!strcmp(sv.model_precache[i], s))
+		if (!strcmp(svp.model_precache[i], s))
 			return;
 	}
 	PR_RunError ("PF_precache_model: overflow");
@@ -1140,7 +1140,7 @@ void PF_lightstyle (void)
 	val = G_STRING(OFS_PARM1);
 
 // change the string in sv
-	sv.lightstyles[style] = val;
+	svp.lightstyles[style] = val;
 	
 // send message to all clients on this server
 	if (sv.state != ss_active)

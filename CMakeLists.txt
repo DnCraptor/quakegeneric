@@ -115,6 +115,7 @@ project(${PROJECT_NAME} C CXX ASM)
 pico_sdk_init()
 
 add_subdirectory(drivers/audio)
+add_subdirectory(drivers/audio_ringbuf)
 add_subdirectory(drivers/picomp3lib)
 add_subdirectory(drivers/nespad)
 add_subdirectory(drivers/fatfs)
@@ -127,6 +128,7 @@ add_subdirectory(drivers/tv-software)
 add_subdirectory(drivers/graphics)
 add_subdirectory(drivers/psram)
 add_subdirectory(drivers/dvi_hstx)
+add_subdirectory(drivers/ps2mouse)
 
 #target_compile_definitions(${PROJECT_NAME} PRIVATE VGA)
 
@@ -190,19 +192,23 @@ file(GLOB_RECURSE SRC
 	${PROJECT_SOURCE_DIR}/source/r_sprite.c
 	${PROJECT_SOURCE_DIR}/source/r_surf.c
 	${PROJECT_SOURCE_DIR}/source/r_vars.c
+    ${PROJECT_SOURCE_DIR}/source/recycler.c
 	${PROJECT_SOURCE_DIR}/source/sbar.c
 	${PROJECT_SOURCE_DIR}/source/screen.c
-	${PROJECT_SOURCE_DIR}/source/snd_null.c
+	${PROJECT_SOURCE_DIR}/source/snd_pico.c
+    ${PROJECT_SOURCE_DIR}/source/snd_mem.c
 	${PROJECT_SOURCE_DIR}/source/sv_main.c
 	${PROJECT_SOURCE_DIR}/source/sv_move.c
 	${PROJECT_SOURCE_DIR}/source/sv_phys.c
 	${PROJECT_SOURCE_DIR}/source/sv_user.c
 	${PROJECT_SOURCE_DIR}/source/sys_pico.c
     ${PROJECT_SOURCE_DIR}/source/test_pins.c
+    ${PROJECT_SOURCE_DIR}/source/tprintf.c
 	${PROJECT_SOURCE_DIR}/source/vid_null.c
 	${PROJECT_SOURCE_DIR}/source/view.c
 	${PROJECT_SOURCE_DIR}/source/wad.c
 	${PROJECT_SOURCE_DIR}/source/world.c
+    ${PROJECT_SOURCE_DIR}/source/xipstream.c
 	${PROJECT_SOURCE_DIR}/source/zone.c
 	${PROJECT_SOURCE_DIR}/source/quakegeneric.c
 )
@@ -224,9 +230,10 @@ endif()
 # pull in common dependencies
 target_link_libraries(${PROJECT_NAME} PRIVATE
     psram
-    audio
+    audio_i2s_pwm
     graphics
     picomp3lib
+    ps2mouse
 
     nespad
     sdcard
@@ -284,7 +291,8 @@ target_compile_options(${PROJECT_NAME} PUBLIC
         -Wno-error=stringop-truncation
         -Wno-error=restrict
         -w
-#        -fstack-usage
+        -mfp16-format=ieee
+        -fstack-usage
 )
 endif ()
 
@@ -316,6 +324,10 @@ IF(MURM2)
 
         KBD_CLOCK_PIN=2
         KBD_DATA_PIN=3
+
+        USE_PS2MOUSE
+        MOUSE_CLOCK_PIN=0
+        MOUSE_DATA_PIN=1
 
         LOAD_WAV_PIO=22
 
@@ -388,6 +400,11 @@ ELSEIF(PICO_PC)
         KBD_CLOCK_PIN=0
         KBD_DATA_PIN=1
 
+        USE_PS2MOUSE
+        PS2MOUSE_NESPAD_SHARED
+        MOUSE_CLOCK_PIN=5
+        MOUSE_DATA_PIN=9
+
         LOAD_WAV_PIO=5 # UXT1-10
 
         CLK_AY_PIN1=21 # not in use
@@ -441,6 +458,11 @@ ELSEIF(PICO_DV)
         # DBG1 1/2
         KBD_CLOCK_PIN=0
         KBD_DATA_PIN=1
+
+        USE_PS2MOUSE
+        PS2MOUSE_NESPAD_SHARED
+        MOUSE_CLOCK_PIN=8
+        MOUSE_DATA_PIN=9
 
         LOAD_WAV_PIO=14 # Same place as button A on the board (replacement)
 
@@ -498,6 +520,11 @@ ELSEIF(ZERO)
         KBD_CLOCK_PIN=0
         KBD_DATA_PIN=1
 
+        USE_PS2MOUSE
+        PS2MOUSE_NESPAD_SHARED
+        MOUSE_CLOCK_PIN=7
+        MOUSE_DATA_PIN=8
+
         LOAD_WAV_PIO=17
 
         CLK_AY_PIN1=8 # not in use
@@ -554,6 +581,11 @@ ELSEIF(ZERO2)
         KBD_CLOCK_PIN=2
         KBD_DATA_PIN=3
 
+        #USE_PS2MOUSE
+        PS2MOUSE_NESPAD_SHARED
+        MOUSE_CLOCK_PIN=7
+        MOUSE_DATA_PIN=8
+
         LOAD_WAV_PIO=17
 
         CLK_AY_PIN1=8 # not in use
@@ -606,6 +638,11 @@ ELSE()
     target_compile_definitions(${PROJECT_NAME} PRIVATE
         KBD_CLOCK_PIN=0
         KBD_DATA_PIN=1
+
+        USE_PS2MOUSE
+        PS2MOUSE_NESPAD_SHARED
+        MOUSE_CLOCK_PIN=14
+        MOUSE_DATA_PIN=15
 
         LOAD_WAV_PIO=22
 

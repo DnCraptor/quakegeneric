@@ -20,8 +20,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // mathlib.h
 
 typedef float vec_t;
+typedef _Float16 vechalf_t;
 typedef vec_t vec3_t[3];
 typedef vec_t vec5_t[5];
+typedef vechalf_t vechalf3_t[3];
+typedef vechalf_t vechalf5_t[5];
 
 typedef	int	fixed4_t;
 typedef	int	fixed8_t;
@@ -62,6 +65,8 @@ void R_ConcatRotations (float in1[3][3], float in2[3][3], float out[3][3]);
 void R_ConcatTransforms (float in1[3][4], float in2[3][4], float out[3][4]);
 
 void FloorDivMod (double numer, double denom, int *quotient,
+		int *rem);
+void FloorDivModFloat (float numer, float denom, int *quotient,
 		int *rem);
 fixed16_t Invert24To16(fixed16_t val);
 int GreatestCommonDivisor (int i1, int i2);

@@ -207,7 +207,7 @@ qboolean R_AliasCheckBBox (void)
 		if (viewpts[i].flags & ALIAS_Z_CLIP)
 			continue;
 
-		zi = 1.0 / viewaux[i].fv[2];
+		zi = 1.0f / viewaux[i].fv[2];
 
 	// FIXME: do with chop mode in ASM, or convert to float
 		v0 = (viewaux[i].fv[0] * xscale * zi) + xcenter;
@@ -397,10 +397,10 @@ void R_AliasSetUpTransform (int trivial_accept)
 		for (i=0 ; i<4 ; i++)
 		{
 			aliastransform[0][i] *= aliasxscale *
-					(1.0 / ((float)0x8000 * 0x10000));
+					(1.0f / ((float)0x8000 * 0x10000));
 			aliastransform[1][i] *= aliasyscale *
-					(1.0 / ((float)0x8000 * 0x10000));
-			aliastransform[2][i] *= 1.0 / ((float)0x8000 * 0x10000);
+					(1.0f / ((float)0x8000 * 0x10000));
+			aliastransform[2][i] *= 1.0f / ((float)0x8000 * 0x10000);
 
 		}
 	}
@@ -464,7 +464,7 @@ void R_AliasTransformAndProjectFinalVerts (finalvert_t *fv, stvert_t *pstverts)
 	for (i=0 ; i<r_anumverts ; i++, fv++, pverts++, pstverts++)
 	{
 	// transform and project
-		zi = 1.0 / (DotProduct(pverts->v, aliastransform[2]) +
+		zi = 1.0f / (DotProduct(pverts->v, aliastransform[2]) +
 				aliastransform[2][3]);
 
 	// x, y, and z are scaled down by 1/2**31 in the transform, so 1/z is
@@ -510,7 +510,7 @@ void R_AliasProjectFinalVert (finalvert_t *fv, auxvert_t *av)
 	float	zi;
 
 // project points
-	zi = 1.0 / av->fv[2];
+	zi = 1.0f / av->fv[2];
 
 	fv->v[5] = zi * ziscale;
 
@@ -696,19 +696,26 @@ R_AliasDrawModel
 */
 void R_AliasDrawModel (alight_t *plighting)
 {
-	finalvert_t		finalverts[MAXALIASVERTS +
-						((CACHE_SIZE - 1) / sizeof(finalvert_t)) + 1];
-	auxvert_t		auxverts[MAXALIASVERTS];
+	static __psram_bss("r_alias") __aligned(8) finalvert_t	finalverts[MAXALIASVERTS];
+	static __psram_bss("r_alias") __aligned(8) auxvert_t	auxverts[MAXALIASVERTS];
+	int alloc_on_heap;
+	uint8_t *auxa_rover = AUXA_GetRover();
 
 	r_amodels_drawn++;
 
-// cache align
-	pfinalverts = (finalvert_t *)
-			(((intptr_t)&finalverts[0] + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
-	pauxverts = &auxverts[0];
-
 	paliashdr = (aliashdr_t *)Mod_Extradata (currententity->model);
 	pmdl = (mdl_t *)((byte *)paliashdr + paliashdr->model);
+
+	alloc_on_heap = pmdl->numverts * (currententity->trivial_accept != 0 ? 1 : 2);
+	if (alloc_on_heap <= 400) {	// tweakme, default seems to perform well
+		pfinalverts = (finalvert_t *)(AUXA_Alloc(sizeof(finalvert_t)*400)); // fixed-size predictable allocation =)
+		pauxverts   = (auxvert_t   *)(AUXA_Alloc(sizeof(auxvert_t  )*400)); // fixed-size predictable allocation =)
+	} else {
+		// cache align
+		pfinalverts = &finalverts[0];
+		pauxverts = &auxverts[0];
+		alloc_on_heap = 0;
+	}
 
 	R_AliasSetupSkin ();
 	R_AliasSetUpTransform (currententity->trivial_accept);
@@ -731,11 +738,15 @@ void R_AliasDrawModel (alight_t *plighting)
 	if (currententity != &cl.viewent)
 		ziscale = (float)0x8000 * (float)0x10000;
 	else
-		ziscale = (float)0x8000 * (float)0x10000 * 3.0;
+		ziscale = (float)0x8000 * (float)0x10000 * 3.0f;
 
 	if (currententity->trivial_accept)
 		R_AliasPrepareUnclippedPoints ();
 	else
 		R_AliasPreparePoints ();
+
+	if (alloc_on_heap) {
+		AUXA_FreeToRover(auxa_rover);
+	}
 }
 

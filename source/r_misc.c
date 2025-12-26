@@ -273,9 +273,10 @@ void WarpPalette (void)
 {
 	int		i,j;
 	static const int basecolor[3] = { 130, 80, 50 };
+	uint8_t *auxa_rover = AUXA_GetRover();
 
 // pull the colors halfway to bright brown
-	byte* newpalette = (byte*)malloc(768);
+	byte* newpalette = (byte*)AUXA_Alloc(768);
 	for (i=0 ; i<256 ; i++)
 	{
 		for (j=0 ; j<3 ; j++)
@@ -285,7 +286,7 @@ void WarpPalette (void)
 	}
 	
 	VID_ShiftPalette (newpalette);
-	free(newpalette);
+	AUXA_FreeToRover(auxa_rover);
 }
 
 

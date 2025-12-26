@@ -39,19 +39,12 @@ typedef struct
 
 	qboolean	paused;
 	qboolean	loadgame;			// handle connections specially
-
-	double		time;
 	
 	int			lastcheck;			// used by PF_checkclient
+	double		time;
 	double		lastchecktime;
 	
-	char		name[64];			// map name
-	char		modelname[64];		// maps/<name>.bsp, for model_precache[0]
 	struct model_s 	*worldmodel;
-	char		*model_precache[MAX_MODELS];	// NULL terminated
-	struct model_s	*models[MAX_MODELS];
-	char		*sound_precache[MAX_SOUNDS];	// NULL terminated
-	char		*lightstyles[MAX_LIGHTSTYLES];
 	int			num_edicts;
 	int			max_edicts;
 	edict_t		*edicts;			// can NOT be array indexed, because
@@ -60,15 +53,22 @@ typedef struct
 	server_state_t	state;			// some actions are only valid during load
 
 	sizebuf_t	datagram;
-	byte		datagram_buf[MAX_DATAGRAM];
-
 	sizebuf_t	reliable_datagram;	// copied to all clients at end of frame
-	byte		reliable_datagram_buf[MAX_DATAGRAM];
-
 	sizebuf_t	signon;
-	byte		signon_buf[8192];
 } server_t;
 
+// as with client, move slow and rarely used stuff to the separate struct
+typedef struct {
+	char		*model_precache[MAX_MODELS];	// NULL terminated
+	struct model_s	*models[MAX_MODELS];
+	char		*sound_precache[MAX_SOUNDS];	// NULL terminated
+	char		*lightstyles[MAX_LIGHTSTYLES];
+	char		name[64];			// map name
+	char		modelname[64];		// maps/<name>.bsp, for model_precache[0]
+	byte		datagram_buf[MAX_DATAGRAM];
+	byte		reliable_datagram_buf[MAX_DATAGRAM];
+	byte		signon_buf[8192];
+} server_slow_t;
 
 #define	NUM_PING_TIMES		16
 #define	NUM_SPAWN_PARMS		16
@@ -177,6 +177,7 @@ extern	cvar_t	timelimit;
 
 extern	server_static_t	svs;				// persistant server info
 extern	server_t		sv;					// local server
+extern	server_slow_t	svp;					// "slow" local server
 
 extern	client_t	*host_client;
 

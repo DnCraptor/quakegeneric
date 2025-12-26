@@ -53,6 +53,8 @@ static mvertex_t	*pfrontenter, *pfrontexit;
 
 static qboolean		makeclippededge;
 
+// mark surfaces visdata
+byte *msurfvis;
 
 //===========================================================================
 
@@ -333,8 +335,12 @@ void R_DrawSolidClippedSubmodelPolygons (model_t *pmodel)
 	msurface_t	*psurf;
 	int			numsurfaces;
 	mplane_t	*pplane;
-	mvertex_t	bverts[MAX_BMODEL_VERTS];
-	bedge_t		bedges[MAX_BMODEL_EDGES], *pbedge;
+
+	uint8_t 	*zba_rover = ZBA_GetRover();
+	mvertex_t	*bverts = ZBA_Alloc(sizeof(mvertex_t) * MAX_BMODEL_VERTS);
+	bedge_t	    *bedges = ZBA_Alloc(sizeof(bedge_t)   * MAX_BMODEL_EDGES);
+	bedge_t		*pbedge;
+
 	medge_t		*pedge, *pedges;
 
 // FIXME: use bounding-box-based frustum clipping info?
@@ -400,6 +406,8 @@ void R_DrawSolidClippedSubmodelPolygons (model_t *pmodel)
 			}
 		}
 	}
+
+	ZBA_FreeToRover(zba_rover);
 }
 
 
@@ -449,9 +457,11 @@ R_RecursiveWorldNode
 void R_RecursiveWorldNode (mnode_t *node, int clipflags)
 {
 	int			i, c, side, *pindex;
-	vec3_t		acceptpt, rejectpt;
+	//vec3_t		acceptpt, rejectpt;
+	vec3_t		pt;
 	mplane_t	*plane;
-	msurface_t	*surf, **mark;
+	msurface_t	*surf; 
+	uint16_t    *mark;
 	mleaf_t		*pleaf;
 #ifdef Q_ALIAS_DOUBLE_TO_FLOAT_RENDER
 	float		d, dot;
@@ -481,21 +491,21 @@ void R_RecursiveWorldNode (mnode_t *node, int clipflags)
 
 			pindex = pfrustum_indexes[i];
 
-			rejectpt[0] = (float)node->minmaxs[pindex[0]];
-			rejectpt[1] = (float)node->minmaxs[pindex[1]];
-			rejectpt[2] = (float)node->minmaxs[pindex[2]];
+			pt[0] = (float)node->minmaxs[pindex[0]];
+			pt[1] = (float)node->minmaxs[pindex[1]];
+			pt[2] = (float)node->minmaxs[pindex[2]];
 			
-			d = DotProduct (rejectpt, view_clipplanes[i].normal);
+			d = DotProduct (pt, view_clipplanes[i].normal);
 			d -= view_clipplanes[i].dist;
 
 			if (d <= 0.0f)
 				return;
 
-			acceptpt[0] = (float)node->minmaxs[pindex[3+0]];
-			acceptpt[1] = (float)node->minmaxs[pindex[3+1]];
-			acceptpt[2] = (float)node->minmaxs[pindex[3+2]];
+			pt[0] = (float)node->minmaxs[pindex[3+0]];
+			pt[1] = (float)node->minmaxs[pindex[3+1]];
+			pt[2] = (float)node->minmaxs[pindex[3+2]];
 
-			d = DotProduct (acceptpt, view_clipplanes[i].normal);
+			d = DotProduct (pt, view_clipplanes[i].normal);
 			d -= view_clipplanes[i].dist;
 
 			if (d >= 0.0f)
@@ -515,8 +525,8 @@ void R_RecursiveWorldNode (mnode_t *node, int clipflags)
 		{
 			do
 			{
-				(*mark)->visframe = r_framecount;
-				mark++;
+				i = *mark++;
+				msurfvis[i>>3] |= (1 << (i & 7));
 			} while (--c);
 		}
 
@@ -565,72 +575,74 @@ void R_RecursiveWorldNode (mnode_t *node, int clipflags)
 
 		if (c)
 		{
-			surf = cl.worldmodel->surfaces + node->firstsurface;
+			i = node->firstsurface;
 
 			if (dot < -BACKFACE_EPSILON)
 			{
 				do
 				{
-					if ((surf->flags & SURF_PLANEBACK) &&
-						(surf->visframe == r_framecount))
-					{
-						if (r_drawpolys)
+					if (msurfvis[i>>3] & (1 << (i & 7))) {
+						surf = cl.worldmodel->surfaces + i;
+						if (surf->flags & SURF_PLANEBACK)
 						{
-							if (r_worldpolysbacktofront)
+							if (r_drawpolys)
 							{
-								if (numbtofpolys < MAX_BTOFPOLYS)
+								if (r_worldpolysbacktofront)
 								{
-									pbtofpolys[numbtofpolys].clipflags =
-											clipflags;
-									pbtofpolys[numbtofpolys].psurf = surf;
-									numbtofpolys++;
+									if (numbtofpolys < MAX_BTOFPOLYS)
+									{
+										pbtofpolys[numbtofpolys].clipflags =
+												clipflags;
+										pbtofpolys[numbtofpolys].psurf = surf;
+										numbtofpolys++;
+									}
+								}
+								else
+								{
+									R_RenderPoly (surf, clipflags);
 								}
 							}
 							else
 							{
-								R_RenderPoly (surf, clipflags);
+								R_RenderFace (surf, clipflags);
 							}
 						}
-						else
-						{
-							R_RenderFace (surf, clipflags);
-						}
 					}
-
-					surf++;
+					i++;
 				} while (--c);
 			}
 			else if (dot > BACKFACE_EPSILON)
 			{
 				do
 				{
-					if (!(surf->flags & SURF_PLANEBACK) &&
-						(surf->visframe == r_framecount))
-					{
-						if (r_drawpolys)
+					if (msurfvis[i>>3] & (1 << (i & 7))) {
+						surf = cl.worldmodel->surfaces + i;
+						if (!(surf->flags & SURF_PLANEBACK))
 						{
-							if (r_worldpolysbacktofront)
+							if (r_drawpolys)
 							{
-								if (numbtofpolys < MAX_BTOFPOLYS)
+								if (r_worldpolysbacktofront)
 								{
-									pbtofpolys[numbtofpolys].clipflags =
-											clipflags;
-									pbtofpolys[numbtofpolys].psurf = surf;
-									numbtofpolys++;
+									if (numbtofpolys < MAX_BTOFPOLYS)
+									{
+										pbtofpolys[numbtofpolys].clipflags =
+												clipflags;
+										pbtofpolys[numbtofpolys].psurf = surf;
+										numbtofpolys++;
+									}
+								}
+								else
+								{
+									R_RenderPoly (surf, clipflags);
 								}
 							}
 							else
 							{
-								R_RenderPoly (surf, clipflags);
+								R_RenderFace (surf, clipflags);
 							}
 						}
-						else
-						{
-							R_RenderFace (surf, clipflags);
-						}
 					}
-
-					surf++;
+					i++;
 				} while (--c);
 			}
 
@@ -654,26 +666,34 @@ void R_RenderWorld (void)
 {
 	int			i;
 	model_t		*clmodel;
-	btofpoly_t	btofpolys[MAX_BTOFPOLYS];
 
-	pbtofpolys = btofpolys;
+	uint8_t 	*zba_rover = ZBA_GetRover();
+	pbtofpolys = ZBA_Alloc(sizeof(btofpoly_t) * MAX_BTOFPOLYS);
 
 	currententity = &cl_entities[0];
 	VectorCopy (r_origin, modelorg);
 	clmodel = currententity->model;
 	r_pcurrentvertbase = clmodel->vertexes;
 
+	// allocate and clear marksurfaces visdata
+	msurfvis = ZBA_Alloc((MAX_MAP_MARKSURFACES+7)>>3);
+	memset(msurfvis, 0, (clmodel->nummarksurfaces+7)>>3);
+
 	R_RecursiveWorldNode (clmodel->nodes, 15);
 
 // if the driver wants the polygons back to front, play the visible ones back
 // in that order
+// w: should be dead code i guess
 	if (r_worldpolysbacktofront)
 	{
 		for (i=numbtofpolys-1 ; i>=0 ; i--)
 		{
-			R_RenderPoly (btofpolys[i].psurf, btofpolys[i].clipflags);
+			R_RenderPoly (pbtofpolys[i].psurf, pbtofpolys[i].clipflags);
 		}
 	}
+
+	ZBA_FreeToRover(zba_rover);
+
 }
 
 

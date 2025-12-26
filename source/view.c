@@ -480,6 +480,7 @@ void V_UpdatePalette (void)
 	byte	*basepal, *newpal;
 	int		r,g,b;
 	qboolean force;
+	uint8_t	*zba_rover;
 
 	V_CalcPowerupCshift ();
 	
@@ -515,7 +516,8 @@ void V_UpdatePalette (void)
 		return;
 			
 	basepal = host_basepal;
-	byte* pal = (byte*)malloc(768);
+	zba_rover = ZBA_GetRover();
+	byte* pal = (byte*)ZBA_Alloc(768);
 	newpal = pal;
 	
 	for (i=0 ; i<256 ; i++)
@@ -539,7 +541,7 @@ void V_UpdatePalette (void)
 	}
 
 	VID_ShiftPalette (pal);
-	free (pal);
+	ZBA_FreeToRover (zba_rover);
 }
 
 /* 
