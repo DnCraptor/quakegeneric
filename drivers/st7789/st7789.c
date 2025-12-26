@@ -254,9 +254,9 @@ void graphics_init() {
 
 void graphics_set_palette(uint8_t i, uint32_t color) {
     palette[i] = RGB888(
-        ((color >> 16) & 0xFF),
+        (color & 0xFF),
         ((color >> 8) & 0xFF),
-        (color & 0xFF)
+        ((color >> 16) & 0xFF)
     );
 }
 

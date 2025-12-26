@@ -1,5 +1,6 @@
 #include "graphics.h"
 #include <string.h>
+#include <pico.h>
 
 static struct video_mode_t __scratch_x("video_mode") video_mode[] = {
     { // 640x480 60Hz

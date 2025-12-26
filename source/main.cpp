@@ -589,7 +589,9 @@ void repeat_me_for_input() {
 #endif
 }
 
+#ifdef VGA_HDMI
 extern "C" bool SELECT_VGA;
+#endif
 
 extern "C" uint8_t __aligned(4) FRAME_BUF[QUAKEGENERIC_RES_X * QUAKEGENERIC_RES_Y] = { 0 };
 
@@ -1083,6 +1085,7 @@ static void finish_him(void) {
     uint8_t link_i2s_code = testPins(I2S_DATA_PIO, I2S_BCK_PIO);
     is_i2s_enabled = override_audio != 0xFF ? override_audio : link_i2s_code != 0;
 
+#ifdef VGA_HDMI
     uint8_t linkVGA01;
     linkVGA01 = testPins(VGA_BASE_PIN, VGA_BASE_PIN + 1);
     if (override_video != 0xFF) {
@@ -1094,7 +1097,7 @@ static void finish_him(void) {
         SELECT_VGA = (linkVGA01 == 0) || (linkVGA01 == 0x1F);
     #endif
     }
-
+#endif
     Sys_Printf(" Hardware info\n");
     Sys_Printf(" --------------------------------------\n");
     uint32_t cpu_hz = clock_get_hz(clk_sys);
@@ -1114,7 +1117,9 @@ static void finish_him(void) {
         Sys_Printf(" PSRAM max freq.: %d MHz [T%p]\n", psram_mhz, qmi_hw->m[1].timing);
     }
     Sys_Printf(" Sound          : %s [%02x] %s\n", is_i2s_enabled ? "i2s" : "PWM", link_i2s_code, override_audio == 0xFF ? "" : "overriden");
+#ifdef VGA_HDMI
     Sys_Printf(" Video          : %s [%02x] %s\n", SELECT_VGA ? "VGA" : "HDMI", linkVGA01, override_video == 0xFF ? "" : "overriden");
+#endif
     Sys_Printf(" SP after switch: 0x%08X\n", sp_after);
     Sys_Printf(" .psram_data size:  0x%08X\n", (&__psram_data_end__ - &__psram_data_start__));
     Sys_Printf(" .psram_bss  size:  0x%08X\n", (&__psram_bss_end__ - &__psram_bss_start__));

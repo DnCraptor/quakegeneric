@@ -175,7 +175,7 @@ void Sys_Error (char *error, ...) {
 	va_start (argptr,error);
 	Sys_PrintError(error, argptr);
 	va_end (argptr);
-
+#if PICO_DEFAULT_LED_PIN
 	while(true) {
 		sleep_ms(33);
         gpio_put(PICO_DEFAULT_LED_PIN, true);
@@ -184,6 +184,7 @@ void Sys_Error (char *error, ...) {
 		// TODO: input
 	}
 	//Sys_Quit();
+#endif
 }
 
 int Sys_Fscanf(FIL *f, char *fmt, ...)
