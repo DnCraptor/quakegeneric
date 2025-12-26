@@ -30,7 +30,17 @@ static audio_config_t audiocfg;
 static void __not_in_flash_func(audio_dma_interrupt_handler)() {
     if (dma_irqn_get_channel_status(audiocfg.dma_irq - DMA_IRQ_0, audiocfg.dma_channels[AUDIO_DMA_CHAN_RESTART])) {
         audiocfg.samples_played += audiocfg.buffer_half_size;
-        audiocfg.buffer_offset  ^= audiocfg.buffer_half_smps;
+
+        // determine which buffer to update, based on current DMA read address
+        // (trying to recover from the situation when we missed the interrupt by some reason and
+        // filling the same buffer the DMA is reading from)
+        uint32_t read_addr = dma_channel_hw_addr(audiocfg.dma_channels[AUDIO_DMA_CHAN_MAIN])->read_addr;
+        if (read_addr >= (audiocfg.dma_buffer + audiocfg.buffer_half_smps)) {
+            audiocfg.buffer_offset = 0;
+        } else {
+            audiocfg.buffer_offset = audiocfg.buffer_half_smps;
+        }
+        
         // start callback
         audiocfg.cb(audiocfg.dma_buffer + audiocfg.buffer_offset, audiocfg.buffer_half_size, audiocfg.cb_priv, &audiocfg);
         audiocfg.samples_rendered += audiocfg.buffer_half_size;
