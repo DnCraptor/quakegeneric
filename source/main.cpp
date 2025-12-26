@@ -1284,7 +1284,7 @@ static void load_config() {
                 }
             } else if (strcmp(t, "VIDEO") == 0) {
                 t = next_token(t);
-                if (strcmp("HDMI", t) == 0) {
+                if ((strcmp("HDMI", t) == 0) || (strcmp("DVI", t) == 0)) {
                     override_video = 0;
                 } else if (strcmp("VGA", t) == 0) {
                     override_video = 1;

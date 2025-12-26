@@ -1,3 +1,7 @@
+// simple DMA-driven I2S/PWM audio driver
+// --wbcbz7 27.12.2o25
+
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include <string.h>
 #include <stdlib.h>
