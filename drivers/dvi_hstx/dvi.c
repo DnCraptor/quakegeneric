@@ -1,6 +1,8 @@
 // DVI/HSTX display driver for the RP2350 - work in progress
 // --wbcbz7 11.o9.2o25
 
+// SPDX-License-Identifier: MIT
+
 #include <stdio.h>
 
 #include "pico/stdlib.h"

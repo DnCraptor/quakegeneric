@@ -760,6 +760,8 @@ void S_Update(vec3_t origin, vec3_t forward, vec3_t right, vec3_t up)
 	}
 	mutex_exit(&snd_mutex);
 
+	// update CD audio
+	CDAudio_Update();
 #if 0
 //
 // debugging output
@@ -822,6 +824,8 @@ void GetSoundtime(void)
 
 void S_ExtraUpdate (void)
 {
+	// update CD audio
+	CDAudio_Update();
 }
 
 void S_ClearBuffer (void)
