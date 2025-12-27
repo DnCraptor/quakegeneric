@@ -445,6 +445,7 @@ void graphics_init() {
 
     graphics_set_mode(GRAPHICSMODE_DEFAULT);
     irq_set_exclusive_handler(VGA_DMA_IRQ, dma_handler_VGA);
+    irq_set_priority(VGA_DMA_IRQ, PICO_HIGHEST_IRQ_PRIORITY);    
     dma_channel_set_irq0_enabled(dma_chan_ctrl, true);
     irq_set_enabled(VGA_DMA_IRQ, true);
     dma_start_channel_mask(1u << dma_chan);

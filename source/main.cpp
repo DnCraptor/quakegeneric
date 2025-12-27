@@ -713,7 +713,6 @@ void __scratch_x("render") render_core() {
         linebuf_pal[0x0F] = vga_pwm_xlat_color32(0xEBEBEB);
     }
 #else
-    multicore_lockout_victim_init();
     graphics_init();
     graphics_set_buffer(FRAME_BUF, QUAKEGENERIC_RES_X, QUAKEGENERIC_RES_Y);
     graphics_set_bgcolor(0x000000);
