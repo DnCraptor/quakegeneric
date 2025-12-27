@@ -92,7 +92,7 @@ This port is made around the following board platforms:
   | 10       | BCLK         |PWM_LEFT|
   | 11       | LRCLK        |PWM_RIGHT|
 
-  #### DVI/HDMI video output:
+  #### DVI/HDMI/SPI LCD video output:
   | GPIO pin | VGA function | DVI/HDMI function | SPI LCD Function |
   | -------- | ------------ | ----------------- | ---- |
   | 12   | B0 | Clock-                |CS|
