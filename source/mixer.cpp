@@ -10,30 +10,36 @@
 #include "mixer.h"
 #include "quakedef.h"
 
+#if DVI_HSTX
+#include "dvi_defs.h"
+#endif
+
+
 extern "C" qboolean CDAudio_GetSamples(int16_t* buf, size_t n);
 extern "C" qboolean S_GetSamples(int16_t* buf, size_t n);
 
 // ---------------------------------------------------
 mutex_t snd_mutex;		// used to coordinate access between core 1 mixer and core0
 
+
 #define AUDIO_BUFFER_SIZE_LOG2 9
 #define AUDIO_BUFFER_SIZE      (1 << AUDIO_BUFFER_SIZE_LOG2)
 
 static int16_t audiobuf[AUDIO_BUFFER_SIZE * 2];
 static int32_t sfxbuf[((AUDIO_BUFFER_SIZE/SFX_DOWNSAMPLE_RATIO + 1) * 2)]; // sound effects buffer
+static uint32_t timestamp = 0;
 bool is_i2s_enabled = false;
 
 extern "C" qboolean CDAudio_GetSamples(int16_t* buf, size_t n); // FIXME!!
 extern "C" void S_RenderSfx(int32_t *sfxbuf, int frames, uint32_t timestamp);
 
-int __not_in_flash_func(audio_cb)(int16_t* dst, uint32_t frames, void* priv, const audio_config_t *cfg) {
-    int volscale = cfg->volscale;
-    int volbias  = cfg->flags & AUDIO_CFG_PWM ? 32768 : 0;
+int __not_in_flash_func(audio_cb_common)(int16_t* dst, uint32_t frames, int volscale, int volbias) {
     if (frames == 0) return 0;
     
     // get CD samples (todo: do this another way)
     if (!CDAudio_GetSamples(dst, frames)) memset(dst, 0, sizeof(int16_t) * 2 * frames);
-    S_RenderSfx(sfxbuf + 2, frames / SFX_DOWNSAMPLE_RATIO, cfg->samples_rendered / SFX_DOWNSAMPLE_RATIO);
+    S_RenderSfx(sfxbuf + 2, frames / SFX_DOWNSAMPLE_RATIO, timestamp / SFX_DOWNSAMPLE_RATIO);
+    timestamp += frames;
 
     // upsample sfx buffer, mix with CD audio and clamp
     // TODO: linearly interpolate sfx buffer data
@@ -88,11 +94,18 @@ int __not_in_flash_func(audio_cb)(int16_t* dst, uint32_t frames, void* priv, con
 
     sfxbuf[0] = sfxbuf[((AUDIO_BUFFER_SIZE/SFX_DOWNSAMPLE_RATIO)*2)+0];
     sfxbuf[1] = sfxbuf[((AUDIO_BUFFER_SIZE/SFX_DOWNSAMPLE_RATIO)*2)+1];
-
     return 0;
 }
 
-void mixer_init(int volume) {
+int __not_in_flash_func(audio_cb_hdmi)(int16_t* dst, uint32_t frames, void* priv) {
+    return audio_cb_common(dst, frames, (uint32_t)priv, 0);
+}
+
+int __not_in_flash_func(audio_cb)(int16_t* dst, uint32_t frames, void* priv, const audio_config_t *cfg) {
+    return audio_cb_common(dst, frames, cfg->volscale, cfg->flags & AUDIO_CFG_PWM ? 32768 : 0);
+}
+
+void mixer_init(int volume, int is_hdmi) {
     audio_config_t *cfg = audio_init_default_cfg();
 
     cfg->flags  = AUDIO_CFG_STEREO | (is_i2s_enabled ? AUDIO_CFG_I2S : AUDIO_CFG_PWM);
@@ -113,11 +126,19 @@ void mixer_init(int volume) {
         cfg->pwm.base_pin = PWM_PIN0;
     }
 
-    int rtn = audio_init();
-    if (rtn != AUDIO_ERR_OK) {
-        Sys_Error("audio_init() error %d\n", rtn);
-    }
+#if DVI_HSTX
+    if (is_hdmi) {
+        hdmi_audio_set_buffer(audiobuf, AUDIO_BUFFER_SIZE);
+        hdmi_audio_set_cb(audio_cb_hdmi, (void*)cfg->volume);
+    } else
+#endif
+    {
+        int rtn = audio_init();
+        if (rtn != AUDIO_ERR_OK) {
+            Sys_Error("audio_init() error %d\n", rtn);
+        }
 
-    audio_start();
+        audio_start();
+    }
 }
 
