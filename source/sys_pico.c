@@ -21,10 +21,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <pico/stdlib.h>
 #include <hardware/watchdog.h>
+#include <tusb.h>
 #include "quakedef.h"
 #include "sys.h"
 
 qboolean isDedicated;
+static uint32_t next_tuh_poll_ms = 0;
 
 /*
 ===============================================================================
@@ -105,6 +107,13 @@ void Sys_FileSeek (int handle, int position)
 int Sys_FileRead (int handle, void *dest, int count)
 {
 	UINT rb = 0;
+
+	// periodically call tinyusb task, reduce device enumeration stutters at startup
+	if ((time_us_64()/1000LL) >= next_tuh_poll_ms) {
+		next_tuh_poll_ms = (time_us_64()/1000LL) + 10;		// poll every 10ms
+		tuh_task();
+	}
+	
 	f_read (sys_handles[handle], dest, count, &rb);
 	return rb;
 }
@@ -112,6 +121,13 @@ int Sys_FileRead (int handle, void *dest, int count)
 int Sys_FileWrite (int handle, void *data, int count)
 {
 	UINT wb = 0;
+	
+	// periodically call tinyusb task, reduce device enumeration stutters at startup
+	if ((time_us_64()/1000LL) >= next_tuh_poll_ms) {
+		next_tuh_poll_ms = (time_us_64()/1000LL) + 10;		// poll every 10ms
+		tuh_task();
+	}
+
 	f_write (sys_handles[handle], data, count, &wb);
 	return wb;
 }

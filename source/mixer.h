@@ -8,7 +8,7 @@ extern "C" {
 
 extern mutex_t snd_mutex;
 
-void mixer_init(int volume);
+void mixer_init(int volume, int is_hdmi);
 void mixer_samples(int16_t*, size_t);
 void mixer_tick();
 

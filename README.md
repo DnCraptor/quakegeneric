@@ -7,9 +7,12 @@ it's like [doomgeneric](https://github.com/ozkl/doomgeneric), but for quake. it'
 ## features
 
 * supports shareware/registered Quake I .pak's, official mission packs, and third-party addons as well (untested)
-* video output (pixel-doubled 320x240 as 640x480 60 Hz) via VGA or DVI/HDMI (auto-detected)
+* video output (320x240):
+  * VGA, 640x480 60Hz, RGB222, with 2197-color high-speed PWM on HSTX-capable boards
+  * DVI/HDMI, 640x480 60Hz, RGB888, with optional audio
+  * SPI LCD displays based on ST7789/ILI9341 controllers
 * uses SD card (SPI mode, FAT32/exFAT) for storing game assets
-* audio (CD audio tracks + sound effects) output via PWM or external I2S DAC
+* audio (sound effects + CD audio) output via PWM, external I2S DAC, or HDMI
 * PS/2 and USB HID keyboard/mouse support
 * NES gamepad support
 
@@ -33,17 +36,17 @@ This port is made around the following board platforms:
   | 27       | BCLK         | PWM_LEFT     |
   | 28       | LRCLK        | PWM_RIGHT    |
 
-    #### DVI/HDMI video output:
-  | GPIO pin | VGA function | DVI/HDMI function |
-  | -------- | ------------ | ----------------- |
-  | 6        | B0           | Clock-            |
-  | 7        | B1           | Clock+            |
-  | 8        | G0           | Lane0-            |
-  | 9        | G1           | Lane0+            |
-  | 10       | R0           | Lane1-            |
-  | 11       | R1           | Lane1+            |
-  | 12       | HSYNC        | Lane2-            |
-  | 13       | VSYNC        | Lane2+            |
+    #### DVI/HDMI/SPI LCD video output:
+  | GPIO pin | VGA function | DVI/HDMI function | SPI LCD Function |
+  | -------- | ------------ | ----------------- | ---- |
+  | 6        | B0           | Clock-            |CS|
+  | 7        | B1           | Clock+            ||
+  | 8        | G0           | Lane0-            |Reset|
+  | 9        | G1           | Lane0+            |Backlight|
+  | 10       | R0           | Lane1-            |D/C|
+  | 11       | R1           | Lane1+            ||
+  | 12       | HSYNC        | Lane2-            |Data|
+  | 13       | VSYNC        | Lane2+            |Clock|
 
     #### (micro)SD card slot:
   | GPIO pin | SD Card Function |
@@ -75,7 +78,7 @@ This port is made around the following board platforms:
 
   * HSTX-driven display driver, with lower CPU overhead, also supporting 2197-color (13^3) VGA output over RGB222 pins via high-speed 4-phase PWM.
     * supports custom pin mappings (Pico-DVI-Sock, etc.) with config options.
-    * HDMI audio support coming soon!
+    * HDMI audio support! needs to be enabled in `/quake/quake.conf`, see below
 
   #### QSPI PSRAM CS
 
@@ -90,16 +93,16 @@ This port is made around the following board platforms:
   | 11       | LRCLK        |PWM_RIGHT|
 
   #### DVI/HDMI video output:
-  | GPIO pin | VGA function | DVI/HDMI function |
-  | -------- | ------------ | ----------------- |
-  | 12   | B0 | Clock-                |
-  | 13   | B1 | Clock+                |
-  | 14   | G0 | Lane0-                |
-  | 15   | G1 | Lane0+                |
-  | 16   | R0 | Lane1-                |
-  | 17   | R1 | Lane1+                |
-  | 18   | HSYNC | Lane2-                |
-  | 19   | VSYNC | Lane2+                |
+  | GPIO pin | VGA function | DVI/HDMI function | SPI LCD Function |
+  | -------- | ------------ | ----------------- | ---- |
+  | 12   | B0 | Clock-                |CS|
+  | 13   | B1 | Clock+                ||
+  | 14   | G0 | Lane0-                |Reset|
+  | 15   | G1 | Lane0+                |Backlight|
+  | 16   | R0 | Lane1-                |D/C|
+  | 17   | R1 | Lane1+                ||
+  | 18   | HSYNC | Lane2-                |Data|
+  | 19   | VSYNC | Lane2+                |Clock|
 
   #### (micro)SD card slot:
   | GPIO pin | SD Card Function |
@@ -188,7 +191,7 @@ Supported parameters:
 
 * **FLASH_T/PSRAM_T** - Flash/PSRAM timing values in form of QMI::M0/M1_TIMING register values.
 
-* **AUDIO** - select audio output (I2S or PWM). If omitted, it's autodetected.
+* **AUDIO** - select audio output (I2S, PWM or HDMI). If omitted, PWM and I2S are autodetected. HDMI audio is available in HSTX builds only and needs to be enabled manually.
 
 * **VIDEO** - select video output (VGA, DVI or HDMI). If omitted, it's autodetected. DVI and HDMI are effectively the same setting. 
 
@@ -214,7 +217,7 @@ original repo: https://github.com/erysdren/quakegeneric (for MS-DOS / SDL2 / Win
 
 RP2350 port maintained by @Michael_V1973 (https://github.com/DnCraptor)
 
-Additional tweaks and performance optimizations by Artem Vasilev aka (https://github.com/wbcbz7)
+VGA/DVI/HDMI HSTX driver, additional tweaks and performance optimizations by Artem Vasilev aka (https://github.com/wbcbz7)
 
 [INSERT MORE CREDITS ;)]
 

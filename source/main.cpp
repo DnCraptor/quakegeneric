@@ -52,6 +52,13 @@
 bool rp2350a = true;
 uint8_t rx[4] = { 0 };
 
+enum {
+    OVERRIDE_AUDIO_NONE = 0xFF,
+    OVERRIDE_AUDIO_PWM = 0,
+    OVERRIDE_AUDIO_I2S = 1,
+    OVERRIDE_AUDIO_HDMI = 2,
+};
+
 static int cpu_mhz = CPU_MHZ;
 static int new_cpu_mhz = CPU_MHZ;
 static int vreg = VREG_VOLTAGE_1_60;
@@ -62,7 +69,7 @@ int volume    = 100;
 static uint new_flash_timings = 0;
 static uint new_psram_timings = 0;
 static uint8_t override_video = 0xFF;
-static uint8_t override_audio = 0xFF;
+static uint8_t override_audio = OVERRIDE_AUDIO_NONE;
 static uint8_t ps2mouse_present = 0;
 
 extern "C" bool is_i2s_enabled;
@@ -673,6 +680,7 @@ void __noinline hstx_init() {
     for (int i = 0; i < 3; i++) dvires.dma_channels[i] = dma_claim_unused_channel(true);
     dvires.irq_dma = DMA_IRQ_0;
     dvires.irq_linebuf_callback = user_irq_claim_unused(true);
+    dvires.irq_audio_callback   = user_irq_claim_unused(true);
 
     // set timings
     dvi_linebuf_set_timings(&dvi_timings, is_vga ? 1 : dvi_modes[mode].pixel_rep);
@@ -685,7 +693,20 @@ void __noinline hstx_init() {
     if (is_vga) {
         vga_linebuf_fill_hstx_cmdlist();
     } else {
-        dvi_linebuf_fill_hstx_cmdlist();
+        if (override_audio == OVERRIDE_AUDIO_HDMI) {
+            hdmi_linebuf_init_info(
+                AVI_PIXEL_FORMAT_RGB | AVI_ACTIVE_FORMAT_VALID | AVI_SCAN_INFO_UNDERSCAN,
+                AVI_COLORIMETRY_BT709 | dvi_modes[mode].cea_aspect,
+                AVI_IT_CONTENT | AVI_COLOR_RANGE_FULL,
+                dvi_modes[mode].vic,
+                44100,     // no audio
+                0
+            );
+            dvi_linebuf_fill_hstx_cmdlist(true);
+            mixer_init(volume, true);
+        } else {
+            dvi_linebuf_fill_hstx_cmdlist(false);
+        }
     }
 
     // initialize DMA channels and IRQ handlers
@@ -721,7 +742,12 @@ void __scratch_x("render") render_core() {
 #endif
     sem_acquire_blocking(&vga_start_semaphore);
     
-    mixer_init(volume);
+#if DVI_HSTX
+    if (override_audio != OVERRIDE_AUDIO_HDMI)
+#endif
+    {    
+        mixer_init(volume, false);
+    }
     uint64_t tick = time_us_64();
 #if 0
     uint64_t last_cd_tick = 0;
@@ -1082,7 +1108,7 @@ static void finish_him(void) {
     f_unlink("quake.log");
 
     uint8_t link_i2s_code = testPins(I2S_DATA_PIO, I2S_BCK_PIO);
-    is_i2s_enabled = override_audio != 0xFF ? override_audio : link_i2s_code != 0;
+    is_i2s_enabled = override_audio != OVERRIDE_AUDIO_NONE ? override_audio == OVERRIDE_AUDIO_I2S : link_i2s_code != 0;
 
 #ifdef VGA_HDMI
     uint8_t linkVGA01;
@@ -1115,7 +1141,16 @@ static void finish_him(void) {
     } else {
         Sys_Printf(" PSRAM max freq.: %d MHz [T%p]\n", psram_mhz, qmi_hw->m[1].timing);
     }
-    Sys_Printf(" Sound          : %s [%02x] %s\n", is_i2s_enabled ? "i2s" : "PWM", link_i2s_code, override_audio == 0xFF ? "" : "overriden");
+    {
+        const char *soundname[] = {"PWM", "I2S", "HDMI"};
+        Sys_Printf(" Sound          : %s [%02x] %s\n", 
+            (override_audio == OVERRIDE_AUDIO_NONE) ? 
+                (is_i2s_enabled ? "I2S" : "PWM") : 
+                (soundname[override_audio]),
+            link_i2s_code,
+            override_audio == OVERRIDE_AUDIO_NONE ? "" : "overriden"
+        );
+    }
 #ifdef VGA_HDMI
     Sys_Printf(" Video          : %s [%02x] %s\n", SELECT_VGA ? "VGA" : "HDMI", linkVGA01, override_video == 0xFF ? "" : "overriden");
 #endif
@@ -1296,10 +1331,15 @@ static void load_config() {
             } else if (strcmp(t, "AUDIO") == 0) {
                 t = next_token(t);
                 if (strcmp("I2S", t) == 0) {
-                    override_audio = 1;
+                    override_audio = OVERRIDE_AUDIO_I2S;
                 } else if (strcmp("PWM", t) == 0) {
-                    override_audio = 0;
+                    override_audio = OVERRIDE_AUDIO_PWM;
                 }
+#if DVI_HSTX
+                else if (strcmp("HDMI", t) == 0) {
+                    override_audio = OVERRIDE_AUDIO_HDMI;
+                }
+#endif
             } else if (strcmp(t, "VOLUME") == 0) {
                 t = next_token(t);
                 volume = atoi(t);
