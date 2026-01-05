@@ -1108,7 +1108,11 @@ static void finish_him(void) {
     f_unlink("quake.log");
 
     uint8_t link_i2s_code = testPins(I2S_DATA_PIO, I2S_BCK_PIO);
-    is_i2s_enabled = override_audio != OVERRIDE_AUDIO_NONE ? override_audio == OVERRIDE_AUDIO_I2S : link_i2s_code != 0;
+    if (override_audio != OVERRIDE_AUDIO_NONE) {
+        is_i2s_enabled = link_i2s_code != 0;
+    } else {
+        is_i2s_enabled = override_audio == OVERRIDE_AUDIO_I2S;
+    }
 
 #ifdef VGA_HDMI
     uint8_t linkVGA01;
