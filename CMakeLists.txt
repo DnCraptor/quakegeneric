@@ -36,12 +36,12 @@ set(VGA_HDMI ON)
 #set(TFT_INV 1)
 #set(ILI9341 ON)
 
-#set(CPU_MHZ 252)
+set(CPU_MHZ 252)
 #set(CPU_MHZ 378)
-set(CPU_MHZ 504)
+#set(CPU_MHZ 504)
 
-#set(PSRAM_MHZ 88)
-set(PSRAM_MHZ 100)
+set(PSRAM_MHZ 88)
+#set(PSRAM_MHZ 100)
 #set(PSRAM_MHZ 166)
 
 set (PORT_VERSION "1.09")
@@ -131,8 +131,11 @@ add_subdirectory(drivers/graphics)
 add_subdirectory(drivers/psram)
 add_subdirectory(drivers/dvi_hstx_hdmi_audio)
 add_subdirectory(drivers/ps2mouse)
-
-#target_compile_definitions(${PROJECT_NAME} PRIVATE VGA)
+IF(KBDUSB)
+    add_subdirectory(drivers/ps2kbd)
+ELSE()
+    add_subdirectory(drivers/ps2)
+ENDIF()
 
 # INCLUDE FILES THAT SHOULD BE COMPILED:
 file(GLOB_RECURSE SRC
@@ -229,54 +232,73 @@ if (PICO_BOARD STREQUAL "pico")
     pico_set_boot_stage2(${PROJECT_NAME} slower_boot2)
 endif()
 
-# pull in common dependencies
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    psram
-    audio_i2s_pwm
-    graphics
-    picomp3lib
-    ps2mouse
+IF(KBDUSB)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        psram
+        audio_i2s_pwm
+        graphics
+        picomp3lib
+        ps2mouse
+        ps2kbd
 
-    nespad
-    sdcard
-    fatfs
+        nespad
+        sdcard
+        fatfs
 
-    pico_runtime
-    pico_stdlib
-    pico_multicore
-    hardware_dma
-    hardware_pio
-    hardware_i2c
-    hardware_interp
-    hardware_timer
-    hardware_clocks
-    hardware_pwm
-    hardware_flash
-    hardware_exception
-    stdc++
+        pico_runtime
+        pico_stdlib
+        pico_multicore
+        hardware_dma
+        hardware_pio
+        hardware_i2c
+        hardware_interp
+        hardware_timer
+        hardware_clocks
+        hardware_pwm
+        hardware_flash
+        hardware_exception
+        stdc++
 
-    tinyusb_host tinyusb_board
-)
+        tinyusb_host tinyusb_board
+    )
+    target_compile_definitions(${PROJECT_NAME} PRIVATE KBDUSB)
+ELSE()
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        psram
+        audio_i2s_pwm
+        graphics
+        picomp3lib
+        ps2mouse
+        ps2
+
+        nespad
+        sdcard
+        fatfs
+
+        pico_runtime
+        pico_stdlib
+        pico_multicore
+        hardware_dma
+        hardware_pio
+        hardware_i2c
+        hardware_interp
+        hardware_timer
+        hardware_clocks
+        hardware_pwm
+        hardware_flash
+        hardware_exception
+        stdc++
+
+        tinyusb_host tinyusb_board
+    )
+    target_compile_definitions(${PROJECT_NAME} PRIVATE KBDPS2)
+ENDIF()
+
 
 if (PICO_CYW43_SUPPORTED)
     target_link_libraries(${PROJECT_NAME} pico_cyw43_arch_none)
 endif()
 
-##pico_enable_stdio_uart(${PROJECT_NAME} 0)
-##pico_enable_stdio_usb(${PROJECT_NAME} 1)
-
-# create map/bin/hex file etc.
-pico_add_extra_outputs(${PROJECT_NAME})
-
-# add url via pico_set_program_url
-
-if (m1p2launcher)
-    pico_set_linker_script(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/memmap.mos2.ld")
-else ()
-    pico_set_linker_script(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/memmap.ld")
-endif ()
-
-target_link_options(${PROJECT_NAME} PRIVATE -Xlinker --print-memory-usage --data-sections)
 target_compile_definitions(${PROJECT_NAME} PRIVATE FLASH_SIZE=${FLASH_SIZE})
 
 if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
@@ -297,16 +319,6 @@ target_compile_options(${PROJECT_NAME} PUBLIC
         -fstack-usage
 )
 endif ()
-
-IF(KBDUSB)
-    add_subdirectory(drivers/ps2kbd)
-    target_link_libraries(${PROJECT_NAME} PRIVATE ps2kbd)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE KBDUSB)
-ELSE()
-    add_subdirectory(drivers/ps2)
-    target_link_libraries(${PROJECT_NAME} PRIVATE ps2)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE KBDPS2)
-ENDIF()
 
 if (BUTTER_PSRAM_GPIO)
     target_compile_definitions(${PROJECT_NAME} PRIVATE BUTTER_PSRAM_GPIO=${BUTTER_PSRAM_GPIO})
@@ -784,6 +796,22 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     PICO_GIT_BRANCH="${GIT_BRANCH}"
     PICO_GIT_COMMIT="${GIT_COMMIT_HASH}"
 )
+
+##pico_enable_stdio_uart(${PROJECT_NAME} 0)
+##pico_enable_stdio_usb(${PROJECT_NAME} 1)
+
+# create map/bin/hex file etc.
+pico_add_extra_outputs(${PROJECT_NAME})
+
+# add url via pico_set_program_url
+
+if (m1p2launcher)
+    pico_set_linker_script(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/memmap.mos2.ld")
+else ()
+    pico_set_linker_script(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/memmap.ld")
+endif ()
+
+target_link_options(${PROJECT_NAME} PRIVATE -Xlinker --print-memory-usage --data-sections)
 
 if (m1p2launcher)
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD

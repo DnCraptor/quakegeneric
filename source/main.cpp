@@ -27,6 +27,8 @@
 #include "ff.h"
 #include "psram_spi.h"
 #ifdef KBDUSB
+    #include "hid.h"
+    #include "tusb.h"
     #include "ps2kbd_mrmltr.h"
 #else
     #include "ps2.h"
@@ -1452,3 +1454,19 @@ int main() {
     switch_stack(STACK_CORE0, finish_him);
     __unreachable();
 }
+
+// TODO: why?
+#ifdef KBDUSB
+Ps2Kbd_Mrmltr::Ps2Kbd_Mrmltr(
+    PIO pio, uint base_gpio, std::function<void(hid_keyboard_report_t *curr, hid_keyboard_report_t *prev)> keyHandler
+) :
+  _pio(pio),
+  _base_gpio(base_gpio),
+  _double(false),
+  _overflow(false),
+  _keyHandler(keyHandler)
+{
+  clearHidKeys();
+  clearActions();
+}
+#endif

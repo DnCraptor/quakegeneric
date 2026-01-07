@@ -9,6 +9,7 @@
 // https://wiki.osdev.org/PS/2_Keyboard
 //
 #include "ps2kbd_mrmltr.h"
+#include <cstdio>
 #if KBD_CLOCK_PIN == 2
 #include "ps2kbd_mrmltr2.pio.h"
 #else
@@ -161,27 +162,9 @@ static uint8_t ps2kbd_page_0[] {
 };
 
 
-Ps2Kbd_Mrmltr::Ps2Kbd_Mrmltr(PIO pio, uint base_gpio, std::function<void(hid_keyboard_report_t *curr, hid_keyboard_report_t *prev)> keyHandler) :
-  _pio(pio),
-  _base_gpio(base_gpio),
-  _double(false),
-  _overflow(false),
-  _keyHandler(keyHandler)
-{
-  clearHidKeys();
-  clearActions();
-}
-
-bool Ps2Kbd_Mrmltr::clearHidKeys() {
-  bool res = _report.modifier != 0;
+void Ps2Kbd_Mrmltr::clearHidKeys() {
   _report.modifier = 0;
-  for (int i = 0; i < HID_KEYBOARD_REPORT_MAX_KEYS; ++i) {
-    if (_report.keycode[i] != HID_KEY_NONE) {
-      res = true;
-      _report.keycode[i] = HID_KEY_NONE;
-    }
-  }
-  return res;
+  for (int i = 0; i < HID_KEYBOARD_REPORT_MAX_KEYS; ++i) _report.keycode[i] = HID_KEY_NONE;
 }
 
 inline static uint8_t hidKeyToMod(uint8_t hidKeyCode) {
@@ -272,8 +255,6 @@ uint8_t Ps2Kbd_Mrmltr::hidCodePage1(uint8_t ps2code) {
   }
 }
 
-#include "ff.h"
-
 void Ps2Kbd_Mrmltr::handleActions() {
   /*
   FIL f;
@@ -334,8 +315,8 @@ void Ps2Kbd_Mrmltr::handleActions() {
   
   DBG_PRINTF("PS/2 HID m=%2X ", _report.modifier);
   #ifdef DEBUG_PS2
-  for (int i = 0; i < HID_KEYBOARD_REPORT_MAX_KEYS; ++i) printf("%2X ", _report.keycode[i]);
-  printf("\n");
+  for (int i = 0; i < HID_KEYBOARD_REPORT_MAX_KEYS; ++i) DBG_PRINTF("%2X ", _report.keycode[i]);
+  DBG_PRINTF("\n");
   #endif
 }
 
@@ -346,22 +327,24 @@ void Ps2Kbd_Mrmltr::tick() {
     while (!pio_sm_is_rx_fifo_empty(_pio, _sm)) {
       // pull a scan code from the PIO SM fifo
       uint32_t rc = _pio->rxf[_sm];    
-      printf("PS/2 drain rc %4.4lX (%ld)\n", rc, rc);
+      DBG_PRINTF("PS/2 drain rc %4.4lX (%ld)\n", (unsigned long)rc, (long)rc);
     }
-  // Release all currently pressed keys to prevent sticky keys
+    // Release all currently pressed keys to prevent sticky keys
     hid_keyboard_report_t prev = _report;
-    bool changed = clearHidKeys();
+    clearHidKeys();
     clearActions();
-    if (changed) _keyHandler(&_report, &prev);
+    // Notify the handler that all keys are now released
+    _keyHandler(&_report, &prev);
+    return;
   }
   
   while (!pio_sm_is_rx_fifo_empty(_pio, _sm)) {
     // pull a scan code from the PIO SM fifo
     uint32_t rc = _pio->rxf[_sm];    
-    DBG_PRINTF("PS/2 rc %4.4lX (%ld)\n", rc, rc);
+    DBG_PRINTF("PS/2 rc %4.4lX (%ld)\n", (unsigned long)rc, (long)rc);
     
     uint32_t code = (rc << 2) >> 24;
-    DBG_PRINTF("PS/2 keycode %2.2lX (%ld)\n", code, code);
+    DBG_PRINTF("PS/2 keycode %2.2lX (%ld)\n", (unsigned long)code, (long)code);
 
     // TODO Handle PS/2 overflow/error messages
     switch (code) {

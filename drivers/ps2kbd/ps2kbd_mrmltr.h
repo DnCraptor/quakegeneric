@@ -9,7 +9,7 @@
 #ifndef _PS2KBD_H
 #define _PS2KBD_H
 
-#include "tusb.h"
+#include "hid_codes.h"
 #include "hardware/pio.h"
 #include "hardware/gpio.h"
 #include <functional>
@@ -51,7 +51,7 @@ private:
   void __not_in_flash_func(handleActions)();
   uint8_t __not_in_flash_func(hidCodePage0)(uint8_t ps2code);
   uint8_t __not_in_flash_func(hidCodePage1)(uint8_t ps2code);
-  bool clearHidKeys();
+  void clearHidKeys();
   
 public:
 

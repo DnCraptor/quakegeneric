@@ -38,7 +38,7 @@ inline bool parity8(uint8_t index) {
     return 0x6996 >> ((index >> 4) ^ (index & 15)) & 1;
 }
  
-inline bool parity16(uint16_t i) {
+inline static bool parity16(uint16_t i) {
     i ^= i >> 8;
     i ^= i >> 4;
     return (0x6996 >> (i & 15)) & 1;
