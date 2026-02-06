@@ -30,14 +30,9 @@ typedef struct video_mode_t{
   int vgaPxClk;
 };
 
-enum graphics_mode_t {
-    TEXTMODE_DEFAULT,
-    GRAPHICSMODE_DEFAULT,
-};
-
 void graphics_init();
 
-void graphics_set_mode(enum graphics_mode_t mode);
+void graphics_set_mode();
 
 void graphics_set_buffer(uint8_t* buffer, uint16_t width, uint16_t height);
 
@@ -56,7 +51,7 @@ void draw_window(const char title[TEXTMODE_COLS + 1], uint32_t x, uint32_t y, ui
 
 void clrScr(uint8_t color);
 
-struct video_mode_t graphics_get_video_mode(int mode);
+extern struct video_mode_t video_mode;
 
 #ifdef __cplusplus
 }
