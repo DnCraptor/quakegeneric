@@ -105,3 +105,15 @@ int hdmi_audio_set_audio_sample_data(data_packet_t *data_packet, const int16_t *
 int hdmi_audio_set_audio_sample(data_packet_t *data_packet, const int16_t *p, int samples, int frameCt);
 uint32_t encode_data_islands_hstx(uint32_t *dst, const data_packet_t *packet, size_t num_packets, int polarity);
 uint32_t encode_data_islands_header_only_hstx(uint32_t *dst, const data_packet_t *packet, size_t num_packets, int polarity);
+
+// compute even parity
+static inline bool parity8(uint8_t index) {
+    return 0x6996 >> ((index >> 4) ^ (index & 15)) & 1;
+}
+ 
+static inline bool parity16(uint16_t i) {
+    i ^= i >> 8;
+    i ^= i >> 4;
+    return (0x6996 >> (i & 15)) & 1;
+}
+// Compute 8 Parity End

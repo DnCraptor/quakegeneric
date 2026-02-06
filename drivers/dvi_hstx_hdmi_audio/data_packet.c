@@ -33,19 +33,6 @@
 #include "data_packet.h"
 #include <string.h>
 
-// compute even parity
-inline bool parity8(uint8_t index) {
-    return 0x6996 >> ((index >> 4) ^ (index & 15)) & 1;
-}
- 
-inline bool parity16(uint16_t i) {
-    i ^= i >> 8;
-    i ^= i >> 4;
-    return (0x6996 >> (i & 15)) & 1;
-}
-
-// Compute 8 Parity End
-
 // BCH Encoding Start
 const uint8_t __not_in_flash("") bchTable_[256] = {
     0x00, 0xd9, 0xb5, 0x6c, 0x6d, 0xb4, 0xd8, 0x01, 
