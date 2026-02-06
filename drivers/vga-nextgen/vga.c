@@ -18,7 +18,6 @@ extern uint8_t* FRAME_BUF;
 bool SELECT_VGA = false;
 uint8_t* get_line_buffer(int line);
 void vsync_handler();
-int get_video_mode();
 
 uint16_t pio_program_VGA_instructions[] = {
     //     .wrap_target
@@ -34,7 +33,7 @@ const struct pio_program pio_program_VGA = {
 
 
 static uint32_t* __scratch_x("lines_pattern") lines_pattern[4];
-static uint16_t __scratch_y("pallette") pallette[256];
+uint32_t palette[256];
 static uint32_t* lines_pattern_data = NULL;
 static int _SM_VGA = -1;
 
@@ -63,17 +62,6 @@ static bool is_flash_frame = false;
 static uint32_t bg_color[2];
 static uint16_t palette16_mask = 0;
 
-static uint text_buffer_width = 0;
-static uint text_buffer_height = 0;
-
-static uint16_t txt_palette[16];
-
-//буфер 2К текстовой палитры для быстрой работы
-static uint16_t* txt_palette_fast = NULL;
-//static uint16_t txt_palette_fast[256*4];
-
-enum graphics_mode_t graphics_mode = GRAPHICSMODE_DEFAULT;
-
 static uint32_t __scratch_x("frame_number") frame_number = 0;
 static uint32_t __scratch_x("screen_line") screen_line = 0;
 
@@ -81,17 +69,15 @@ void __time_critical_func() dma_handler_VGA() {
     dma_hw->ints0 = 1u << dma_chan_ctrl;
     screen_line++;
 
-    struct video_mode_t mode = graphics_get_video_mode(get_video_mode());
-
-    if (screen_line == mode.h_total) {
+    if (screen_line == video_mode.h_total) {
         vsync_handler();
         screen_line = 0;
         frame_number++;
     }
 
-    if (screen_line >= mode.h_width) {
+    if (screen_line >= video_mode.h_width) {
         //заполнение цветом фона
-        if (screen_line == mode.h_width | screen_line == mode.h_width + 3) {
+        if (screen_line == video_mode.h_width | screen_line == video_mode.h_width + 3) {
             uint32_t* output_buffer_32bit = lines_pattern[2 + (screen_line & 1)];
             output_buffer_32bit += shift_picture / 4;
             uint32_t p_i = (screen_line & is_flash_line) + (frame_number & is_flash_frame) & 1;
@@ -112,17 +98,10 @@ void __time_critical_func() dma_handler_VGA() {
     int y, line_number;
 
     uint32_t* * output_buffer = &lines_pattern[2 + (screen_line & 1)];
-    switch (graphics_mode) {
-        case GRAPHICSMODE_DEFAULT:
-            line_number = screen_line / 2;
-            if (screen_line % 2) return;
-            y = screen_line / 2 - graphics_buffer_shift_y;
-            break;
-        default: {
-            dma_channel_set_read_addr(dma_chan_ctrl, &lines_pattern[0], false); // TODO: ensue it is required
-            return;
-        }
-    }
+    line_number = screen_line >> 1;
+// chess case
+//    if (screen_line & 1) return;
+    y = line_number - graphics_buffer_shift_y;
 
     if (y < 0) {
         dma_channel_set_read_addr(dma_chan_ctrl, &lines_pattern[0], false); // TODO: ensue it is required
@@ -175,36 +154,28 @@ void __time_critical_func() dma_handler_VGA() {
     if (width < 0) return; // TODO: detect a case
 
     // Индекс палитры
-    uint16_t* current_palette = pallette;
-
-    uint8_t* output_buffer_8bit;
-    switch (graphics_mode) {
-        case GRAPHICSMODE_DEFAULT:
-            for  (register int x = 0; x < width; ++x) {
-                register uint8_t cx = input_buffer_8bit[x];
-                *output_buffer_16bit++ = current_palette[cx];
-            }
-            break;
-        default:
-            break;
+    uint32_t* current_palette = palette;
+    if (screen_line & 1) {
+        for  (register int x = 0; x < width; ++x) {
+            register uint32_t v = current_palette[input_buffer_8bit[x]];
+            *output_buffer_16bit++ = (uint16_t)(v >> 16);
+        }
+    } else {
+        for  (register int x = 0; x < width; ++x) {
+            *output_buffer_16bit++ = (uint16_t)current_palette[input_buffer_8bit[x]];
+        }
     }
     dma_channel_set_read_addr(dma_chan_ctrl, output_buffer, false);
 }
 
-void graphics_set_mode(enum graphics_mode_t mode) {
+void graphics_set_mode() {
     if (!SELECT_VGA) {
-        graphics_mode = mode;
         return;
     }
-    text_buffer_width = 80;
-    text_buffer_height = 30;
-///    memset(graphics_buffer, 0, graphics_buffer_height * graphics_buffer_width);
     if (_SM_VGA < 0) return; // если  VGA не инициализирована -
 
-    graphics_mode = mode;
-
     // Если мы уже проиницилизированы - выходим
-    if (txt_palette_fast && lines_pattern_data) {
+    if (lines_pattern_data) {
         return;
     };
     uint8_t TMPL_VHS8 = 0;
@@ -217,51 +188,22 @@ void graphics_set_mode(enum graphics_mode_t mode) {
     int HS_SIZE = 4;
     int HS_SHIFT = 100;
 
-    switch (graphics_mode) {
-        case TEXTMODE_DEFAULT:
-            //текстовая палитра
-            for (int i = 0; i < 16; i++) {
-                txt_palette[i] = txt_palette[i] & 0x3f | palette16_mask >> 8;
-            }
-
-            if (!txt_palette_fast) {
-                txt_palette_fast = (uint16_t*)conv_color; /// calloc(256 * 4, sizeof(uint16_t));
-                for (int i = 0; i < 256; i++) {
-                    const uint8_t c1 = txt_palette[i & 0xf];
-                    const uint8_t c0 = txt_palette[i >> 4];
-
-                    txt_palette_fast[i * 4 + 0] = c0 | c0 << 8;
-                    txt_palette_fast[i * 4 + 1] = c1 | c0 << 8;
-                    txt_palette_fast[i * 4 + 2] = c0 | c1 << 8;
-                    txt_palette_fast[i * 4 + 3] = c1 | c1 << 8;
-                }
-            }
-        case GRAPHICSMODE_DEFAULT:
-            TMPL_LINE8 = 0b11000000;
-            HS_SHIFT = 328 * 2;
-            HS_SIZE = 48 * 2;
-            line_size = 400 * 2;
-            shift_picture = line_size - HS_SHIFT;
-            palette16_mask = 0xc0c0;
-            visible_line_size = 320;
-            // N_lines_total = 525;
-            // N_lines_visible = 480;
-            line_VS_begin = 490;
-            line_VS_end = 491;
-            struct video_mode_t vMode = graphics_get_video_mode(get_video_mode());            
-            fdiv = clock_get_hz(clk_sys) / vMode.vgaPxClk; //частота пиксельклока
-            break;
-        default:
-            return;
-    }
+    TMPL_LINE8 = 0b11000000;
+    HS_SHIFT = 328 * 2;
+    HS_SIZE = 48 * 2;
+    line_size = 400 * 2;
+    shift_picture = line_size - HS_SHIFT;
+    palette16_mask = 0xc0c0;
+    visible_line_size = 320;
+    // N_lines_total = 525;
+    // N_lines_visible = 480;
+    line_VS_begin = 490;
+    line_VS_end = 491;
+    fdiv = clock_get_hz(clk_sys) / video_mode.vgaPxClk; //частота пиксельклока
 
     //корректировка  палитры по маске бит синхры
     bg_color[0] = bg_color[0] & 0x3f3f3f3f | palette16_mask | palette16_mask << 16;
     bg_color[1] = bg_color[1] & 0x3f3f3f3f | palette16_mask | palette16_mask << 16;
-///    for (int i = 0; i < 256; i++) {
-///        palette[0][i] = palette[0][i] & 0x3f3f | palette16_mask;
-///        palette[1][i] = palette[1][i] & 0x3f3f | palette16_mask;
-///    }
 
     //инициализация шаблонов строк и синхросигнала
     if (!lines_pattern_data) //выделение памяти, если не выделено
@@ -357,8 +299,9 @@ void graphics_set_palette(const uint8_t i, const uint32_t color888) {
     const uint8_t c_hi = conv0[r] << 4 | conv0[g] << 2 | conv0[b];
     const uint8_t c_lo = conv1[r] << 4 | conv1[g] << 2 | conv1[b];
 
-    pallette[i] = (c_hi << 8 | c_lo) & 0x3f3f | palette16_mask;
-///    conv_color[i+256] = (c_lo << 8 | c_hi) & 0x3f3f | palette16_mask;
+    const uint32_t p0 = (c_hi << 8 | c_lo) & 0x3f3f | palette16_mask;
+    const uint32_t p1 = (c_hi << 8 | c_lo) & 0x3f3f | palette16_mask;
+    palette[i] = (p1 << 16) | p0;
 }
 
 void graphics_init_hdmi();
@@ -368,16 +311,6 @@ void graphics_init() {
         return;
     }
     //инициализация палитры по умолчанию
-    //текстовая палитра
-    for (int i = 0; i < 16; i++) {
-        const uint8_t b = i & 1 ? (i >> 3 ? 3 : 2) : 0;
-        const uint8_t r = i & 4 ? (i >> 3 ? 3 : 2) : 0;
-        const uint8_t g = i & 2 ? (i >> 3 ? 3 : 2) : 0;
-
-        const uint8_t c = r << 4 | g << 2 | b;
-
-        txt_palette[i] = c & 0x3f | 0xc0;
-    }
     //инициализация PIO
     //загрузка программы в один из PIO
     const uint offset = pio_add_program(PIO_VGA, &pio_program_VGA);
@@ -443,7 +376,7 @@ void graphics_init() {
         false // Don't start yet
     );
 
-    graphics_set_mode(GRAPHICSMODE_DEFAULT);
+    graphics_set_mode();
     irq_set_exclusive_handler(VGA_DMA_IRQ, dma_handler_VGA);
     irq_set_priority(VGA_DMA_IRQ, PICO_HIGHEST_IRQ_PRIORITY);    
     dma_channel_set_irq0_enabled(dma_chan_ctrl, true);

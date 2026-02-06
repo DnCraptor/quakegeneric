@@ -2,31 +2,12 @@
 #include <string.h>
 #include <pico.h>
 
-static struct video_mode_t __scratch_x("video_mode") video_mode[] = {
-    { // 640x480 60Hz
-        .h_total = 524,
-        .h_width = 480,
-        .freq = 60,
-        .vgaPxClk = 25175000
-    },
-    { // 640x480 50Hz Pentagon 48.82Hz
-        .h_total = 644,
-        .h_width = 480,
-        .freq = 50,
-        .vgaPxClk = 20979000
-    },
-    { // 640x480 50Hz 48K 50.08Hz
-        .h_total = 628,
-        .h_width = 480,
-        .freq = 50,
-        .vgaPxClk = 20979000
-    },
-    { // 640x480 50Hz 128K 50.02Hz
-        .h_total = 629,
-        .h_width = 480,
-        .freq = 50,
-        .vgaPxClk = 20979000
-    }    
+struct video_mode_t __scratch_x("video_mode") video_mode = {
+    // 640x480 60Hz
+    .h_total = 524,
+    .h_width = 480,
+    .freq = 60,
+    .vgaPxClk = 25175000
 };
 
 /**
@@ -67,9 +48,4 @@ void draw_window(const char title[TEXTMODE_COLS + 1], uint32_t x, uint32_t y, ui
 
     snprintf(line, width - 1, " %s ", title);
     draw_text(line, x + (width - strlen(line)) / 2, y, 14, 3);
-}
-
-struct video_mode_t __time_critical_func() graphics_get_video_mode(int mode)
-{
-    return video_mode[mode];
 }

@@ -954,12 +954,8 @@ extern "C" void __time_critical_func() vsync_handler() {
 
 }
 
-extern "C" uint8_t* get_line_buffer(int line) {
+extern "C" uint8_t* __time_critical_func() get_line_buffer(int line) {
     return FRAME_BUF + QUAKEGENERIC_RES_X * line;
-}
-
-extern "C" int __time_critical_func() get_video_mode() {
-    return 0;
 }
 
 extern "C" void QG_Init(void) {
