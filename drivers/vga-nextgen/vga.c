@@ -154,7 +154,7 @@ void __time_critical_func() dma_handler_VGA() {
     if (width < 0) return; // TODO: detect a case
 
     // Индекс палитры
-    uint32_t* current_palette = palette;
+    register uint32_t* current_palette = palette;
     if (screen_line & 1) {
         for  (register int x = 0; x < width; ++x) {
             register uint32_t v = current_palette[input_buffer_8bit[x]];
@@ -300,7 +300,7 @@ void graphics_set_palette(const uint8_t i, const uint32_t color888) {
     const uint8_t c_lo = conv1[r] << 4 | conv1[g] << 2 | conv1[b];
 
     const uint32_t p0 = (c_hi << 8 | c_lo) & 0x3f3f | palette16_mask;
-    const uint32_t p1 = (c_hi << 8 | c_lo) & 0x3f3f | palette16_mask;
+    const uint32_t p1 = (c_lo << 8 | c_hi) & 0x3f3f | palette16_mask;
     palette[i] = (p1 << 16) | p0;
 }
 
